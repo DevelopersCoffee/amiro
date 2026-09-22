@@ -10,6 +10,7 @@ build/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
+packages/**/pubspec.lock
 
 # Rust
 rust/**/target/
