@@ -12,7 +12,15 @@ class Identity {
   final String? xHandle;
   final String? instagramHandle;
   final String? website;
-  final String? avatarDefinitionId;
+
+  /// The user's `AvatarDefinition`, stored as its JSON encoding.
+  ///
+  /// `identity_core` deliberately does not depend on `avatar_core`: the
+  /// definition travels through this layer as opaque JSON, exactly the way
+  /// [privacy] does, and is decoded by whoever owns the avatar (the app).
+  /// `null` until the user has rendered an avatar for the first time.
+  final String? avatarDefinitionJson;
+
   final Map<String, PrivacyFlag> privacy;
 
   const Identity({
@@ -25,7 +33,7 @@ class Identity {
     this.xHandle,
     this.instagramHandle,
     this.website,
-    this.avatarDefinitionId,
+    this.avatarDefinitionJson,
     this.privacy = const {},
   });
 
@@ -38,7 +46,7 @@ class Identity {
     String? xHandle,
     String? instagramHandle,
     String? website,
-    String? avatarDefinitionId,
+    String? avatarDefinitionJson,
     Map<String, PrivacyFlag>? privacy,
   }) {
     return Identity(
@@ -51,7 +59,7 @@ class Identity {
       xHandle: xHandle ?? this.xHandle,
       instagramHandle: instagramHandle ?? this.instagramHandle,
       website: website ?? this.website,
-      avatarDefinitionId: avatarDefinitionId ?? this.avatarDefinitionId,
+      avatarDefinitionJson: avatarDefinitionJson ?? this.avatarDefinitionJson,
       privacy: privacy ?? this.privacy,
     );
   }
@@ -92,7 +100,7 @@ class Identity {
       'xHandle': xHandle,
       'instagramHandle': instagramHandle,
       'website': website,
-      'avatarDefinitionId': avatarDefinitionId,
+      'avatarDefinitionJson': avatarDefinitionJson,
       'privacy': privacy.map((key, flag) => MapEntry(key, flag.toJson())),
     };
   }
@@ -109,7 +117,7 @@ class Identity {
       xHandle: json['xHandle'] as String?,
       instagramHandle: json['instagramHandle'] as String?,
       website: json['website'] as String?,
-      avatarDefinitionId: json['avatarDefinitionId'] as String?,
+      avatarDefinitionJson: json['avatarDefinitionJson'] as String?,
       privacy: privacyJson.map(
         (key, value) => MapEntry(key, PrivacyFlag.fromJson(value as bool)),
       ),

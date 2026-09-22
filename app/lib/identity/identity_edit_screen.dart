@@ -57,7 +57,9 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
       username: _usernameController.text,
       bio: _bioController.text.isEmpty ? null : _bioController.text,
       email: _emailController.text.isEmpty ? null : _emailController.text,
-      avatarDefinitionId: existing?.avatarDefinitionId,
+      // Carried over untouched: this screen edits identity fields only, and
+      // must not drop the avatar the user already rendered.
+      avatarDefinitionJson: existing?.avatarDefinitionJson,
       privacy: _isPublic.map((key, value) => MapEntry(key, PrivacyFlag(value))),
     );
     await ref.read(currentIdentityProvider.notifier).save(identity);

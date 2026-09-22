@@ -48,6 +48,29 @@ void main() {
     expect(restored.privacy['bio']!.isPublic, true);
   });
 
+  test('avatar definition JSON round-trips through the record', () async {
+    const avatarJson =
+        '{"id":"default","body":"body_placeholder","top":"top_placeholder",'
+        '"glasses":"glasses_placeholder"}';
+
+    await repository.save(Identity(
+      id: 'id-1',
+      displayName: 'Uday',
+      username: 'uday',
+      avatarDefinitionJson: avatarJson,
+    ));
+
+    final restored = await repository.getCurrent();
+
+    expect(restored!.avatarDefinitionJson, avatarJson);
+  });
+
+  test('avatar definition JSON is null when the user has no avatar yet', () async {
+    await repository.save(Identity(id: 'id-1', displayName: 'Uday', username: 'uday'));
+
+    expect((await repository.getCurrent())!.avatarDefinitionJson, isNull);
+  });
+
   test('save overwrites the previous identity (single-row semantics)', () async {
     await repository.save(Identity(id: 'id-1', displayName: 'Uday', username: 'uday'));
     await repository.save(Identity(id: 'id-1', displayName: 'Uday C', username: 'uday'));

@@ -17,9 +17,9 @@ const IdentityRecordSchema = CollectionSchema(
   name: r'IdentityRecord',
   id: -2303143554673215988,
   properties: {
-    r'avatarDefinitionId': PropertySchema(
+    r'avatarDefinitionJson': PropertySchema(
       id: 0,
-      name: r'avatarDefinitionId',
+      name: r'avatarDefinitionJson',
       type: IsarType.string,
     ),
     r'bio': PropertySchema(
@@ -94,7 +94,7 @@ int _identityRecordEstimateSize(
 ) {
   var bytesCount = offsets.last;
   {
-    final value = object.avatarDefinitionId;
+    final value = object.avatarDefinitionJson;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
     }
@@ -148,7 +148,7 @@ void _identityRecordSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.avatarDefinitionId);
+  writer.writeString(offsets[0], object.avatarDefinitionJson);
   writer.writeString(offsets[1], object.bio);
   writer.writeString(offsets[2], object.displayName);
   writer.writeString(offsets[3], object.email);
@@ -168,7 +168,7 @@ IdentityRecord _identityRecordDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = IdentityRecord();
-  object.avatarDefinitionId = reader.readStringOrNull(offsets[0]);
+  object.avatarDefinitionJson = reader.readStringOrNull(offsets[0]);
   object.bio = reader.readStringOrNull(offsets[1]);
   object.displayName = reader.readString(offsets[2]);
   object.email = reader.readStringOrNull(offsets[3]);
@@ -312,31 +312,31 @@ extension IdentityRecordQueryWhere
 extension IdentityRecordQueryFilter
     on QueryBuilder<IdentityRecord, IdentityRecord, QFilterCondition> {
   QueryBuilder<IdentityRecord, IdentityRecord, QAfterFilterCondition>
-      avatarDefinitionIdIsNull() {
+      avatarDefinitionJsonIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'avatarDefinitionId',
+        property: r'avatarDefinitionJson',
       ));
     });
   }
 
   QueryBuilder<IdentityRecord, IdentityRecord, QAfterFilterCondition>
-      avatarDefinitionIdIsNotNull() {
+      avatarDefinitionJsonIsNotNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'avatarDefinitionId',
+        property: r'avatarDefinitionJson',
       ));
     });
   }
 
   QueryBuilder<IdentityRecord, IdentityRecord, QAfterFilterCondition>
-      avatarDefinitionIdEqualTo(
+      avatarDefinitionJsonEqualTo(
     String? value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'avatarDefinitionId',
+        property: r'avatarDefinitionJson',
         value: value,
         caseSensitive: caseSensitive,
       ));
@@ -344,7 +344,7 @@ extension IdentityRecordQueryFilter
   }
 
   QueryBuilder<IdentityRecord, IdentityRecord, QAfterFilterCondition>
-      avatarDefinitionIdGreaterThan(
+      avatarDefinitionJsonGreaterThan(
     String? value, {
     bool include = false,
     bool caseSensitive = true,
@@ -352,7 +352,7 @@ extension IdentityRecordQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         include: include,
-        property: r'avatarDefinitionId',
+        property: r'avatarDefinitionJson',
         value: value,
         caseSensitive: caseSensitive,
       ));
@@ -360,7 +360,7 @@ extension IdentityRecordQueryFilter
   }
 
   QueryBuilder<IdentityRecord, IdentityRecord, QAfterFilterCondition>
-      avatarDefinitionIdLessThan(
+      avatarDefinitionJsonLessThan(
     String? value, {
     bool include = false,
     bool caseSensitive = true,
@@ -368,7 +368,7 @@ extension IdentityRecordQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.lessThan(
         include: include,
-        property: r'avatarDefinitionId',
+        property: r'avatarDefinitionJson',
         value: value,
         caseSensitive: caseSensitive,
       ));
@@ -376,7 +376,7 @@ extension IdentityRecordQueryFilter
   }
 
   QueryBuilder<IdentityRecord, IdentityRecord, QAfterFilterCondition>
-      avatarDefinitionIdBetween(
+      avatarDefinitionJsonBetween(
     String? lower,
     String? upper, {
     bool includeLower = true,
@@ -385,7 +385,7 @@ extension IdentityRecordQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
-        property: r'avatarDefinitionId',
+        property: r'avatarDefinitionJson',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -396,13 +396,13 @@ extension IdentityRecordQueryFilter
   }
 
   QueryBuilder<IdentityRecord, IdentityRecord, QAfterFilterCondition>
-      avatarDefinitionIdStartsWith(
+      avatarDefinitionJsonStartsWith(
     String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'avatarDefinitionId',
+        property: r'avatarDefinitionJson',
         value: value,
         caseSensitive: caseSensitive,
       ));
@@ -410,13 +410,13 @@ extension IdentityRecordQueryFilter
   }
 
   QueryBuilder<IdentityRecord, IdentityRecord, QAfterFilterCondition>
-      avatarDefinitionIdEndsWith(
+      avatarDefinitionJsonEndsWith(
     String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'avatarDefinitionId',
+        property: r'avatarDefinitionJson',
         value: value,
         caseSensitive: caseSensitive,
       ));
@@ -424,10 +424,10 @@ extension IdentityRecordQueryFilter
   }
 
   QueryBuilder<IdentityRecord, IdentityRecord, QAfterFilterCondition>
-      avatarDefinitionIdContains(String value, {bool caseSensitive = true}) {
+      avatarDefinitionJsonContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.contains(
-        property: r'avatarDefinitionId',
+        property: r'avatarDefinitionJson',
         value: value,
         caseSensitive: caseSensitive,
       ));
@@ -435,10 +435,10 @@ extension IdentityRecordQueryFilter
   }
 
   QueryBuilder<IdentityRecord, IdentityRecord, QAfterFilterCondition>
-      avatarDefinitionIdMatches(String pattern, {bool caseSensitive = true}) {
+      avatarDefinitionJsonMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.matches(
-        property: r'avatarDefinitionId',
+        property: r'avatarDefinitionJson',
         wildcard: pattern,
         caseSensitive: caseSensitive,
       ));
@@ -446,20 +446,20 @@ extension IdentityRecordQueryFilter
   }
 
   QueryBuilder<IdentityRecord, IdentityRecord, QAfterFilterCondition>
-      avatarDefinitionIdIsEmpty() {
+      avatarDefinitionJsonIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'avatarDefinitionId',
+        property: r'avatarDefinitionJson',
         value: '',
       ));
     });
   }
 
   QueryBuilder<IdentityRecord, IdentityRecord, QAfterFilterCondition>
-      avatarDefinitionIdIsNotEmpty() {
+      avatarDefinitionJsonIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'avatarDefinitionId',
+        property: r'avatarDefinitionJson',
         value: '',
       ));
     });
@@ -1998,16 +1998,16 @@ extension IdentityRecordQueryLinks
 extension IdentityRecordQuerySortBy
     on QueryBuilder<IdentityRecord, IdentityRecord, QSortBy> {
   QueryBuilder<IdentityRecord, IdentityRecord, QAfterSortBy>
-      sortByAvatarDefinitionId() {
+      sortByAvatarDefinitionJson() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'avatarDefinitionId', Sort.asc);
+      return query.addSortBy(r'avatarDefinitionJson', Sort.asc);
     });
   }
 
   QueryBuilder<IdentityRecord, IdentityRecord, QAfterSortBy>
-      sortByAvatarDefinitionIdDesc() {
+      sortByAvatarDefinitionJsonDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'avatarDefinitionId', Sort.desc);
+      return query.addSortBy(r'avatarDefinitionJson', Sort.desc);
     });
   }
 
@@ -2145,16 +2145,16 @@ extension IdentityRecordQuerySortBy
 extension IdentityRecordQuerySortThenBy
     on QueryBuilder<IdentityRecord, IdentityRecord, QSortThenBy> {
   QueryBuilder<IdentityRecord, IdentityRecord, QAfterSortBy>
-      thenByAvatarDefinitionId() {
+      thenByAvatarDefinitionJson() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'avatarDefinitionId', Sort.asc);
+      return query.addSortBy(r'avatarDefinitionJson', Sort.asc);
     });
   }
 
   QueryBuilder<IdentityRecord, IdentityRecord, QAfterSortBy>
-      thenByAvatarDefinitionIdDesc() {
+      thenByAvatarDefinitionJsonDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'avatarDefinitionId', Sort.desc);
+      return query.addSortBy(r'avatarDefinitionJson', Sort.desc);
     });
   }
 
@@ -2305,9 +2305,9 @@ extension IdentityRecordQuerySortThenBy
 extension IdentityRecordQueryWhereDistinct
     on QueryBuilder<IdentityRecord, IdentityRecord, QDistinct> {
   QueryBuilder<IdentityRecord, IdentityRecord, QDistinct>
-      distinctByAvatarDefinitionId({bool caseSensitive = true}) {
+      distinctByAvatarDefinitionJson({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'avatarDefinitionId',
+      return query.addDistinctBy(r'avatarDefinitionJson',
           caseSensitive: caseSensitive);
     });
   }
@@ -2393,9 +2393,9 @@ extension IdentityRecordQueryProperty
   }
 
   QueryBuilder<IdentityRecord, String?, QQueryOperations>
-      avatarDefinitionIdProperty() {
+      avatarDefinitionJsonProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'avatarDefinitionId');
+      return query.addPropertyName(r'avatarDefinitionJson');
     });
   }
 

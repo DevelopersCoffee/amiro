@@ -15,7 +15,8 @@ class IdentityRecord {
   String? xHandle;
   String? instagramHandle;
   String? website;
-  String? avatarDefinitionId;
+  /// JSON-encoded `AvatarDefinition`, or null before the user's first render.
+  String? avatarDefinitionJson;
 
   /// JSON-encoded `Map<String, bool>` of field name -> isPublic.
   late String privacyJson;

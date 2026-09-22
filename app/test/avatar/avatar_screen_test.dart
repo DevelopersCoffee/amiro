@@ -1,12 +1,48 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:avatar_core/avatar_core.dart';
 import 'package:avatar_renderer/avatar_renderer.dart';
+import 'package:identity_core/identity_core.dart';
 
 import 'package:amiro_app/avatar/avatar_providers.dart';
 import 'package:amiro_app/avatar/avatar_screen.dart';
+import 'package:amiro_app/identity/identity_providers.dart';
+
+class _InMemoryIdentityRepository implements IdentityRepository {
+  Identity? stored;
+
+  _InMemoryIdentityRepository([this.stored]);
+
+  @override
+  Future<Identity?> getCurrent() async => stored;
+
+  @override
+  Future<void> save(Identity identity) async => stored = identity;
+
+  @override
+  Future<void> clear() async => stored = null;
+}
+
+Identity _identity({String? avatarDefinitionJson}) => Identity(
+      id: 'id-1',
+      displayName: 'Uday',
+      username: 'uday',
+      avatarDefinitionJson: avatarDefinitionJson,
+    );
+
+Widget _screen(AvatarRenderer renderer, IdentityRepository repository) {
+  return ProviderScope(
+    overrides: [
+      avatarRendererProvider.overrideWithValue(renderer),
+      identityRepositoryProvider.overrideWithValue(repository),
+    ],
+    child: const MaterialApp(home: AvatarScreen()),
+  );
+}
 
 class _FakeAvatarRenderer implements AvatarRenderer {
   AvatarDefinition? _current;
@@ -38,12 +74,7 @@ void main() {
   testWidgets('avatar screen loads the definition on start and renders a view', (tester) async {
     final renderer = _FakeAvatarRenderer();
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [avatarRendererProvider.overrideWithValue(renderer)],
-        child: const MaterialApp(home: AvatarScreen()),
-      ),
-    );
+    await tester.pumpWidget(_screen(renderer, _InMemoryIdentityRepository()));
     await tester.pumpAndSettle();
 
     expect(renderer.calls, contains('load:default'));
@@ -60,12 +91,7 @@ void main() {
   testWidgets('tapping the glasses toggle swaps that slot', (tester) async {
     final renderer = _FakeAvatarRenderer();
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [avatarRendererProvider.overrideWithValue(renderer)],
-        child: const MaterialApp(home: AvatarScreen()),
-      ),
-    );
+    await tester.pumpWidget(_screen(renderer, _InMemoryIdentityRepository()));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('toggleGlassesButton')));
@@ -78,12 +104,7 @@ void main() {
   testWidgets('tapping again removes the glasses', (tester) async {
     final renderer = _FakeAvatarRenderer();
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [avatarRendererProvider.overrideWithValue(renderer)],
-        child: const MaterialApp(home: AvatarScreen()),
-      ),
-    );
+    await tester.pumpWidget(_screen(renderer, _InMemoryIdentityRepository()));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('toggleGlassesButton')));
@@ -92,5 +113,45 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(renderer.current!.glasses, isNull);
+  });
+
+  testWidgets('the rendered definition is persisted onto the current identity',
+      (tester) async {
+    final renderer = _FakeAvatarRenderer();
+    final repository = _InMemoryIdentityRepository(_identity());
+
+    await tester.pumpWidget(_screen(renderer, repository));
+    await tester.pumpAndSettle();
+
+    // Persisted after the initial load...
+    final afterLoad =
+        jsonDecode(repository.stored!.avatarDefinitionJson!) as Map<String, dynamic>;
+    expect(afterLoad['body'], 'body_placeholder');
+    expect(afterLoad['glasses'], isNull);
+
+    // ...and again after a slot swap.
+    await tester.tap(find.byKey(const Key('toggleGlassesButton')));
+    await tester.pumpAndSettle();
+
+    final afterSwap =
+        jsonDecode(repository.stored!.avatarDefinitionJson!) as Map<String, dynamic>;
+    expect(afterSwap['glasses'], 'glasses_placeholder');
+  });
+
+  testWidgets('a persisted definition is loaded instead of the default',
+      (tester) async {
+    final renderer = _FakeAvatarRenderer();
+    final repository = _InMemoryIdentityRepository(_identity(
+      avatarDefinitionJson:
+          '{"id":"saved","body":"body_placeholder","glasses":"glasses_placeholder"}',
+    ));
+
+    await tester.pumpWidget(_screen(renderer, repository));
+    await tester.pumpAndSettle();
+
+    expect(renderer.calls, contains('load:saved'));
+    expect(renderer.current!.glasses, 'glasses_placeholder');
+    // The toggle reflects the restored state rather than defaulting to off.
+    expect(find.text('Remove glasses'), findsOneWidget);
   });
 }
