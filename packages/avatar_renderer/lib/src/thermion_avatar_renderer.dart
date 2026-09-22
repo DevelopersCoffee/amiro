@@ -26,21 +26,21 @@ abstract class FilamentSurface {
 ///     a path -> ThermionAsset map to translate `removeModel(path)` calls
 ///     back into the handle Filament actually needs.
 class ThermionFilamentSurface implements FilamentSurface {
-  final thermion.ThermionViewer viewer;
+  final thermion.ThermionViewer _viewer;
   final Map<String, thermion.ThermionAsset> _loadedAssets = {};
 
-  ThermionFilamentSurface(this.viewer);
+  ThermionFilamentSurface(this._viewer);
 
   @override
   Future<void> loadModel(String assetPath) async {
-    _loadedAssets[assetPath] = await viewer.loadGltf(assetPath);
+    _loadedAssets[assetPath] = await _viewer.loadGltf(assetPath);
   }
 
   @override
   Future<void> removeModel(String assetPath) async {
     final asset = _loadedAssets.remove(assetPath);
     if (asset != null) {
-      await viewer.destroyAsset(asset);
+      await _viewer.destroyAsset(asset);
     }
   }
 }
@@ -92,7 +92,7 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     // is the one place that reaches past the `FilamentSurface` seam.
     final surface = this.surface;
     if (surface is ThermionFilamentSurface) {
-      return thermion.ThermionWidget(viewer: surface.viewer);
+      return thermion.ThermionWidget(viewer: surface._viewer);
     }
     throw StateError(
       'buildView() requires a ThermionFilamentSurface backed by a live '
