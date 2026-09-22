@@ -63,6 +63,7 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
   /// "definition JSON -> render -> swap -> persist" pipeline. No-op when the
   /// user hasn't created an identity yet — there's nothing to attach it to.
   Future<void> _persist(AvatarDefinition definition) async {
+    if (!mounted) return;
     final identity = ref.read(currentIdentityProvider).value;
     if (identity == null) return;
     await ref.read(currentIdentityProvider.notifier).save(

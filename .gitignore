@@ -16,7 +16,6 @@ build/
 .pub/
 packages/**/pubspec.lock
 app/pubspec.lock
-/pubspec.lock
 
 # Rust
 rust/**/target/
