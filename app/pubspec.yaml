@@ -3,7 +3,8 @@ description: Amiro — your digital identity, made wearable.
 publish_to: none
 version: 0.1.0
 environment:
-  sdk: ">=3.4.0 <4.0.0"
+  sdk: ">=3.9.0 <4.0.0"
+resolution: workspace
 
 dependencies:
   flutter:

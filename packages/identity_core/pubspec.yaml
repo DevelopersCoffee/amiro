@@ -3,7 +3,8 @@ description: Identity model and privacy flags for Amiro.
 version: 0.1.0
 publish_to: none
 environment:
-  sdk: ">=3.4.0 <4.0.0"
+  sdk: ">=3.9.0 <4.0.0"
+resolution: workspace
 
 dependencies:
   isar: ^3.1.0+1
@@ -13,5 +14,24 @@ dependencies:
 dev_dependencies:
   test: ^1.25.0
   lints: ^4.0.0
-  isar_generator: ^3.1.0+1
-  build_runner: ^2.4.9
+
+# NOTE: `isar_generator` / `build_runner` are deliberately NOT dev_dependencies
+# here. `isar_generator 3.1.0+1` requires `analyzer >=4.6.0 <6.0.0`, which
+# cannot coexist in a pub workspace with the `matcher` version the current
+# Flutter SDK pins into `flutter_test` (that forces `test >=1.25.13`, which
+# needs `analyzer >=6.0.0`). The one generated artefact — `identity_isar_schema
+# .g.dart` — is therefore committed to the repo (see the `.gitignore`
+# exception) and nothing in CI regenerates it.
+#
+# To regenerate it after changing `identity_isar_schema.dart`, resolve this
+# package on its own, outside the workspace:
+#
+#   cd packages/identity_core
+#   # temporarily delete the `resolution: workspace` line above and add
+#   #   isar_generator: ^3.1.0+1
+#   #   build_runner: ^2.4.9
+#   # to dev_dependencies, then:
+#   dart pub get
+#   dart run build_runner build --delete-conflicting-outputs
+#   # restore this pubspec.yaml, re-run `melos bootstrap`, and commit the
+#   # regenerated identity_isar_schema.g.dart.

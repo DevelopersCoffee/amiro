@@ -3,6 +3,7 @@ description: QR generation/scanning for Amiro identity sharing. Not yet implemen
 version: 0.1.0
 publish_to: none
 environment:
-  sdk: ">=3.4.0 <4.0.0"
+  sdk: ">=3.9.0 <4.0.0"
+resolution: workspace
 dev_dependencies:
   lints: ^4.0.0
