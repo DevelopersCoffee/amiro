@@ -51,6 +51,22 @@ class ThermionAvatarRenderer implements AvatarRenderer {
 
   ThermionAvatarRenderer({required this.surface});
 
+  /// Builds a renderer backed by a live Filament engine.
+  ///
+  /// This is the only place the app is allowed to obtain a Thermion-backed
+  /// renderer: the global constraint is that nothing outside this package
+  /// imports `thermion_flutter`, so engine construction lives here rather
+  /// than in `app/lib/main.dart`.
+  ///
+  /// `ThermionFlutterPlugin.createViewer()` initializes the Filament engine
+  /// and returns a live `ThermionViewer`. Like opening a database, it only
+  /// needs to be awaited before `runApp` — it needs no `BuildContext` and no
+  /// mounted widget tree.
+  static Future<ThermionAvatarRenderer> create() async {
+    final viewer = await thermion.ThermionFlutterPlugin.createViewer();
+    return ThermionAvatarRenderer(surface: ThermionFilamentSurface(viewer));
+  }
+
   @override
   AvatarDefinition? get current => _current;
 

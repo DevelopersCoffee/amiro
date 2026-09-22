@@ -12,28 +12,44 @@ class AvatarScreen extends ConsumerStatefulWidget {
   ConsumerState<AvatarScreen> createState() => _AvatarScreenState();
 }
 
+const _defaultDefinition = AvatarDefinition(
+  id: 'default',
+  body: 'body_placeholder',
+  top: 'top_placeholder',
+);
+
 class _AvatarScreenState extends ConsumerState<AvatarScreen> {
-  bool _loaded = false;
+  bool _didInit = false;
   bool _glassesOn = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_loaded) {
-      _loaded = true;
-      const definition = AvatarDefinition(
-        id: 'default',
-        body: 'body_placeholder',
-        top: 'top_placeholder',
-      );
-      ref.read(avatarRendererProvider).load(definition).then((_) => setState(() {}));
+    if (_didInit) return;
+    _didInit = true;
+
+    // The renderer is an app-lifetime singleton, but this State is recreated
+    // every time the user switches back to the Avatar tab. Reloading here
+    // would queue a duplicate set of Filament asset loads and reset the UI's
+    // idea of what is equipped. Once loaded, it stays loaded.
+    final renderer = ref.read(avatarRendererProvider);
+    final loaded = renderer.current;
+    if (loaded != null) {
+      _glassesOn = loaded.glasses != null;
+      return;
     }
+
+    renderer.load(_defaultDefinition).then((_) {
+      if (!mounted) return;
+      setState(() => _glassesOn = renderer.current?.glasses != null);
+    });
   }
 
   Future<void> _toggleGlasses() async {
     final renderer = ref.read(avatarRendererProvider);
     final next = !_glassesOn;
     await renderer.updateSlot('glasses', next ? 'glasses_placeholder' : null);
+    if (!mounted) return;
     setState(() => _glassesOn = next);
   }
 
