@@ -1,0 +1,10 @@
+name: identity_core
+description: Identity model and privacy flags for Amiro.
+version: 0.1.0
+publish_to: none
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^4.0.0
