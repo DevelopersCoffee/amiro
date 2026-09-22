@@ -34,8 +34,17 @@ identically on Android and iOS via `packages/avatar_renderer`.
 
 An asset id resolves to a packaged glTF/GLB file via
 `packages/avatar_renderer/lib/src/avatar_asset_resolver.dart`:
-`body` slot → `assets/avatars/<id>.glb`; every other slot →
-`assets/cosmetics/<id>.glb`.
+`body` slot → `packages/avatar_renderer/assets/avatars/<id>.glb`; every
+other slot → `packages/avatar_renderer/assets/cosmetics/<id>.glb`. The
+assets are packaged inside `avatar_renderer`, not at the repository root,
+so the renderer package is self-contained.
+
+## Persistence
+
+A definition is persisted as its JSON encoding in
+`Identity.avatarDefinitionJson`, stored in the single-row Isar
+`IdentityRecord` alongside the identity's other fields. `identity_core`
+treats it as opaque text — it does not depend on `avatar_core`.
 
 ## Current status (as of the foundation pass)
 

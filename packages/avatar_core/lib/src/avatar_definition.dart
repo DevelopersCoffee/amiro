@@ -1,6 +1,6 @@
 /// An avatar's equipped cosmetics, one asset id per slot.
 ///
-/// Slot list matches the PRD's full 17-slot avatar system exactly, even
+/// Slot list matches the PRD's full 18-slot avatar system exactly, even
 /// though this pass only ever populates `body`, `top`, and `glasses` —
 /// this avoids a schema migration when later milestones add real
 /// cosmetics for the remaining slots.

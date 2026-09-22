@@ -3,7 +3,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('AvatarDefinition', () {
-    test('slots contains all 17 PRD-defined slots', () {
+    test('slots contains all 18 PRD-defined slots', () {
       expect(AvatarDefinition.slots, [
         'body',
         'face',
