@@ -1,0 +1,26 @@
+name: amiro_app
+description: Amiro — your digital identity, made wearable.
+publish_to: none
+version: 0.1.0
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.5.1
+  path_provider: ^2.1.4
+  identity_core:
+    path: ../packages/identity_core
+  avatar_core:
+    path: ../packages/avatar_core
+  avatar_renderer:
+    path: ../packages/avatar_renderer
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
