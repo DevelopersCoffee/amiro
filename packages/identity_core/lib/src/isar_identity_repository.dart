@@ -10,13 +10,13 @@ import 'privacy_flag.dart';
 const _kSingleRowId = 0;
 
 Future<Isar> openIdentityIsar({String? directory}) async {
-  // In a pure-Dart context (e.g. `dart test`), the Isar native binary isn't
-  // auto-registered the way `isar_flutter_libs` does for a running Flutter
-  // app. Isar resolves this itself: if the binary isn't already reachable
-  // next to the script, it fetches the right one for this platform once and
-  // caches it there. This is a no-op inside a real Flutter app, where
-  // `isar_flutter_libs` already ships the binary.
-  await Isar.initializeIsarCore(download: true);
+  // Production entry point. It must NOT call `Isar.initializeIsarCore`.
+  // In a real Flutter app, `isar_flutter_libs` already registers the bundled
+  // native binary before this runs. This function intentionally has no
+  // network-capable fallback so the shipped app never has a runtime
+  // code-download path. Pure-Dart test environments (e.g. `dart test`) must
+  // call the test-only `initializeIsarCoreForTesting()` helper from
+  // `test/test_isar_setup.dart` before invoking this function.
   return Isar.open(
     [IdentityRecordSchema],
     directory: directory ?? '.',
