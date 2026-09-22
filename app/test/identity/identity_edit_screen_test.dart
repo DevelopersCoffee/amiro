@@ -58,6 +58,12 @@ void main() {
     // Default is private; explicitly flip to public then back to private
     // to exercise the toggle path deterministically.
     await tester.tap(find.byKey(const Key('emailPrivacyToggle')));
+    await tester.pump();
+    expect(
+      tester.widget<Switch>(find.byType(Switch)).value,
+      isTrue,
+      reason: 'first tap should flip the email toggle from private to public',
+    );
     await tester.tap(find.byKey(const Key('emailPrivacyToggle')));
     await tester.tap(find.byKey(const Key('saveButton')));
     await tester.pumpAndSettle();
