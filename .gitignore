@@ -1,1 +1,30 @@
 .worktrees/
+
+# Flutter/Dart
+.dart_tool/
+.packages
+build/
+*.g.dart
+# Exception: the Isar collection schema is generated but MUST be committed —
+# `identity_core` (and `app`, which depends on it) cannot compile without it,
+# and nothing in CI/Melos regenerates it.
+!packages/identity_core/lib/src/identity_isar_schema.g.dart
+*.freezed.dart
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+packages/**/pubspec.lock
+app/pubspec.lock
+
+# Rust
+rust/**/target/
+Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store

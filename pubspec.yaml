@@ -1,0 +1,56 @@
+name: amiro_workspace
+publish_to: none
+environment:
+  sdk: ">=3.9.0 <4.0.0"
+
+# Melos 8 discovers packages through Dart's pub workspaces feature, not
+# through a `packages:` list in melos.yaml (removed in Melos 7). Every entry
+# here must have `resolution: workspace` in its own pubspec.yaml.
+workspace:
+  - app
+  - packages/identity_core
+  - packages/avatar_core
+  - packages/avatar_renderer
+  - packages/sharing
+  - packages/nfc
+  - packages/qr
+  - packages/store
+
+dev_dependencies:
+  # Melos 7+ requires itself to be a root dev_dependency to recognise the
+  # workspace (see MelosWorkspaceConfig._findRootPubspec).
+  melos: ^8.9.0
+
+dependency_overrides:
+  # Melos 8.9.0 needs `cli_util >=0.5.0 <0.7.0`; `thermion_flutter` ->
+  # `thermion_dart` -> `ffigen_js` pins `cli_util ^0.4.2` (every published
+  # ffigen_js does). Under pub workspaces all members resolve together, so
+  # without this override version solving fails outright. `ffigen_js` is a
+  # build-time-only codegen tool for thermion's *web* FFI bindings — Amiro
+  # targets Android/iOS and never invokes it — so forcing the newer cli_util
+  # affects nothing we compile or run.
+  cli_util: ^0.6.0
+
+melos:
+  command:
+    bootstrap:
+      runPubGetInParallel: true
+
+  scripts:
+    analyze:
+      run: melos exec -- flutter analyze
+      description: Run flutter analyze in every package.
+
+    test:
+      run: melos run test:dart && melos run test:flutter
+      description: Run every package's tests (pure-Dart and Flutter).
+
+    test:dart:
+      run: melos exec --scope="identity_core,avatar_core" --dir-exists=test -- dart test
+      description: >
+        Run `dart test` in the pure-Dart packages. These have no Flutter SDK
+        dependency and use `package:test`, so `flutter test` cannot run them.
+
+    test:flutter:
+      run: melos exec --ignore="identity_core,avatar_core" --dir-exists=test -- flutter test
+      description: Run `flutter test` in every Flutter package that has a test directory.

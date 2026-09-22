@@ -1,0 +1,9 @@
+name: store
+description: Cosmetic catalog, entitlements, and purchase flows for Amiro. Not yet implemented.
+version: 0.1.0
+publish_to: none
+environment:
+  sdk: ">=3.9.0 <4.0.0"
+resolution: workspace
+dev_dependencies:
+  lints: ^4.0.0

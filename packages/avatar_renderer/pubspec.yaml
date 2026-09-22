@@ -1,0 +1,25 @@
+name: avatar_renderer
+description: Avatar rendering interface for Amiro, backed by Filament via thermion_flutter.
+version: 0.1.0
+publish_to: none
+environment:
+  sdk: ">=3.9.0 <4.0.0"
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+  avatar_core:
+    path: ../avatar_core
+  thermion_flutter: ^0.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lints: ^4.0.0
+
+flutter:
+  assets:
+    - assets/avatars/body_placeholder.glb
+    - assets/cosmetics/top_placeholder.glb
+    - assets/cosmetics/glasses_placeholder.glb

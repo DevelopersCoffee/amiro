@@ -1,0 +1,9 @@
+name: nfc
+description: NFC read/write for Amiro identity sharing. Not yet implemented.
+version: 0.1.0
+publish_to: none
+environment:
+  sdk: ">=3.9.0 <4.0.0"
+resolution: workspace
+dev_dependencies:
+  lints: ^4.0.0
