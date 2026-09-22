@@ -16,3 +16,9 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   lints: ^4.0.0
+
+flutter:
+  assets:
+    - assets/avatars/body_placeholder.glb
+    - assets/cosmetics/top_placeholder.glb
+    - assets/cosmetics/glasses_placeholder.glb

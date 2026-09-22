@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'identity/identity_edit_screen.dart';
+import 'avatar/avatar_screen.dart';
 
 class AmiroApp extends StatelessWidget {
   const AmiroApp({super.key});
@@ -10,7 +11,34 @@ class AmiroApp extends StatelessWidget {
     return MaterialApp(
       title: 'Amiro',
       theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.deepPurple),
-      home: const IdentityEditScreen(),
+      home: const _RootTabs(),
+    );
+  }
+}
+
+class _RootTabs extends StatefulWidget {
+  const _RootTabs();
+
+  @override
+  State<_RootTabs> createState() => _RootTabsState();
+}
+
+class _RootTabsState extends State<_RootTabs> {
+  int _index = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final screens = const [IdentityEditScreen(), AvatarScreen()];
+    return Scaffold(
+      body: screens[_index],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (i) => setState(() => _index = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.person), label: 'Identity'),
+          NavigationDestination(icon: Icon(Icons.face_retouching_natural), label: 'Avatar'),
+        ],
+      ),
     );
   }
 }

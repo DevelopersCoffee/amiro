@@ -16,6 +16,7 @@ dependencies:
     path: ../packages/avatar_core
   avatar_renderer:
     path: ../packages/avatar_renderer
+  thermion_flutter: ^0.5.0
 
 dev_dependencies:
   flutter_test:
