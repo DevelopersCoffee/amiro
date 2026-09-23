@@ -327,3 +327,58 @@ phones together" and "scan a real QR" user-facing promises remain
 unverified end-to-end. A second device (or a two-person test — product
 owner + one more phone) is needed before this pass can be called proven,
 matching the same bar the M2 avatar spike was held to.
+
+**Post-spike: whole-branch review found and fixed real integration gaps.**
+The per-task reviews above were each scoped to their own task's brief; a
+final whole-branch review (required before merge, see the plan's ledger)
+caught three defects invisible to any single task's lens, since each task
+individually did what its brief asked but the pieces didn't fit together:
+
+1. **Receive was never wired.** Tasks 3 (`NfcReader`) and 5
+   (`incomingShareLinkProvider`) each built correctly to their own
+   interface spec, but nothing in `app/` ever consumed either — a scanned
+   deep link or an NFC read had nowhere to go. Fixed: deep links are
+   listened for automatically at the app root (`IncomingShareListener`);
+   NFC receive is now an explicit, on-demand action (`NfcReceiveScreen`,
+   reached from the Share screen) rather than automatic, after two fix
+   rounds discovered that auto-starting a read session at launch disables
+   the sender's own emulation on Android (reader mode turns off HCE) and
+   pops an unwanted system scan sheet on every launch on iOS.
+2. **Sender and reader spoke different wire protocols.** `AmiroHceService`
+   (Task 4) answered any APDU with raw URI bytes under a private AID;
+   `ManagerNfcReader` (Task 3) expects a real NFC Forum Type 4 Tag (NDEF
+   Tag Application AID `D2760000850101`, a Capability Container, an NDEF
+   file, proper SELECT/READ BINARY handling). Each task matched its own
+   brief; neither task's brief specified a shared byte-level format. Fixed:
+   `AmiroHceService` now emulates a spec-correct Type 4 Tag, byte-traced
+   against the NFC Forum spec by an independent reviewer (AID, CC file,
+   NDEF framing, status words all verified correct; one CC-field bug — MLc
+   `0x0000`, outside the spec-valid range — caught and fixed in a second
+   pass).
+3. **iOS was missing required platform permissions.** No
+   `NSCameraUsageDescription` (iOS kills the app on camera use without it),
+   no NFC entitlement/AID declaration. Fixed: `Info.plist` usage strings
+   added, `Runner.entitlements` created declaring the NFC tag-reader
+   capability and the same AID used on the Android side, wired into all
+   three Xcode build configurations. Unverified by an actual Xcode build —
+   no Mac toolchain in the environment this was built in — but validated
+   well-formed (`plutil -lint`) and correct by construction.
+
+A widget-lifecycle bug surfaced during the fix rounds and is worth naming
+because it dates to Task 6's original commit, not the fix pass: calling
+`ref.read(...)` inside a `ConsumerState`'s `dispose()` throws in
+flutter_riverpod 2.6.1 (`ref` is unusable after unmount), which silently
+swallowed the Share screen's `stopEmulating()` cleanup call — the phone
+kept physically emulating an NFC tag after the user navigated away, for as
+long as this feature has existed on this branch. Fixed by capturing the
+needed reference in `initState` instead of reading `ref` inside `dispose()`
+— the general pattern for any provider-derived cleanup that must run on
+widget teardown in this codebase.
+
+**Updated readiness bar:** with these fixes, both send and receive paths
+are implemented, wired end-to-end, and reviewed at both the task and
+whole-branch level. What remains unverified is unchanged from the spike
+findings above — real tap-to-tap NFC between two physical devices, and a
+real QR scan against a physically presented code — genuinely needs a
+second device/person and cannot be faked by code review or single-device
+testing.
