@@ -46,9 +46,14 @@ class _SharedProfileScreenState extends ConsumerState<SharedProfileScreen> {
     final json = widget.profile.avatarDefinitionJson;
     if (json == null) return;
 
+    // Declared outside the `try` so the `catch` block can dispose it if
+    // the factory succeeded but `load()` (fed by untrusted, scanned data)
+    // then failed — otherwise the already-constructed Filament engine
+    // instance would leak on every such failure.
+    AvatarRenderer? renderer;
     try {
       final createRenderer = ref.read(avatarRendererFactoryProvider);
-      final renderer = await createRenderer();
+      renderer = await createRenderer();
       final definition = AvatarDefinition.fromJson(
         jsonDecode(json) as Map<String, dynamic>,
       );
@@ -61,9 +66,11 @@ class _SharedProfileScreenState extends ConsumerState<SharedProfileScreen> {
       setState(() => _renderer = renderer);
     } catch (error) {
       // Best-effort preview — a scanned/malformed avatar definition or a
-      // renderer-construction failure shouldn't crash the screen or leave
-      // an unhandled future exception; the rest of the profile (name,
-      // username, bio, contact fields) still renders fine without it.
+      // renderer-construction/load failure shouldn't crash the screen or
+      // leave an unhandled future exception; the rest of the profile
+      // (name, username, bio, contact fields) still renders fine without
+      // it. Dispose whatever got constructed so it doesn't leak.
+      await renderer?.dispose();
       debugPrint('SharedProfileScreen: failed to load shared avatar: $error');
     }
   }

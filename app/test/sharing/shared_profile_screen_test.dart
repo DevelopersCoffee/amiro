@@ -76,9 +76,13 @@ void main() {
       // renderer would bleed their meshes into the live scene and corrupt
       // AvatarScreen's re-entry guard. SharedProfileScreen must get its
       // avatar exclusively from avatarRendererFactoryProvider, never from
-      // avatarRendererProvider — so overriding only avatarRendererProvider
-      // with a renderer that throws on load() must not affect this screen.
-      final profile = SharedProfile(
+      // avatarRendererProvider. A prior version of this test only checked
+      // that the screen still rendered — which a broken implementation
+      // could also satisfy — so this asserts directly on the singleton's
+      // observable state: its `load()` call count stays zero and its
+      // `current` stays untouched by whatever the screen loaded.
+      final singleton = _SpyAvatarRenderer();
+      final scannedProfile = SharedProfile(
         id: 'id-1',
         displayName: 'Ada',
         username: 'ada',
@@ -90,17 +94,19 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            avatarRendererProvider.overrideWithValue(_ThrowingAvatarRenderer()),
+            avatarRendererProvider.overrideWithValue(singleton),
             avatarRendererFactoryProvider.overrideWithValue(
               () async => _FakeAvatarRenderer(),
             ),
           ],
-          child: MaterialApp(home: SharedProfileScreen(profile: profile)),
+          child: MaterialApp(home: SharedProfileScreen(profile: scannedProfile)),
         ),
       );
       await tester.pumpAndSettle();
 
       expect(find.text('Ada'), findsOneWidget);
+      expect(singleton.loadCallCount, 0);
+      expect(singleton.current, isNull);
     },
   );
 
@@ -138,19 +144,81 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'disposes the renderer if the factory succeeds but load() fails',
+    (tester) async {
+      // Regression test for fix round 2's leak: previously `renderer` was
+      // declared inside the `try` block, so a `load()` failure (fed by
+      // untrusted, scanned data — a real path) skipped disposal of the
+      // already-constructed renderer entirely.
+      final leakyRenderer = _FailingLoadAvatarRenderer();
+      final profile = SharedProfile(
+        id: 'id-1',
+        displayName: 'Ada',
+        username: 'ada',
+        avatarDefinitionJson: jsonEncode(
+          const AvatarDefinition(id: 'shared', body: 'body_superhero_male').toJson(),
+        ),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            avatarRendererFactoryProvider.overrideWithValue(() async => leakyRenderer),
+          ],
+          child: MaterialApp(home: SharedProfileScreen(profile: profile)),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Ada'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      expect(leakyRenderer.disposeCallCount, 1);
+    },
+  );
 }
 
-class _ThrowingAvatarRenderer implements AvatarRenderer {
+/// Records calls instead of throwing, so tests can assert the
+/// app-lifetime singleton was never touched by [SharedProfileScreen].
+class _SpyAvatarRenderer implements AvatarRenderer {
+  AvatarDefinition? _current;
+  int loadCallCount = 0;
+
+  @override
+  AvatarDefinition? get current => _current;
+  @override
+  Future<void> load(AvatarDefinition definition) async {
+    loadCallCount++;
+    _current = definition;
+  }
+  @override
+  Widget buildView() => const SizedBox.shrink();
+  @override
+  Future<void> updateSlot(String slot, String? assetId) async {}
+  @override
+  Future<void> dispose() async {}
+}
+
+/// A renderer that constructs successfully but fails on `load()` — the
+/// leak scenario fix round 2 addresses. Tracks `dispose()` calls so the
+/// test can assert the already-constructed instance was cleaned up.
+class _FailingLoadAvatarRenderer implements AvatarRenderer {
+  int disposeCallCount = 0;
+
   @override
   AvatarDefinition? get current => null;
   @override
   Future<void> load(AvatarDefinition definition) async {
-    throw StateError('avatarRendererProvider singleton must not be used by SharedProfileScreen');
+    throw StateError('malformed scanned avatar definition');
   }
   @override
   Widget buildView() => throw UnimplementedError();
   @override
   Future<void> updateSlot(String slot, String? assetId) async {}
   @override
-  Future<void> dispose() async {}
+  Future<void> dispose() async {
+    disposeCallCount++;
+  }
 }
