@@ -9,14 +9,21 @@ abstract class NfcEmulator {
   Future<void> stopEmulating();
 }
 
-const _kChannelName = 'amiro/nfc_hce';
+/// The platform channel name shared with Task 4's native Android
+/// `HostApduService`. Exposed (rather than kept private) so tests can bind
+/// a mock handler to exactly this channel and catch drift between the two
+/// sides without needing a device.
+const kNfcHceChannelName = 'amiro/nfc_hce';
 
 /// Real emulator, backed by a custom Android `HostApduService` (see
-/// `packages/nfc/android/` and Task 4). Talking to the native side isn't
-/// unit-testable without a device — the platform channel call itself is
-/// exercised in the Task 4 device spike, not here.
+/// `packages/nfc/android/` and Task 4). End-to-end behavior against the
+/// native side isn't unit-testable without a device — that's exercised in
+/// the Task 4 device spike — but the channel name and the method/argument
+/// shape this class sends are locked down in `test/nfc_emulator_test.dart`
+/// via a mocked [MethodChannel], so a drift here fails fast instead of
+/// silently breaking the native side.
 class AndroidNfcEmulator implements NfcEmulator {
-  static const _channel = MethodChannel(_kChannelName);
+  static const _channel = MethodChannel(kNfcHceChannelName);
 
   @override
   bool get canEmulate => true;
