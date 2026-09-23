@@ -10,6 +10,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install native build dependencies for thermion_dart
+        # thermion_dart's native-asset build hook (packages/avatar_renderer's
+        # transitive dep) compiles Filament's Linux/EGL backend with
+        # `-stdlib=libc++` and links against EGL/GL/GBM/DRM. None of these
+        # dev headers are on the default runner image, so `avatar_renderer`
+        # (and anything depending on it, e.g. the app package) fails to
+        # build its native asset before any Dart test even runs — first
+        # with "'cstdint'/'chrono' file not found" (libc++), then with
+        # "'EGL/egl.h' file not found" once libc++ is fixed. Installs both
+        # sets up front rather than discovering them one compile error at a
+        # time. libc++-dev is pinned to match the specific clang version
+        # native_toolchain_c actually invokes (visible in the failure log as
+        # /usr/lib/llvm-<N>/bin/clang, not whatever `clang` resolves to on
+        # PATH), falling back to the unversioned package if that version
+        # isn't available.
+        run: |
+          set -eu
+          sudo apt-get update
+          INSTALLED=""
+          for d in /usr/lib/llvm-*; do
+            [ -d "$d" ] || continue
+            ver=$(basename "$d" | sed 's/llvm-//')
+            if apt-cache show "libc++-${ver}-dev" >/dev/null 2>&1; then
+              sudo apt-get install -y "libc++-${ver}-dev" "libc++abi-${ver}-dev"
+              INSTALLED=1
+            fi
+          done
+          if [ -z "$INSTALLED" ]; then
+            sudo apt-get install -y libc++-dev libc++abi-dev
+          fi
+          sudo apt-get install -y libegl1-mesa-dev libgles2-mesa-dev libgl1-mesa-dev libgbm-dev libdrm-dev
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
