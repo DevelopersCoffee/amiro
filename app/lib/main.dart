@@ -1,13 +1,17 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:identity_core/identity_core.dart';
 import 'package:avatar_renderer/avatar_renderer.dart';
+import 'package:nfc/nfc.dart';
 
 import 'app.dart';
 import 'identity/identity_providers.dart';
 import 'avatar/avatar_providers.dart';
+import 'sharing/sharing_providers.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,6 +30,9 @@ void main() async {
       overrides: [
         identityRepositoryProvider.overrideWithValue(repository),
         avatarRendererProvider.overrideWithValue(avatarRenderer),
+        nfcEmulatorProvider.overrideWithValue(
+          Platform.isAndroid ? AndroidNfcEmulator() : NoopNfcEmulator(),
+        ),
       ],
       child: const AmiroApp(),
     ),

@@ -1,0 +1,85 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:amiro_qr/amiro_qr.dart';
+import 'package:sharing/sharing.dart';
+
+import '../identity/identity_providers.dart';
+import 'sharing_providers.dart';
+
+class ShareScreen extends ConsumerStatefulWidget {
+  const ShareScreen({super.key});
+
+  @override
+  ConsumerState<ShareScreen> createState() => _ShareScreenState();
+}
+
+class _ShareScreenState extends ConsumerState<ShareScreen> {
+  bool _emulating = false;
+
+  @override
+  void dispose() {
+    // Stop emulating when the screen goes away so a stale identity doesn't
+    // keep being broadcast after the user navigates elsewhere. Best-effort —
+    // nothing awaits it since dispose() can't be async.
+    if (_emulating) {
+      ref.read(nfcEmulatorProvider).stopEmulating();
+    }
+    super.dispose();
+  }
+
+  Future<void> _toggleNfcEmulate(String shareUri) async {
+    final emulator = ref.read(nfcEmulatorProvider);
+    if (_emulating) {
+      await emulator.stopEmulating();
+    } else {
+      await emulator.writeIdentityPayload(shareUri);
+    }
+    if (!mounted) return;
+    setState(() => _emulating = !_emulating);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final identityAsync = ref.watch(currentIdentityProvider);
+    final emulator = ref.watch(nfcEmulatorProvider);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Share')),
+      body: identityAsync.when(
+        data: (identity) {
+          if (identity == null) {
+            return const Center(child: Text('Create your identity first'));
+          }
+          final shareUri = buildShareUri(identity);
+
+          return ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              Center(
+                key: const Key('shareQrCode'),
+                child: buildQrWidget(shareUri),
+              ),
+              if (emulator.canEmulate) ...[
+                const SizedBox(height: 32),
+                Column(
+                  key: const Key('nfcShareSection'),
+                  children: [
+                    const Text('Or tap another phone to share'),
+                    const SizedBox(height: 8),
+                    FilledButton(
+                      onPressed: () => _toggleNfcEmulate(shareUri),
+                      child: Text(_emulating ? 'Stop NFC sharing' : 'Start NFC sharing'),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text('Error: $error')),
+      ),
+    );
+  }
+}
