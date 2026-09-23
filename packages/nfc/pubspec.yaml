@@ -1,9 +1,17 @@
 name: nfc
-description: NFC read/write for Amiro identity sharing. Not yet implemented.
+description: NFC read (both platforms) and emulate (Android only) for Amiro identity sharing.
 version: 0.1.0
 publish_to: none
 environment:
-  sdk: ">=3.9.0 <4.0.0"
+  sdk: ">=3.5.0 <4.0.0"
 resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+  nfc_manager: ^4.2.1
+
 dev_dependencies:
+  flutter_test:
+    sdk: flutter
   lints: ^4.0.0
