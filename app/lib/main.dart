@@ -30,6 +30,9 @@ void main() async {
       overrides: [
         identityRepositoryProvider.overrideWithValue(repository),
         avatarRendererProvider.overrideWithValue(avatarRenderer),
+        avatarRendererFactoryProvider.overrideWithValue(
+          ThermionAvatarRenderer.create,
+        ),
         nfcEmulatorProvider.overrideWithValue(
           Platform.isAndroid ? AndroidNfcEmulator() : NoopNfcEmulator(),
         ),
