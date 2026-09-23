@@ -10,6 +10,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install libc++ dev headers
+        # thermion_dart's native-asset build hook compiles with
+        # `-stdlib=libc++` (see packages/avatar_renderer). The runner's
+        # default clang toolchain has no libc++ headers installed, so
+        # `avatar_renderer`'s (and anything depending on it, e.g. the app
+        # package) `flutter test` fails to build the native asset with
+        # "'cstdint' file not found" / "'chrono' file not found" before
+        # any Dart code even runs. Pin to the same clang version the build
+        # actually invokes (visible in the failure log as
+        # /usr/lib/llvm-<N>/bin/clang) so the headers match, falling back
+        # to the unversioned package if that clang version isn't present.
+        run: |
+          set -eu
+          sudo apt-get update
+          # native_toolchain_c invokes a versioned clang under
+          # /usr/lib/llvm-<N>/bin/clang rather than whatever `clang` resolves
+          # to on PATH, so match libc++-dev to every llvm-<N> actually
+          # installed on the runner image, not just the PATH default.
+          INSTALLED=""
+          for d in /usr/lib/llvm-*; do
+            [ -d "$d" ] || continue
+            ver=$(basename "$d" | sed 's/llvm-//')
+            if apt-cache show "libc++-${ver}-dev" >/dev/null 2>&1; then
+              sudo apt-get install -y "libc++-${ver}-dev" "libc++abi-${ver}-dev"
+              INSTALLED=1
+            fi
+          done
+          if [ -z "$INSTALLED" ]; then
+            sudo apt-get install -y libc++-dev libc++abi-dev
+          fi
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
