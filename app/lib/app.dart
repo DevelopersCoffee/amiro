@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'identity/identity_edit_screen.dart';
 import 'avatar/avatar_screen.dart';
+import 'sharing/incoming_share_listener.dart';
 import 'sharing/share_screen.dart';
 
 class AmiroApp extends StatelessWidget {
@@ -12,7 +13,7 @@ class AmiroApp extends StatelessWidget {
     return MaterialApp(
       title: 'Amiro',
       theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.deepPurple),
-      home: const _RootTabs(),
+      home: const IncomingShareListener(child: _RootTabs()),
     );
   }
 }

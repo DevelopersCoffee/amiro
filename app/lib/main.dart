@@ -36,6 +36,7 @@ void main() async {
         nfcEmulatorProvider.overrideWithValue(
           Platform.isAndroid ? AndroidNfcEmulator() : NoopNfcEmulator(),
         ),
+        nfcReaderProvider.overrideWithValue(ManagerNfcReader()),
       ],
       child: const AmiroApp(),
     ),
