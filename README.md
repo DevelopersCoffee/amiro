@@ -24,7 +24,8 @@ melos run test
 | `packages/identity_core/` | Identity model, privacy flags, local persistence |
 | `packages/avatar_core/` | Avatar definition model |
 | `packages/avatar_renderer/` | 3D avatar rendering (Filament via thermion_flutter) |
-| `packages/sharing/`, `nfc/`, `qr/`, `store/` | Stubs — future milestones |
+| `packages/store/` | Cosmetic catalog, entitlements (stubbed purchases), avatar valuation |
+| `packages/sharing/`, `nfc/`, `qr/` | Stubs — future milestones |
 | `rust/core/` | Rust identity domain struct + serialization |
 
 License: MIT.

@@ -1,11 +1,10 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:avatar_core/avatar_core.dart';
+import 'package:store/store.dart';
 
-import '../identity/identity_providers.dart';
+import 'avatar_loader.dart';
+import 'avatar_loading_indicator.dart';
 import 'avatar_providers.dart';
 
 class AvatarScreen extends ConsumerStatefulWidget {
@@ -15,21 +14,16 @@ class AvatarScreen extends ConsumerStatefulWidget {
   ConsumerState<AvatarScreen> createState() => _AvatarScreenState();
 }
 
-// `top`/`glasses` placeholder cosmetics were scaled for the tiny
-// placeholder body (see docs/product/avatar-asset-brief.md's known-gap
-// note) and render as oversized, badly-placed boxes against a real,
-// human-scale body — confirmed on-device. Dropped from the default until
-// real cosmetics sized/rigged to this body exist; `updateSlot` still
-// works for anyone testing the toggle, it's only the default that
-// changed.
-const _defaultDefinition = AvatarDefinition(
-  id: 'default',
-  body: 'body_superhero_male',
-);
-
 class _AvatarScreenState extends ConsumerState<AvatarScreen> {
   bool _didInit = false;
+  bool _loading = true;
   bool _glassesOn = false;
+
+  // The reveal ceremony (avatar materializes before chrome appears) plays
+  // only on first-ever avatar creation — see DESIGN.md's Motion section.
+  // `_revealing` gates the equip button/app bar chrome until it finishes;
+  // a returning user has nothing to reveal, so chrome shows immediately.
+  bool _revealing = false;
 
   @override
   void didChangeDependencies() {
@@ -40,43 +34,13 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
   }
 
   Future<void> _init() async {
-    // The renderer is an app-lifetime singleton, but this State is recreated
-    // every time the user switches back to the Avatar tab. Reloading here
-    // would queue a duplicate set of Filament asset loads and reset the UI's
-    // idea of what is equipped. Once loaded, it stays loaded.
-    final renderer = ref.read(avatarRendererProvider);
-    final loaded = renderer.current;
-    if (loaded != null) {
-      if (!mounted) return;
-      setState(() => _glassesOn = loaded.glasses != null);
-      return;
-    }
-
-    final identity = await ref.read(currentIdentityProvider.future);
-    final persisted = identity?.avatarDefinitionJson;
-    final definition = persisted == null
-        ? _defaultDefinition
-        : AvatarDefinition.fromJson(jsonDecode(persisted) as Map<String, dynamic>);
-
-    await renderer.load(definition);
-    await _persist(definition);
-
+    final result = await ensureAvatarLoaded(ref);
     if (!mounted) return;
-    setState(() => _glassesOn = definition.glasses != null);
-  }
-
-  /// Stores the definition on the current [Identity], closing the spec's
-  /// "definition JSON -> render -> swap -> persist" pipeline. No-op when the
-  /// user hasn't created an identity yet — there's nothing to attach it to.
-  Future<void> _persist(AvatarDefinition definition) async {
-    if (!mounted) return;
-    final identity = ref.read(currentIdentityProvider).value;
-    if (identity == null) return;
-    await ref.read(currentIdentityProvider.notifier).save(
-          identity.copyWith(
-            avatarDefinitionJson: jsonEncode(definition.toJson()),
-          ),
-        );
+    setState(() {
+      _loading = false;
+      _revealing = result.isFirstReveal;
+      _glassesOn = result.definition.glasses != null;
+    });
   }
 
   Future<void> _toggleGlasses() async {
@@ -85,7 +49,7 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
     await renderer.updateSlot('glasses', next ? 'glasses_realistic' : null);
     final updated = renderer.current;
     if (updated != null) {
-      await _persist(updated);
+      await persistAvatarDefinition(ref, updated);
     }
     if (!mounted) return;
     setState(() => _glassesOn = next);
@@ -94,21 +58,102 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
   @override
   Widget build(BuildContext context) {
     final renderer = ref.watch(avatarRendererProvider);
+    final current = renderer.current;
+    // Sums whatever's equipped against the store catalog's prices — not
+    // gated on ownership, since equipping today (the debug toggle button)
+    // bypasses the store's buy flow entirely (see TODOS.md #5/#6).
+    final valuationCents =
+        current == null ? 0 : avatarValuationCents(current, cosmeticCatalog);
+
+    final showChrome = !_loading && !_revealing;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Your Avatar')),
+      appBar: AppBar(
+        title: const Text('Your Avatar'),
+        actions: [
+          if (showChrome)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(
+                child: Text('\$${(valuationCents / 100).toStringAsFixed(2)}'),
+              ),
+            ),
+        ],
+      ),
       body: Column(
         children: [
-          Expanded(child: renderer.buildView()),
+          Expanded(
+            child: _loading
+                ? const AvatarLoadingIndicator()
+                : _revealing
+                    ? _AvatarReveal(
+                        onRevealed: () => setState(() => _revealing = false),
+                        child: renderer.buildView(),
+                      )
+                    : renderer.buildView(),
+          ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: FilledButton(
-              key: const Key('toggleGlassesButton'),
-              onPressed: _toggleGlasses,
-              child: Text(_glassesOn ? 'Remove glasses' : 'Add glasses'),
-            ),
+            child: showChrome
+                ? Semantics(
+                    button: true,
+                    label: _glassesOn ? 'Remove glasses' : 'Add glasses',
+                    child: FilledButton(
+                      key: const Key('toggleGlassesButton'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(44),
+                      ),
+                      onPressed: _toggleGlasses,
+                      child: Text(_glassesOn ? 'Remove glasses' : 'Add glasses'),
+                    ),
+                  )
+                : const SizedBox(height: 44),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The one authored motion moment (DESIGN.md): the avatar fades and scales
+/// in on first-ever creation, ease-out, before [onRevealed] fires and the
+/// screen's chrome (equip button, valuation) appears.
+class _AvatarReveal extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onRevealed;
+
+  const _AvatarReveal({required this.child, required this.onRevealed});
+
+  @override
+  State<_AvatarReveal> createState() => _AvatarRevealState();
+}
+
+class _AvatarRevealState extends State<_AvatarReveal> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    )..forward().whenComplete(widget.onRevealed);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final curved = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+    return FadeTransition(
+      opacity: curved,
+      child: ScaleTransition(
+        scale: Tween(begin: 0.85, end: 1.0).animate(curved),
+        child: widget.child,
       ),
     );
   }
