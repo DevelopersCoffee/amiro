@@ -84,10 +84,16 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     await viewer.addDirectLight(
       thermion.DirectLight.sun(direction: thermion.Vector3(-0.4, -0.6, -1)),
     );
+    // Framed for a real-world-scale standing humanoid (feet ~y=0, head
+    // ~y=1.8, per the Quaternius base character's glTF bounding box) —
+    // confirmed on-device that the placeholder-box framing above (looking
+    // at the origin from distance 3) put the camera inside a body this
+    // size, showing only the thighs. Center vertically on the torso and
+    // pull back far enough to fit the whole figure in frame.
     final camera = await viewer.getActiveCamera();
     await camera.lookAt(
-      thermion.Vector3(0, 0, 3),
-      focus: thermion.Vector3(0, 0, 0),
+      thermion.Vector3(0, 0.9, 4),
+      focus: thermion.Vector3(0, 0.9, 0),
     );
 
     return ThermionAvatarRenderer(surface: ThermionFilamentSurface(viewer));

@@ -15,10 +15,16 @@ class AvatarScreen extends ConsumerStatefulWidget {
   ConsumerState<AvatarScreen> createState() => _AvatarScreenState();
 }
 
+// `top`/`glasses` placeholder cosmetics were scaled for the tiny
+// placeholder body (see docs/product/avatar-asset-brief.md's known-gap
+// note) and render as oversized, badly-placed boxes against a real,
+// human-scale body — confirmed on-device. Dropped from the default until
+// real cosmetics sized/rigged to this body exist; `updateSlot` still
+// works for anyone testing the toggle, it's only the default that
+// changed.
 const _defaultDefinition = AvatarDefinition(
   id: 'default',
-  body: 'body_placeholder',
-  top: 'top_placeholder',
+  body: 'body_superhero_male',
 );
 
 class _AvatarScreenState extends ConsumerState<AvatarScreen> {

@@ -21,5 +21,6 @@ dev_dependencies:
 flutter:
   assets:
     - assets/avatars/body_placeholder.glb
+    - assets/avatars/body_superhero_male.glb
     - assets/cosmetics/top_placeholder.glb
     - assets/cosmetics/glasses_placeholder.glb

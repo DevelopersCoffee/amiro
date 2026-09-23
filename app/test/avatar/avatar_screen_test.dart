@@ -126,7 +126,7 @@ void main() {
     // Persisted after the initial load...
     final afterLoad =
         jsonDecode(repository.stored!.avatarDefinitionJson!) as Map<String, dynamic>;
-    expect(afterLoad['body'], 'body_placeholder');
+    expect(afterLoad['body'], 'body_superhero_male');
     expect(afterLoad['glasses'], isNull);
 
     // ...and again after a slot swap.
