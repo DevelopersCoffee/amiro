@@ -31,13 +31,36 @@ final nfcReaderProvider = Provider<NfcReader>((ref) {
   throw UnimplementedError('nfcReaderProvider must be overridden');
 });
 
+/// Whether this device is currently emulating an NFC tag to *send* its own
+/// identity (`share_screen.dart`'s "Start NFC sharing" toggle). Starting a
+/// reader session while this is true would fight the emulator for the same
+/// NFC radio mode: on Android, `NfcManager.instance.startSession` (reader
+/// mode) disables the device's own HCE card emulation for as long as it's
+/// active; on iOS it would pop the system "Ready to Scan" sheet in the
+/// middle of a send. [incomingNfcShareProvider] watches this to pause
+/// reading while it's true. Set by `ShareScreen`, read here — this is the
+/// one piece of shared state coordinating the two NFC roles.
+final nfcEmulatingProvider = StateProvider<bool>((ref) => false);
+
 /// Emits a [SharedProfile] whenever [nfcReaderProvider]'s reader picks up
 /// an incoming NFC tag — a physical Type 4 Tag or another Amiro device
 /// emulating one via HCE — whose decoded text payload parses as a valid
 /// `amiro://share` link. Emits `null` for a tag read that isn't one of
 /// ours, mirroring [incomingShareLinkProvider]'s contract.
+///
+/// Does not read while [nfcEmulatingProvider] is true (see its doc) —
+/// rebuilding on that flag flipping back to `false` disposes this
+/// provider's previous build (stopping the reader via the `onDispose`
+/// below, if it was reading) and starts a fresh read the next time it's
+/// watched while not emulating.
 final incomingNfcShareProvider = StreamProvider<SharedProfile?>((ref) {
+  final isEmulating = ref.watch(nfcEmulatingProvider);
   final reader = ref.watch(nfcReaderProvider);
+
+  if (isEmulating) {
+    return const Stream<SharedProfile?>.empty();
+  }
+
   ref.onDispose(() {
     // Best-effort: `stop()` is async but provider disposal is
     // synchronous, so this fires the stop without awaiting it.

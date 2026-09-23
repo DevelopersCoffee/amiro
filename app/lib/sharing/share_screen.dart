@@ -25,6 +25,9 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
     // nothing awaits it since dispose() can't be async.
     if (_emulating) {
       ref.read(nfcEmulatorProvider).stopEmulating();
+      // Let `incomingNfcShareProvider` resume reading now that this
+      // screen (and its emulation) is gone.
+      ref.read(nfcEmulatingProvider.notifier).state = false;
     }
     super.dispose();
   }
@@ -49,7 +52,14 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
       return;
     }
     if (!mounted) return;
-    setState(() => _emulating = !_emulating);
+    // Flip `nfcEmulatingProvider` in lockstep with `_emulating` so
+    // `incomingNfcShareProvider` pauses reading for exactly as long as
+    // this device is actively emulating a tag to send — the two would
+    // otherwise contend for the same NFC radio mode (see that provider's
+    // doc comment in `sharing_providers.dart`).
+    final nowEmulating = !_emulating;
+    ref.read(nfcEmulatingProvider.notifier).state = nowEmulating;
+    setState(() => _emulating = nowEmulating);
   }
 
   @override
