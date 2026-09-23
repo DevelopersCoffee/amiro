@@ -20,6 +20,14 @@ dependencies:
   # NOTE: no `thermion_flutter` here on purpose. The spec's global constraint
   # is that nothing outside `packages/avatar_renderer` imports it directly;
   # the app obtains a live renderer via `ThermionAvatarRenderer.create()`.
+  app_links: ^7.2.1
+  sharing:
+    path: ../packages/sharing
+  amiro_qr:
+    path: ../packages/qr
+  nfc:
+    path: ../packages/nfc
+  mobile_scanner: ^7.4.2
 
 dev_dependencies:
   flutter_test:

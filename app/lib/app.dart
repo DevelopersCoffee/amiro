@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'identity/identity_edit_screen.dart';
 import 'avatar/avatar_screen.dart';
+import 'sharing/incoming_share_listener.dart';
+import 'sharing/share_screen.dart';
 
 class AmiroApp extends StatelessWidget {
   const AmiroApp({super.key});
@@ -11,7 +13,7 @@ class AmiroApp extends StatelessWidget {
     return MaterialApp(
       title: 'Amiro',
       theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.deepPurple),
-      home: const _RootTabs(),
+      home: const IncomingShareListener(child: _RootTabs()),
     );
   }
 }
@@ -28,7 +30,7 @@ class _RootTabsState extends State<_RootTabs> {
 
   @override
   Widget build(BuildContext context) {
-    final screens = const [IdentityEditScreen(), AvatarScreen()];
+    final screens = const [IdentityEditScreen(), AvatarScreen(), ShareScreen()];
     return Scaffold(
       body: screens[_index],
       bottomNavigationBar: NavigationBar(
@@ -37,6 +39,7 @@ class _RootTabsState extends State<_RootTabs> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.person), label: 'Identity'),
           NavigationDestination(icon: Icon(Icons.face_retouching_natural), label: 'Avatar'),
+          NavigationDestination(icon: Icon(Icons.ios_share), label: 'Share'),
         ],
       ),
     );

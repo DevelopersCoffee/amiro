@@ -66,5 +66,36 @@ void main() {
       expect(publicFields.containsKey('bio'), isTrue);
       expect(publicFields.containsKey('email'), isFalse);
     });
+
+    test('publicFields excludes every contact field marked private, not just email', () {
+      final identity = Identity(
+        id: 'id-1',
+        displayName: 'Uday',
+        username: 'uday',
+        bio: 'Software Engineer',
+        email: 'coffee.devloper@gmail.com',
+        mobile: '+1 555 0100',
+        xHandle: '@uday',
+        instagramHandle: '@uday.gram',
+        website: 'https://uday.example',
+        privacy: const {
+          'bio': PrivacyFlag(true),
+          'email': PrivacyFlag(false),
+          'mobile': PrivacyFlag(false),
+          'xHandle': PrivacyFlag(false),
+          'instagramHandle': PrivacyFlag(false),
+          'website': PrivacyFlag(false),
+        },
+      );
+
+      final publicFields = identity.publicFields();
+
+      expect(publicFields.containsKey('bio'), isTrue);
+      expect(publicFields.containsKey('email'), isFalse);
+      expect(publicFields.containsKey('mobile'), isFalse);
+      expect(publicFields.containsKey('xHandle'), isFalse);
+      expect(publicFields.containsKey('instagramHandle'), isFalse);
+      expect(publicFields.containsKey('website'), isFalse);
+    });
   });
 }

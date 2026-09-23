@@ -1,9 +1,15 @@
 name: sharing
-description: Amiro identity sharing orchestration (NFC/QR/deep-link). Not yet implemented.
+description: Amiro identity sharing orchestration (payload build/parse, no platform imports).
 version: 0.1.0
 publish_to: none
 environment:
-  sdk: ">=3.9.0 <4.0.0"
+  sdk: ">=3.5.0 <4.0.0"
 resolution: workspace
+
+dependencies:
+  identity_core:
+    path: ../identity_core
+
 dev_dependencies:
+  test: ^1.25.0
   lints: ^4.0.0
