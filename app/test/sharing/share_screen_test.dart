@@ -101,6 +101,30 @@ void main() {
     },
   );
 
+  testWidgets(
+    'disables the receive-via-NFC button while emulating',
+    (tester) async {
+      // Receive is on-demand and user-triggered now, so there's no shared
+      // provider coordinating it with send-side emulation the way the
+      // removed `nfcEmulatingProvider` did. Starting a read while this
+      // device is itself emulating a tag to send would still fight it for
+      // the NFC radio on Android, so this is guarded locally instead.
+      final identity = Identity(id: 'id-1', displayName: 'Uday', username: 'uday');
+      await tester.pumpWidget(_screen(_FakeCanEmulate(), identity));
+      await tester.pumpAndSettle();
+
+      IconButton receiveButton() => tester.widget<IconButton>(
+        find.byKey(const Key('receiveNfcButton')),
+      );
+
+      expect(receiveButton().onPressed, isNotNull);
+
+      await tester.tap(find.text('Start NFC sharing'));
+      await tester.pumpAndSettle();
+
+      expect(receiveButton().onPressed, isNull);
+    },
+  );
 }
 
 class _FakeCanEmulate implements NfcEmulator {

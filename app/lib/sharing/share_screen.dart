@@ -8,6 +8,7 @@ import 'package:nfc/nfc.dart';
 import 'package:sharing/sharing.dart';
 
 import '../identity/identity_providers.dart';
+import 'nfc_receive_screen.dart';
 import 'qr_scan_screen.dart';
 import 'sharing_providers.dart';
 
@@ -21,27 +22,15 @@ class ShareScreen extends ConsumerStatefulWidget {
 class _ShareScreenState extends ConsumerState<ShareScreen> {
   bool _emulating = false;
 
-  // Captured once here, not re-read in `dispose()`. flutter_riverpod 2.6.1
-  // throws `StateError: Cannot use "ref" after the widget was disposed`
-  // if `ref.read`/`ref.watch` is called from inside `dispose()` — by the
-  // time `dispose()` runs the widget is already unmounted. Because that
-  // throw happened *before* any of the cleanup below it executed, the
-  // previous implementation's `dispose()` silently did nothing at all:
-  // switching tabs (or otherwise navigating away) while "Start NFC
-  // sharing" was active left the phone still physically emulating the NFC
-  // tag indefinitely, and the round-2 coordination flag stuck at `true`.
-  // These two fields are the standard Riverpod fix for "I need to act on a
-  // provider-derived object when this widget is disposed": grab the object
-  // once while `ref` is still valid, store it directly, and have
-  // `dispose()` call methods on it without touching `ref` at all.
+  // Captured once here, not re-read in `dispose()` — see the previous
+  // commit's fix for why touching `ref` inside `dispose()` is unsafe in
+  // flutter_riverpod 2.6.1.
   late final NfcEmulator _emulator;
-  late final StateController<bool> _nfcEmulating;
 
   @override
   void initState() {
     super.initState();
     _emulator = ref.read(nfcEmulatorProvider);
-    _nfcEmulating = ref.read(nfcEmulatingProvider.notifier);
   }
 
   @override
@@ -54,12 +43,6 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
     // exception.
     if (_emulating) {
       unawaited(_emulator.stopEmulating().catchError((_) {}));
-      // Let `incomingNfcShareProvider` resume reading now that this
-      // screen (and its emulation) is gone. `_nfcEmulating` is the
-      // `StateController` captured in `initState`, not `ref` — see the
-      // field doc above for why that distinction is what makes this line
-      // safe to run from inside `dispose()`.
-      _nfcEmulating.state = false;
     }
     super.dispose();
   }
@@ -83,14 +66,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
       return;
     }
     if (!mounted) return;
-    // Flip `nfcEmulatingProvider` in lockstep with `_emulating` so
-    // `incomingNfcShareProvider` pauses reading for exactly as long as
-    // this device is actively emulating a tag to send — the two would
-    // otherwise contend for the same NFC radio mode (see that provider's
-    // doc comment in `sharing_providers.dart`).
-    final nowEmulating = !_emulating;
-    _nfcEmulating.state = nowEmulating;
-    setState(() => _emulating = nowEmulating);
+    setState(() => _emulating = !_emulating);
   }
 
   @override
@@ -102,6 +78,25 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
       appBar: AppBar(
         title: const Text('Share'),
         actions: [
+          IconButton(
+            key: const Key('receiveNfcButton'),
+            icon: const Icon(Icons.nfc),
+            tooltip: _emulating
+                ? 'Stop NFC sharing to receive'
+                : 'Receive via NFC',
+            // Disabled while this device is emulating its own tag to
+            // send — starting a read session at the same time would fight
+            // that emulation for the NFC radio (see `NfcReceiveScreen`'s
+            // doc comment). Receive is only ever user-triggered now (not
+            // auto-started anywhere), so this local flag is enough to
+            // guard it — no shared cross-provider coordination state is
+            // needed the way the removed `nfcEmulatingProvider` was.
+            onPressed: _emulating
+                ? null
+                : () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const NfcReceiveScreen()),
+                  ),
+          ),
           IconButton(
             key: const Key('openScannerButton'),
             icon: const Icon(Icons.qr_code_scanner),
