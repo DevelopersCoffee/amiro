@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<host-apdu-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/amiro_hce_description"
+    android:requireDeviceUnlock="false">
+    <aid-group android:description="@string/amiro_hce_description"
+        android:category="other">
+        <aid-filter android:name="F0414D49524F303031" />
+    </aid-group>
+</host-apdu-service>
