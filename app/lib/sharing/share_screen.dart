@@ -5,6 +5,7 @@ import 'package:amiro_qr/amiro_qr.dart';
 import 'package:sharing/sharing.dart';
 
 import '../identity/identity_providers.dart';
+import 'qr_scan_screen.dart';
 import 'sharing_providers.dart';
 
 class ShareScreen extends ConsumerStatefulWidget {
@@ -45,7 +46,18 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
     final emulator = ref.watch(nfcEmulatorProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Share')),
+      appBar: AppBar(
+        title: const Text('Share'),
+        actions: [
+          IconButton(
+            key: const Key('openScannerButton'),
+            icon: const Icon(Icons.qr_code_scanner),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const QrScanScreen()),
+            ),
+          ),
+        ],
+      ),
       body: identityAsync.when(
         data: (identity) {
           if (identity == null) {
