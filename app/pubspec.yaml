@@ -1,7 +1,7 @@
 name: amiro_app
 description: Amiro — your digital identity, made wearable.
 publish_to: none
-version: 0.1.0
+version: 1.0.0+1
 environment:
   sdk: ">=3.9.0 <4.0.0"
 resolution: workspace
@@ -25,6 +25,13 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#673AB7"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
 
 flutter:
   uses-material-design: true
