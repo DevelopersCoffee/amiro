@@ -101,8 +101,14 @@ class AmiroHceService : HostApduService() {
          * - CCLEN (2 bytes): length of this CC file itself (15 bytes).
          * - Mapping Version (1 byte): 0x20 = version 2.0.
          * - MLe (2 bytes): max R-APDU data size for READ BINARY.
-         * - MLc (2 bytes): max C-APDU data size for UPDATE BINARY — 0
-         *   since this tag is read-only and doesn't support writes.
+         * - MLc (2 bytes): max C-APDU data size for UPDATE BINARY. This
+         *   tag is read-only and never actually services an UPDATE
+         *   BINARY, but the NFC Forum Type 4 Tag spec still requires MLc
+         *   to be in range 0x0001-0xFFFF even for a read-only tag — a
+         *   0x0000 value is out of spec and risks Android's own NDEF tag
+         *   detection (`rw_t4t` in libnfc-nci) rejecting the tag before
+         *   this app ever gets a chance to read it. 0x00FF is used as a
+         *   spec-valid placeholder.
          * - NDEF File Control TLV (T4T §5.1.2, Table 7): tag 0x04, length
          *   6, then the NDEF file's ID, max size, and read/write access
          *   bytes (0x00 = read allowed, 0xFF = write denied).
@@ -111,7 +117,7 @@ class AmiroHceService : HostApduService() {
             0x00, 0x0F, // CCLEN = 15
             0x20, // Mapping Version 2.0
             0x00, MAX_READ_BINARY_LENGTH.toByte(), // MLe
-            0x00, 0x00, // MLc (no write support)
+            0x00, 0xFF.toByte(), // MLc (spec-valid placeholder; no write support)
             0x04, 0x06, // NDEF File Control TLV: tag=0x04, length=6
             NDEF_FILE_ID[0], NDEF_FILE_ID[1],
             (NDEF_FILE_MAX_SIZE shr 8).toByte(), (NDEF_FILE_MAX_SIZE and 0xFF).toByte(),
