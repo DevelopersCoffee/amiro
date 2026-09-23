@@ -50,31 +50,41 @@ SharedProfile? parseShareUri(String uri) {
   final encoded = parsed.queryParameters['d'];
   if (encoded == null) return null;
 
-  final Map<String, dynamic> json;
+  // All field extraction/casting happens inside this try so a malformed
+  // payload (e.g. a non-string `id`, or any other field with an
+  // unexpected JSON type) fails closed — returns `null` — instead of
+  // throwing a `_TypeError` that escapes `parseShareUri` and crashes the
+  // caller (a scanned QR/NFC payload is untrusted input).
   try {
     final decodedBytes = base64Url.decode(encoded);
-    json = jsonDecode(utf8.decode(decodedBytes)) as Map<String, dynamic>;
-  } on FormatException {
-    return null;
+    final json = jsonDecode(utf8.decode(decodedBytes)) as Map<String, dynamic>;
+
+    // Reject anything that isn't a recognized v1 payload — a future
+    // `v: 2` shape (different field semantics) must not be silently
+    // misparsed as v1 just because the field names happen to overlap.
+    if (json['v'] != _kPayloadVersion) return null;
+
+    final id = json['id'] as String?;
+    final displayName = json['displayName'] as String?;
+    final username = json['username'] as String?;
+    if (id == null || displayName == null || username == null) return null;
+
+    return SharedProfile(
+      id: id,
+      displayName: displayName,
+      username: username,
+      bio: json['bio'] as String?,
+      avatarDefinitionJson: json['avatarDefinitionJson'] as String?,
+      email: json['email'] as String?,
+      mobile: json['mobile'] as String?,
+      xHandle: json['xHandle'] as String?,
+      instagramHandle: json['instagramHandle'] as String?,
+      website: json['website'] as String?,
+    );
   } catch (_) {
+    // Catches FormatException (bad base64/JSON), TypeError (a field
+    // present with the wrong JSON type, e.g. `"id": 1`), and anything
+    // else malformed input could throw — all fail closed to `null`.
     return null;
   }
-
-  final id = json['id'] as String?;
-  final displayName = json['displayName'] as String?;
-  final username = json['username'] as String?;
-  if (id == null || displayName == null || username == null) return null;
-
-  return SharedProfile(
-    id: id,
-    displayName: displayName,
-    username: username,
-    bio: json['bio'] as String?,
-    avatarDefinitionJson: json['avatarDefinitionJson'] as String?,
-    email: json['email'] as String?,
-    mobile: json['mobile'] as String?,
-    xHandle: json['xHandle'] as String?,
-    instagramHandle: json['instagramHandle'] as String?,
-    website: json['website'] as String?,
-  );
 }

@@ -1,6 +1,17 @@
+import 'dart:convert';
+
 import 'package:identity_core/identity_core.dart';
 import 'package:sharing/sharing.dart';
 import 'package:test/test.dart';
+
+/// Builds a raw `amiro://share?d=...` URI from an arbitrary JSON map,
+/// bypassing [buildShareUri] entirely — used to construct malformed
+/// payloads that a legitimate sender could never produce, to exercise
+/// [parseShareUri]'s fail-closed behavior.
+String _rawShareUri(Map<String, dynamic> json) {
+  final encoded = base64Url.encode(utf8.encode(jsonEncode(json)));
+  return 'amiro://share?d=$encoded';
+}
 
 void main() {
   group('buildShareUri', () {
@@ -79,6 +90,40 @@ void main() {
 
     test('returns null when the d query parameter is missing', () {
       expect(parseShareUri('amiro://share'), isNull);
+    });
+
+    test('returns null (fails closed) when a field has the wrong JSON type', () {
+      // A non-string `id` would previously throw a _TypeError from the
+      // `as String?` cast instead of returning null.
+      final uri = _rawShareUri({
+        'v': 1,
+        'id': 1,
+        'displayName': 'Uday',
+        'username': 'uday',
+      });
+
+      expect(parseShareUri(uri), isNull);
+    });
+
+    test('returns null when the version field is missing', () {
+      final uri = _rawShareUri({
+        'id': 'id-1',
+        'displayName': 'Uday',
+        'username': 'uday',
+      });
+
+      expect(parseShareUri(uri), isNull);
+    });
+
+    test('returns null for an unsupported future payload version', () {
+      final uri = _rawShareUri({
+        'v': 2,
+        'id': 'id-1',
+        'displayName': 'Uday',
+        'username': 'uday',
+      });
+
+      expect(parseShareUri(uri), isNull);
     });
   });
 }

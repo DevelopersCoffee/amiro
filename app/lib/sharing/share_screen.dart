@@ -31,10 +31,22 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
 
   Future<void> _toggleNfcEmulate(String shareUri) async {
     final emulator = ref.read(nfcEmulatorProvider);
-    if (_emulating) {
-      await emulator.stopEmulating();
-    } else {
-      await emulator.writeIdentityPayload(shareUri);
+    // `_emulating` must only flip once the platform call actually
+    // succeeds — otherwise a thrown PlatformException leaves the UI
+    // toggled to a state the native side never reached (e.g. showing
+    // "Stop NFC sharing" when the HCE service was never started).
+    try {
+      if (_emulating) {
+        await emulator.stopEmulating();
+      } else {
+        await emulator.writeIdentityPayload(shareUri);
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('NFC sharing failed: $error')),
+      );
+      return;
     }
     if (!mounted) return;
     setState(() => _emulating = !_emulating);
