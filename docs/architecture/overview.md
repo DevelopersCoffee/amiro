@@ -191,13 +191,28 @@ No network calls anywhere in this pass. No data leaves the device.
   parallel definition, kept honest by its own tests. Wiring the bridge adds
   a codegen build step disproportionate to what M1 needed. **Anyone changing
   either `Identity` must change both by hand until the bridge lands.**
-- **The render path has not been device-verified.** `app/android/` and
-  `app/ios/` exist and the project is structurally complete and analyzable,
-  but no build, run, or launch on a simulator, emulator, or physical device
-  has ever been attempted. Every guarantee below §8 comes from unit and
-  widget tests against a faked `FilamentSurface`. **That Thermion actually
-  renders a body and swaps a cosmetic on real hardware is untested and
-  unproven.** The spike recommended in §8 remains outstanding.
+- **The render path is device-verified on Android, not yet on iOS.**
+  Confirmed live on a real Pixel 9 (Android 17, API 37, Mali-G715/OpenGL):
+  the app builds, launches, the identity screen persists through Isar, and
+  the avatar screen renders the placeholder body + top cosmetic with real
+  PBR shading, with the glasses toggle correctly swapping the loaded asset
+  and updating the UI. Getting there required three real fixes beyond the
+  foundation pass's untested assumption:
+  1. `isar_flutter_libs` (3.1.0+1, 2023) has no `namespace` in its
+     `build.gradle` and predates AGP's removal of the manifest-`package`
+     fallback — backfilled generically in `app/android/build.gradle.kts`.
+  2. The same plugin hardcodes `compileSdkVersion 30`, too low for several
+     of its own transitive AndroidX deps — bumped the same way.
+  3. `ThermionFlutterPlugin.createViewer()` sets up a camera and an empty
+     scene but adds **no light** and leaves the camera at its identity
+     transform — Filament renders solid black with no light in the scene
+     regardless of whether geometry loaded correctly. `ThermionAvatarRenderer.create()`
+     now backs the camera off from the origin and adds a `DirectLight.sun()`
+     angled toward the camera (the default straight-down direction only
+     lights top-facing surfaces, invisible from the front).
+  iOS has not been attempted — the fixes above were Android-specific
+  (Gradle/AGP), and the lighting/camera fix, while platform-agnostic in
+  principle, has only been exercised on Android hardware.
 - **`docs/protocols/identity-link.md` and `docs/qa/test-plan.md` are
   stubs.** Not started.
 
@@ -210,9 +225,12 @@ No network calls anywhere in this pass. No data leaves the device.
   `loadGlb`/`removeAsset` on a path — which is why
   `ThermionFilamentSurface` keeps a path→handle map. The `AvatarRenderer`
   interface exists specifically to contain this risk: if thermion proves
-  inadequate, only `avatar_renderer/` changes. A spike rendering base body +
-  1 swap on real Android and iOS targets should happen before treating this
-  as load-bearing for M2+.
+  inadequate, only `avatar_renderer/` changes. The Android device spike is
+  done (see §7) and found real gaps beyond the API surface — building for a
+  real device surfaced two Gradle/AGP compatibility bugs in
+  `isar_flutter_libs`, and the render pipeline needed camera/lighting setup
+  the plan never anticipated (Filament ships genuinely unlit, with no
+  default scene light). An equivalent iOS spike remains outstanding.
 - **Placeholder art is not final art and is not necessarily "original" in
   the legal sense.** Must be replaced before any public release;
   `docs/legal/asset-policy.md` captures this.
