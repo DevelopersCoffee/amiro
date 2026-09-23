@@ -55,13 +55,63 @@ void main() {
 
     expect(find.byKey(const Key('nfcShareSection')), findsNothing);
   });
+
+  testWidgets(
+    'stops emulating when the screen is disposed mid-emulation, without '
+    'throwing',
+    (tester) async {
+      // Regression test for the round-3 review finding: `dispose()` used
+      // to call `ref.read(...)` to reach the emulator and reset the
+      // coordination flag. In flutter_riverpod 2.6.1 that throws
+      // `StateError` (ref can't be touched after the widget is disposed),
+      // which meant NONE of dispose()'s cleanup ever ran — `stopEmulating`
+      // was silently never called and the phone kept physically emulating
+      // the NFC tag after the user navigated away. The two previous fix
+      // rounds' tests only exercised the provider/flag logic in isolation
+      // and never drove the real widget disposal path, which is why this
+      // survived both of them — this test mounts the real `ShareScreen`,
+      // starts real emulation through its own button, and then disposes it
+      // exactly the way `app.dart`'s `_RootTabs` does when switching tabs
+      // (`screens[_index]` unmounts the off-screen tab): by replacing the
+      // widget tree, not by calling internal methods directly.
+      final identity = Identity(id: 'id-1', displayName: 'Uday', username: 'uday');
+      final emulator = _FakeCanEmulate();
+
+      await tester.pumpWidget(_screen(emulator, identity));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Start NFC sharing'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Stop NFC sharing'), findsOneWidget);
+      expect(emulator.stopCallCount, 0);
+
+      // Dispose ShareScreen by swapping in a different widget tree — this
+      // is what actually tears the widget down and calls its dispose(),
+      // unlike testing the provider/notifier logic on its own.
+      await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+      await tester.pumpAndSettle();
+
+      // With the bug present, disposal throws `StateError` inside
+      // dispose(), which flutter_test surfaces via takeException() — and
+      // stopCallCount stays 0 because the throw happens before
+      // stopEmulating() is ever reached.
+      expect(tester.takeException(), isNull);
+      expect(emulator.stopCallCount, 1);
+    },
+  );
+
 }
 
 class _FakeCanEmulate implements NfcEmulator {
+  int stopCallCount = 0;
+
   @override
   bool get canEmulate => true;
   @override
   Future<void> writeIdentityPayload(String uri) async {}
   @override
-  Future<void> stopEmulating() async {}
+  Future<void> stopEmulating() async {
+    stopCallCount++;
+  }
 }
