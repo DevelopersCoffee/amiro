@@ -64,6 +64,32 @@ class ThermionAvatarRenderer implements AvatarRenderer {
   /// mounted widget tree.
   static Future<ThermionAvatarRenderer> create() async {
     final viewer = await thermion.ThermionFlutterPlugin.createViewer();
+
+    // `createViewer()` sets up a camera and an (empty, unlit) scene, but
+    // adds no light and leaves the camera at its identity transform —
+    // confirmed against thermion_dart's `ThermionViewerFFI._initialize()`,
+    // which creates a camera and scene but calls neither `addDirectLight`
+    // nor `camera.lookAt`. Without a light, Filament's PBR materials render
+    // black regardless of whether geometry loaded correctly, which is
+    // exactly what device testing on a real Pixel 9 showed (engine
+    // initialized fine, glTF loaded without error, screen stayed black).
+    // Add a basic sun light and back the camera off from the origin so the
+    // placeholder meshes (created near-centered at the origin, full extents
+    // well under 2 units) are actually lit and in frame.
+    // DirectLight.sun()'s default direction (straight down, (0,-1,0)) only
+    // lights top-facing surfaces — invisible to a camera looking at the
+    // model's front face. Angle it toward the camera's view direction
+    // instead, confirmed necessary on-device: the default direction left
+    // the (correctly loaded, correctly framed) mesh silhouette solid black.
+    await viewer.addDirectLight(
+      thermion.DirectLight.sun(direction: thermion.Vector3(-0.4, -0.6, -1)),
+    );
+    final camera = await viewer.getActiveCamera();
+    await camera.lookAt(
+      thermion.Vector3(0, 0, 3),
+      focus: thermion.Vector3(0, 0, 0),
+    );
+
     return ThermionAvatarRenderer(surface: ThermionFilamentSurface(viewer));
   }
 
