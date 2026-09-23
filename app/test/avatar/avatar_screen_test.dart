@@ -97,8 +97,8 @@ void main() {
     await tester.tap(find.byKey(const Key('toggleGlassesButton')));
     await tester.pumpAndSettle();
 
-    expect(renderer.calls, contains('updateSlot:glasses:glasses_placeholder'));
-    expect(renderer.current!.glasses, 'glasses_placeholder');
+    expect(renderer.calls, contains('updateSlot:glasses:glasses_realistic'));
+    expect(renderer.current!.glasses, 'glasses_realistic');
   });
 
   testWidgets('tapping again removes the glasses', (tester) async {
@@ -135,7 +135,7 @@ void main() {
 
     final afterSwap =
         jsonDecode(repository.stored!.avatarDefinitionJson!) as Map<String, dynamic>;
-    expect(afterSwap['glasses'], 'glasses_placeholder');
+    expect(afterSwap['glasses'], 'glasses_realistic');
   });
 
   testWidgets('a persisted definition is loaded instead of the default',

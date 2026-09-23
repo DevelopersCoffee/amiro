@@ -82,7 +82,7 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
   Future<void> _toggleGlasses() async {
     final renderer = ref.read(avatarRendererProvider);
     final next = !_glassesOn;
-    await renderer.updateSlot('glasses', next ? 'glasses_placeholder' : null);
+    await renderer.updateSlot('glasses', next ? 'glasses_realistic' : null);
     final updated = renderer.current;
     if (updated != null) {
       await _persist(updated);
