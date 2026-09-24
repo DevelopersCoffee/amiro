@@ -48,4 +48,32 @@ const List<CosmeticListing> cosmeticCatalog = [
     assetId: 'glasses_realistic',
     priceCents: 299,
   ),
+  CosmeticListing(
+    id: 'clean_part',
+    slot: 'hair',
+    name: 'Clean Part',
+    assetId: 'hair_simple_parted',
+    priceCents: 0,
+  ),
+  CosmeticListing(
+    id: 'buzz_cut',
+    slot: 'hair',
+    name: 'Buzz Cut',
+    assetId: 'hair_buzzed',
+    priceCents: 0,
+  ),
+  CosmeticListing(
+    id: 'long_flow',
+    slot: 'hair',
+    name: 'Long Flow',
+    assetId: 'hair_long',
+    priceCents: 199,
+  ),
+  CosmeticListing(
+    id: 'full_beard',
+    slot: 'facialHair',
+    name: 'Full Beard',
+    assetId: 'beard_full',
+    priceCents: 99,
+  ),
 ];
