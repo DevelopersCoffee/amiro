@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 import 'package:thermion_flutter/thermion_flutter.dart' as thermion;
 
@@ -49,7 +51,75 @@ class ThermionAvatarRenderer implements AvatarRenderer {
   final FilamentSurface surface;
   AvatarDefinition? _current;
 
+  // Turntable state. Only set by [create]; the unit-test fake surface has no
+  // viewer, so rotation is a no-op there.
+  thermion.ThermionViewer? _viewer;
+  thermion.Camera? _camera;
+  double _yaw = 0;
+  bool _applying = false;
+
   ThermionAvatarRenderer({required this.surface});
+
+  static const double _orbitRadius = 1.25;
+  static const double _orbitHeight = 1.45;
+
+  // Three-point rig as travel directions relative to the camera's initial
+  // (front) view: warm key from front-upper-left, cool fill from the right,
+  // white rim from behind. Re-aimed with the camera on every rotation so the
+  // avatar stays lit from every angle instead of going black from behind.
+  static final _rig = <_LightSpec>[
+    _LightSpec(const thermion.LinearColor(1.0, 0.94, 0.86), 90000, -0.5, -0.45, -1),
+    _LightSpec(const thermion.LinearColor(0.75, 0.85, 1.0), 40000, 0.7, -0.2, -1),
+    _LightSpec(const thermion.LinearColor(1.0, 1.0, 1.0), 55000, 0.1, -0.3, 1),
+  ];
+
+  Future<void> _applyRig(thermion.ThermionViewer viewer, double yaw) async {
+    await viewer.destroyLights();
+    final c = math.cos(yaw), sn = math.sin(yaw);
+    for (final l in _rig) {
+      // Rotate about Y by the same angle the camera has orbited.
+      await viewer.addDirectLight(
+        thermion.DirectLight.sun(
+          color: l.color,
+          intensity: l.intensity,
+          castShadows: false,
+          direction: thermion.Vector3(
+            l.x * c + l.z * sn,
+            l.y,
+            -l.x * sn + l.z * c,
+          ),
+        ),
+      );
+    }
+  }
+
+  /// Orbits the camera (and the light rig with it) around the avatar by
+  /// [radians]. Unbounded, so it spins a full 360 degrees and beyond.
+  Future<void> rotateBy(double radians) async {
+    final viewer = _viewer;
+    final camera = _camera;
+    if (viewer == null || camera == null) return;
+    _yaw = (_yaw + radians) % (2 * math.pi);
+    if (_applying) return;
+    _applying = true;
+    try {
+      double applied;
+      do {
+        applied = _yaw;
+        await camera.lookAt(
+          thermion.Vector3(
+            math.sin(applied) * _orbitRadius,
+            _orbitHeight,
+            math.cos(applied) * _orbitRadius,
+          ),
+          focus: thermion.Vector3(0, _orbitHeight, 0),
+        );
+        await _applyRig(viewer, applied);
+      } while (applied != _yaw);
+    } finally {
+      _applying = false;
+    }
+  }
 
   /// Builds a renderer backed by a live Filament engine.
   ///
@@ -81,34 +151,6 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     // model's front face. Angle it toward the camera's view direction
     // instead, confirmed necessary on-device: the default direction left
     // the (correctly loaded, correctly framed) mesh silhouette solid black.
-    // Three-point rig instead of a single sun: a warm key from front-upper
-    // left for form, a cool fill from the right so shadow sides don't crush
-    // to black, and a rim from behind to separate the silhouette from the
-    // background. A lone key light made the figure look flat and harsh.
-    await viewer.addDirectLight(
-      thermion.DirectLight.sun(
-        color: const thermion.LinearColor(1.0, 0.94, 0.86),
-        intensity: 90000,
-        castShadows: false,
-        direction: thermion.Vector3(-0.5, -0.45, -1),
-      ),
-    );
-    await viewer.addDirectLight(
-      thermion.DirectLight.sun(
-        color: const thermion.LinearColor(0.75, 0.85, 1.0),
-        intensity: 40000,
-        castShadows: false,
-        direction: thermion.Vector3(0.7, -0.2, -1),
-      ),
-    );
-    await viewer.addDirectLight(
-      thermion.DirectLight.sun(
-        color: const thermion.LinearColor(1.0, 1.0, 1.0),
-        intensity: 55000,
-        castShadows: false,
-        direction: thermion.Vector3(0.1, -0.3, 1),
-      ),
-    );
     // Framed for a real-world-scale standing humanoid (feet ~y=0, head
     // ~y=1.8, per the Quaternius base character's glTF bounding box) —
     // confirmed on-device that the placeholder-box framing above (looking
@@ -119,11 +161,16 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     // Head-and-shoulders framing (a full-body view left the face a few
     // pixels wide with most of the screen empty).
     await camera.lookAt(
-      thermion.Vector3(0, 1.45, 1.25),
-      focus: thermion.Vector3(0, 1.45, 0),
+      thermion.Vector3(0, _orbitHeight, _orbitRadius),
+      focus: thermion.Vector3(0, _orbitHeight, 0),
     );
 
-    return ThermionAvatarRenderer(surface: ThermionFilamentSurface(viewer));
+    final renderer =
+        ThermionAvatarRenderer(surface: ThermionFilamentSurface(viewer));
+    renderer._viewer = viewer;
+    renderer._camera = camera;
+    await renderer._applyRig(viewer, 0);
+    return renderer;
   }
 
   @override
@@ -167,7 +214,14 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     // is the one place that reaches past the `FilamentSurface` seam.
     final surface = this.surface;
     if (surface is ThermionFilamentSurface) {
-      return thermion.ThermionWidget(viewer: surface._viewer);
+      // Horizontal drag orbits the camera: ~one full turn per 2 screen
+      // widths of dragging feels natural without needing a second swipe.
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragUpdate: (details) =>
+            rotateBy(-details.delta.dx * 0.012),
+        child: thermion.ThermionWidget(viewer: surface._viewer),
+      );
     }
     throw StateError(
       'buildView() requires a ThermionFilamentSurface backed by a live '
@@ -184,4 +238,11 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     final json = def.toJson();
     return json[slot] as String?;
   }
+}
+
+class _LightSpec {
+  final thermion.LinearColor color;
+  final double intensity;
+  final double x, y, z;
+  const _LightSpec(this.color, this.intensity, this.x, this.y, this.z);
 }
