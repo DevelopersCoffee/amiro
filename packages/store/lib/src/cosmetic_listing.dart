@@ -76,4 +76,25 @@ const List<CosmeticListing> cosmeticCatalog = [
     assetId: 'beard_full',
     priceCents: 99,
   ),
+  CosmeticListing(
+    id: 'village_tunic',
+    slot: 'top',
+    name: 'Village Tunic',
+    assetId: 'top_peasant_shirt',
+    priceCents: 0,
+  ),
+  CosmeticListing(
+    id: 'village_trousers',
+    slot: 'bottom',
+    name: 'Village Trousers',
+    assetId: 'bottom_peasant_trousers',
+    priceCents: 0,
+  ),
+  CosmeticListing(
+    id: 'leather_boots',
+    slot: 'shoes',
+    name: 'Leather Boots',
+    assetId: 'shoes_peasant_boots',
+    priceCents: 0,
+  ),
 ];

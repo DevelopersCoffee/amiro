@@ -18,6 +18,9 @@ const defaultAvatarDefinition = AvatarDefinition(
   id: 'default',
   body: 'body_superhero_male',
   hair: 'hair_simple_parted',
+  top: 'top_peasant_shirt',
+  bottom: 'bottom_peasant_trousers',
+  shoes: 'shoes_peasant_boots',
 );
 
 /// The definition [ensureAvatarLoaded] loaded, and whether this was the

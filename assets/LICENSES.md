@@ -77,3 +77,27 @@ borrowed in the meantime and what its terms are.
   `beard_full.glb`.
 - **Not used:** the separate "Modular Character Outfits - Fantasy" pack
   (280 MB of armor/robes; wrong style for a casual avatar).
+
+## Village outfit (Quaternius, Modular Character Outfits - Fantasy [Standard])
+
+- **Source:** https://quaternius.itch.io/modular-character-outfits-fantasy
+  (free "Standard" download, ~280 MB; only the three Male Peasant parts
+  were extracted).
+- **License:** CC0 1.0 Universal — no attribution required.
+- **What we use:** `Male_Peasant_Body` (tunic + belt), `Male_Peasant_Legs`,
+  `Male_Peasant_Feet` from the "Modular Parts" glTF export. The pack's
+  Peasant/Ranger outfits are the only ones in the free version, and are
+  fantasy-styled, not modern casual.
+- **Fit:** the parts are modeled for the pack's "Regular" build; the free
+  Base Characters pack only contains the muscular "Superhero" build we
+  use, so the meshes clipped through the chest and back. Positions are
+  scaled outward and baked into the `POSITION` data (tunic 1.15x wide,
+  1.35x deep about z=-0.06; trousers 1.15x/1.2x; boots 1.1x), tuned by
+  on-device screenshots from front, side and back. Textures downscaled
+  from 4096 to 512 px. Not rigged to the body's animation, static pose
+  only, like the body.
+- **Shipped as:** `packages/avatar_renderer/assets/cosmetics/`
+  `top_peasant_shirt.glb`, `bottom_peasant_trousers.glb`,
+  `shoes_peasant_boots.glb`.
+- **Not used:** the Ranger outfits, and the separate `Arms` part (the
+  tunic body already covers the visible upper sleeves).
