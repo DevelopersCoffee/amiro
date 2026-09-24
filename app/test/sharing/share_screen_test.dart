@@ -9,22 +9,12 @@ import 'package:amiro_app/identity/identity_providers.dart';
 import 'package:amiro_app/sharing/share_screen.dart';
 import 'package:amiro_app/sharing/sharing_providers.dart' show nfcEmulatorProvider;
 
-class _InMemoryIdentityRepository implements IdentityRepository {
-  Identity? stored;
-  _InMemoryIdentityRepository(this.stored);
-
-  @override
-  Future<Identity?> getCurrent() async => stored;
-  @override
-  Future<void> save(Identity identity) async => stored = identity;
-  @override
-  Future<void> clear() async => stored = null;
-}
+import '../identity/in_memory_identity_repository.dart';
 
 Widget _screen(NfcEmulator emulator, Identity identity) {
   return ProviderScope(
     overrides: [
-      identityRepositoryProvider.overrideWithValue(_InMemoryIdentityRepository(identity)),
+      identityRepositoryProvider.overrideWithValue(InMemoryIdentityRepository(identity)),
       nfcEmulatorProvider.overrideWithValue(emulator),
     ],
     child: const MaterialApp(home: ShareScreen()),

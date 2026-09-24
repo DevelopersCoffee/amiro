@@ -11,20 +11,7 @@ import 'package:sharing/sharing.dart';
 import 'package:amiro_app/avatar/avatar_providers.dart';
 import 'package:amiro_app/sharing/shared_profile_screen.dart';
 
-class _FakeAvatarRenderer implements AvatarRenderer {
-  AvatarDefinition? _current;
-
-  @override
-  AvatarDefinition? get current => _current;
-  @override
-  Future<void> load(AvatarDefinition definition) async => _current = definition;
-  @override
-  Widget buildView() => const ColoredBox(color: Colors.grey, child: SizedBox(height: 200));
-  @override
-  Future<void> updateSlot(String slot, String? assetId) async {}
-  @override
-  Future<void> dispose() async {}
-}
+import '../avatar/fake_avatar_renderer.dart';
 
 void main() {
   testWidgets('renders the shared profile\'s name, username, bio and avatar', (tester) async {
@@ -42,7 +29,7 @@ void main() {
       ProviderScope(
         overrides: [
           avatarRendererFactoryProvider.overrideWithValue(
-            () async => _FakeAvatarRenderer(),
+            () async => FakeAvatarRenderer(),
           ),
         ],
         child: MaterialApp(home: SharedProfileScreen(profile: profile)),
@@ -96,7 +83,7 @@ void main() {
           overrides: [
             avatarRendererProvider.overrideWithValue(singleton),
             avatarRendererFactoryProvider.overrideWithValue(
-              () async => _FakeAvatarRenderer(),
+              () async => FakeAvatarRenderer(),
             ),
           ],
           child: MaterialApp(home: SharedProfileScreen(profile: scannedProfile)),
