@@ -25,3 +25,7 @@ flutter:
     - assets/cosmetics/top_placeholder.glb
     - assets/cosmetics/glasses_placeholder.glb
     - assets/cosmetics/glasses_realistic.glb
+    - assets/cosmetics/hair_simple_parted.glb
+    - assets/cosmetics/hair_buzzed.glb
+    - assets/cosmetics/hair_long.glb
+    - assets/cosmetics/beard_full.glb

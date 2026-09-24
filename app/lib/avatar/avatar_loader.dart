@@ -17,6 +17,7 @@ import 'avatar_providers.dart';
 const defaultAvatarDefinition = AvatarDefinition(
   id: 'default',
   body: 'body_superhero_male',
+  hair: 'hair_simple_parted',
 );
 
 /// The definition [ensureAvatarLoaded] loaded, and whether this was the

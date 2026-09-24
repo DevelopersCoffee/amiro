@@ -35,7 +35,48 @@ class ThermionFilamentSurface implements FilamentSurface {
 
   @override
   Future<void> loadModel(String assetPath) async {
-    _loadedAssets[assetPath] = await _viewer.loadGltf(assetPath);
+    final asset = await _viewer.loadGltf(assetPath);
+    _loadedAssets[assetPath] = asset;
+
+    // Quaternius ships hair/brow/beard textures as un-tinted grey, meant to
+    // be colored in-engine. Multiply in a dark chestnut via the glTF
+    // baseColorFactor (linear RGB). Best-effort: a tint failure must never
+    // stop the model itself from showing.
+    final tint = _hairTint(assetPath);
+    if (assetPath.contains('/avatars/')) {
+      // The body mesh carries its own (grey) eyebrows as a child mesh.
+      try {
+        for (final name in await asset.getChildEntityNames()) {
+          if (name != null && name.toLowerCase().contains('eyebrow')) {
+            final entity = await asset.getChildEntity(name);
+            final material = await asset.getMaterialInstanceAt(entity: entity);
+            await material.setParameterFloat4(
+                'baseColorFactor', 0.35, 0.17, 0.08, 1.0);
+          }
+        }
+      } catch (_) {}
+    }
+    if (tint != null) {
+      try {
+        final instances = await asset.getMaterialInstancesAsMap();
+        for (final list in instances.values) {
+          for (final material in list) {
+            await material.setParameterFloat4(
+                'baseColorFactor', tint[0], tint[1], tint[2], 1.0);
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
+  static List<double>? _hairTint(String assetPath) {
+    final name = assetPath.split('/').last;
+    if (name.startsWith('hair_') ||
+        name.startsWith('eyebrows_') ||
+        name.startsWith('beard_')) {
+      return const [0.35, 0.17, 0.08];
+    }
+    return null;
   }
 
   @override

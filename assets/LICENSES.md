@@ -49,3 +49,31 @@ borrowed in the meantime and what its terms are.
   at a fixed world position, so it will only look right on this
   specific body at this specific pose.
 - **Shipped as:** `packages/avatar_renderer/assets/cosmetics/glasses_realistic.glb`
+  Refitted for the head-and-shoulders camera on 2026-09-25: the close-up
+  showed the earlier fit was ~2x too wide and sat at the cheeks, so the
+  mesh was rescaled 0.55x about its own center and shifted +0.05 up /
+  +0.08 forward (baked into `POSITION` again, original left untouched in
+  git history).
+
+## Hairstyles and beard (Quaternius, Universal Base Characters [Standard])
+
+- **Source:** https://quaternius.itch.io/universal-base-characters
+  (free "Standard" download, `Universal Base Characters[Standard].zip`,
+  ~122 MB; the same pack the body comes from).
+- **License:** CC0 1.0 Universal (per the pack's `License_Standard.txt`) —
+  no attribution required.
+- **What we use:** the "Origin at 0" glTF hairstyles that share the male
+  body's coordinates — `Hair_SimpleParted`, `Hair_Buzzed`, `Hair_Long`,
+  `Hair_Beard`. (`Hair_Buns` and `Hair_BuzzedFemale` use a different
+  origin/units for the female body and are not shipped.)
+- **Processing:** the pack's hair textures are un-tinted grey; textures
+  downscaled to 512x512 (each file ~0.6-0.8 MB instead of ~6 MB) and
+  embedded with `gltf-pipeline -b`. Hair, brow and beard color is applied
+  at load time by multiplying the material `baseColorFactor` (linear
+  0.35, 0.17, 0.08 = dark chestnut) in `ThermionFilamentSurface`. The
+  body's own built-in eyebrow mesh is tinted the same way.
+- **Shipped as:** `packages/avatar_renderer/assets/cosmetics/`
+  `hair_simple_parted.glb`, `hair_buzzed.glb`, `hair_long.glb`,
+  `beard_full.glb`.
+- **Not used:** the separate "Modular Character Outfits - Fantasy" pack
+  (280 MB of armor/robes; wrong style for a casual avatar).

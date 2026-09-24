@@ -26,6 +26,10 @@ Widget _screen(AvatarRenderer renderer, {EntitlementStore? entitlementStore}) {
 
 void main() {
   testWidgets('lists every catalog item with its price or FREE', (tester) async {
+    // Tall enough that the lazily-built list renders every catalog row.
+    tester.view.physicalSize = const Size(800, 2600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     final renderer = FakeAvatarRenderer();
     await tester.pumpWidget(_screen(renderer));
     await tester.pumpAndSettle();
@@ -33,8 +37,16 @@ void main() {
     for (final item in cosmeticCatalog) {
       expect(find.text(item.name), findsOneWidget);
     }
-    expect(find.text('FREE'), findsNWidgets(2));
-    expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
+    expect(find.text('FREE'), findsNWidgets(4));
+    for (final item in cosmeticCatalog.where((c) => !c.isFree)) {
+      expect(
+        find.widgetWithText(
+          FilledButton,
+          'Buy \$${(item.priceCents / 100).toStringAsFixed(2)}',
+        ),
+        findsOneWidget,
+      );
+    }
   });
 
   testWidgets('tapping a free item previews it on the avatar', (tester) async {
