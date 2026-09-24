@@ -81,8 +81,33 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     // model's front face. Angle it toward the camera's view direction
     // instead, confirmed necessary on-device: the default direction left
     // the (correctly loaded, correctly framed) mesh silhouette solid black.
+    // Three-point rig instead of a single sun: a warm key from front-upper
+    // left for form, a cool fill from the right so shadow sides don't crush
+    // to black, and a rim from behind to separate the silhouette from the
+    // background. A lone key light made the figure look flat and harsh.
     await viewer.addDirectLight(
-      thermion.DirectLight.sun(direction: thermion.Vector3(-0.4, -0.6, -1)),
+      thermion.DirectLight.sun(
+        color: const thermion.LinearColor(1.0, 0.94, 0.86),
+        intensity: 90000,
+        castShadows: false,
+        direction: thermion.Vector3(-0.5, -0.45, -1),
+      ),
+    );
+    await viewer.addDirectLight(
+      thermion.DirectLight.sun(
+        color: const thermion.LinearColor(0.75, 0.85, 1.0),
+        intensity: 40000,
+        castShadows: false,
+        direction: thermion.Vector3(0.7, -0.2, -1),
+      ),
+    );
+    await viewer.addDirectLight(
+      thermion.DirectLight.sun(
+        color: const thermion.LinearColor(1.0, 1.0, 1.0),
+        intensity: 55000,
+        castShadows: false,
+        direction: thermion.Vector3(0.1, -0.3, 1),
+      ),
     );
     // Framed for a real-world-scale standing humanoid (feet ~y=0, head
     // ~y=1.8, per the Quaternius base character's glTF bounding box) —
@@ -91,9 +116,11 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     // size, showing only the thighs. Center vertically on the torso and
     // pull back far enough to fit the whole figure in frame.
     final camera = await viewer.getActiveCamera();
+    // Head-and-shoulders framing (a full-body view left the face a few
+    // pixels wide with most of the screen empty).
     await camera.lookAt(
-      thermion.Vector3(0, 0.9, 4),
-      focus: thermion.Vector3(0, 0.9, 0),
+      thermion.Vector3(0, 1.45, 1.25),
+      focus: thermion.Vector3(0, 1.45, 0),
     );
 
     return ThermionAvatarRenderer(surface: ThermionFilamentSurface(viewer));
