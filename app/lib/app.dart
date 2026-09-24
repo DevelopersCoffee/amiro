@@ -5,6 +5,7 @@ import 'avatar/avatar_screen.dart';
 import 'sharing/incoming_share_listener.dart';
 import 'sharing/share_screen.dart';
 import 'store/store_screen.dart';
+import 'theme/amiro_theme.dart';
 
 class AmiroApp extends StatelessWidget {
   const AmiroApp({super.key});
@@ -13,7 +14,7 @@ class AmiroApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Amiro',
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.deepPurple),
+      theme: buildAmiroTheme(),
       home: const IncomingShareListener(child: _RootTabs()),
     );
   }
