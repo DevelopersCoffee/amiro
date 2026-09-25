@@ -29,3 +29,6 @@ flutter:
     - assets/cosmetics/hair_buzzed.glb
     - assets/cosmetics/hair_long.glb
     - assets/cosmetics/beard_full.glb
+    - assets/cosmetics/top_peasant_shirt.glb
+    - assets/cosmetics/bottom_peasant_trousers.glb
+    - assets/cosmetics/shoes_peasant_boots.glb

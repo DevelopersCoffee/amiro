@@ -2,11 +2,11 @@ import 'package:store/store.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('catalog has exactly 4 free items and 3 priced items', () {
+  test('catalog has exactly 7 free items and 3 priced items', () {
     final free = cosmeticCatalog.where((c) => c.isFree).toList();
     final priced = cosmeticCatalog.where((c) => !c.isFree).toList();
 
-    expect(free, hasLength(4));
+    expect(free, hasLength(7));
     expect(priced, hasLength(3));
   });
 
