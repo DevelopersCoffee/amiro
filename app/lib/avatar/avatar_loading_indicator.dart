@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/amiro_theme.dart';
+
 /// The branded loading moment while the 3D avatar asset loads.
 ///
 /// Per DESIGN.md: no glow/halo, depth only from real shadows — the shimmer
@@ -33,7 +35,7 @@ class _AvatarLoadingIndicatorState extends State<AvatarLoadingIndicator>
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFF161510),
+      color: AmiroColors.ground,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -44,8 +46,8 @@ class _AvatarLoadingIndicatorState extends State<AvatarLoadingIndicator>
                 width: 96,
                 height: 160,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1F1D17),
-                  border: Border.all(color: const Color(0xFF322F26), width: 1.5),
+                  color: AmiroColors.surface,
+                  border: Border.all(color: AmiroColors.surfaceBorder, width: 1.5),
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(48),
                     bottom: Radius.circular(16),

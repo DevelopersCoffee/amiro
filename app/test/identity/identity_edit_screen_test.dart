@@ -1,27 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:identity_core/identity_core.dart';
 
 import 'package:amiro_app/identity/identity_edit_screen.dart';
 import 'package:amiro_app/identity/identity_providers.dart';
 
-class _InMemoryIdentityRepository implements IdentityRepository {
-  Identity? _stored;
-
-  @override
-  Future<Identity?> getCurrent() async => _stored;
-
-  @override
-  Future<void> save(Identity identity) async => _stored = identity;
-
-  @override
-  Future<void> clear() async => _stored = null;
-}
+import 'in_memory_identity_repository.dart';
 
 void main() {
   testWidgets('entering a display name and saving persists it', (tester) async {
-    final repo = _InMemoryIdentityRepository();
+    final repo = InMemoryIdentityRepository();
 
     await tester.pumpWidget(
       ProviderScope(
@@ -42,7 +30,7 @@ void main() {
   });
 
   testWidgets('toggling a field private excludes it from publicFields', (tester) async {
-    final repo = _InMemoryIdentityRepository();
+    final repo = InMemoryIdentityRepository();
 
     await tester.pumpWidget(
       ProviderScope(

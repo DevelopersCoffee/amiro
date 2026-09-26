@@ -1,3 +1,26 @@
+/// How scarce a cosmetic is, ordered from most to least common.
+enum CosmeticRarity {
+  common('Common'),
+  uncommon('Uncommon'),
+  rare('Rare'),
+  epic('Epic'),
+  legendary('Legendary');
+
+  final String label;
+  const CosmeticRarity(this.label);
+}
+
+/// A numbered drop, e.g. "Series #1 Founders". Items sharing a [number]
+/// must share a [name]; numbers are contiguous from 1 across the catalog.
+class CosmeticSeries {
+  final int number;
+  final String name;
+
+  const CosmeticSeries(this.number, this.name);
+
+  String get label => 'Series #$number \u00b7 $name';
+}
+
 /// A single cosmetic item in the Amiro store catalog.
 ///
 /// `assetId` matches the id `AvatarRenderer.updateSlot`/`AvatarDefinition`
@@ -8,6 +31,8 @@ class CosmeticListing {
   final String name;
   final String assetId;
   final int priceCents;
+  final CosmeticRarity rarity;
+  final CosmeticSeries? series;
 
   const CosmeticListing({
     required this.id,
@@ -15,6 +40,8 @@ class CosmeticListing {
     required this.name,
     required this.assetId,
     required this.priceCents,
+    this.rarity = CosmeticRarity.common,
+    this.series,
   });
 
   bool get isFree => priceCents == 0;
@@ -26,6 +53,8 @@ class CosmeticListing {
 /// `packages/avatar_renderer/assets/cosmetics/` — see that package's
 /// pubspec for the asset list. Names are original (brand-inspired, not
 /// real trademarks) per `docs/legal/asset-policy.md`.
+const _founders = CosmeticSeries(1, 'Founders');
+
 const List<CosmeticListing> cosmeticCatalog = [
   CosmeticListing(
     id: 'classic_frame',
@@ -47,6 +76,8 @@ const List<CosmeticListing> cosmeticCatalog = [
     name: 'Riviera Optics',
     assetId: 'glasses_realistic',
     priceCents: 299,
+    rarity: CosmeticRarity.rare,
+    series: _founders,
   ),
   CosmeticListing(
     id: 'clean_part',
@@ -68,6 +99,8 @@ const List<CosmeticListing> cosmeticCatalog = [
     name: 'Long Flow',
     assetId: 'hair_long',
     priceCents: 199,
+    rarity: CosmeticRarity.uncommon,
+    series: _founders,
   ),
   CosmeticListing(
     id: 'full_beard',
@@ -75,6 +108,8 @@ const List<CosmeticListing> cosmeticCatalog = [
     name: 'Full Beard',
     assetId: 'beard_full',
     priceCents: 99,
+    rarity: CosmeticRarity.uncommon,
+    series: _founders,
   ),
   CosmeticListing(
     id: 'village_tunic',

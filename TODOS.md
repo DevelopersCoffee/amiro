@@ -41,3 +41,13 @@ of `app/lib/avatar/avatar_screen.dart` + cosmetic asset swap.
 **Cons:** None significant — needs a dirty-state flag on the avatar definition.
 **Context:** Raised in Pass 7 (Unresolved Decisions) against the review mockup's "Save look" button. Not yet applicable to shipped code — `avatar_screen.dart` currently auto-persists on every toggle via `_persist()`, with no separate save action; this applies once the tray/multi-slot UI (item #4/mockup direction) is actually built.
 **Depends on:** Multi-slot cosmetic tray UI (not yet built).
+
+## 7. Store: rarity tiers + numbered series — v1 DONE (2026-09-26)
+Inspired by the Steam "Egg" market (rarity ladder, Series #N drops). `CosmeticListing` now has `rarity` (`CosmeticRarity`: common..legendary) and optional `series` (`CosmeticSeries`); the 3 paid items are Series #1 "Founders" (Rare / Uncommon / Uncommon), free items stay Common. `avatarRarityScore` reports the highest equipped tier + per-tier counts; StoreScreen shows a rarity label per row and groups series under a header; AvatarScreen shows the highest equipped tier beside the valuation. Plan: `docs/superpowers/plans/2026-09-26-store-rarity-series.md`.
+
+**Known gaps, deliberately deferred:**
+- No rarity filter/sort in the store (7 items don't need it; add once the catalog grows).
+- Epic/Legendary tiers exist but no item uses them yet; they need new assets.
+- No resale/trading market (Egg's market is a Steam feature; Amiro's purchases are stubbed). A real secondary market needs its own payments, fraud and legal decision.
+- Meme/cultural skins: original themes only. No real memes or trademarks (`docs/legal/asset-policy.md`).
+- `docs/product/requirements.md` not updated with a rarity section.

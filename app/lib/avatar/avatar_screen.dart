@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:store/store.dart';
 
+import '../store/rarity_label_style.dart';
+import '../theme/amiro_theme.dart';
 import 'avatar_loader.dart';
 import 'avatar_loading_indicator.dart';
 import 'avatar_providers.dart';
@@ -62,8 +64,13 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
     // Sums whatever's equipped against the store catalog's prices — not
     // gated on ownership, since equipping today (the debug toggle button)
     // bypasses the store's buy flow entirely (see TODOS.md #5/#6).
-    final valuationCents =
-        current == null ? 0 : avatarValuationCents(current, cosmeticCatalog);
+    final valuationCents = current == null
+        ? 0
+        : avatarValuationCents(current, cosmeticCatalog);
+
+    final highestRarity = current == null
+        ? null
+        : avatarRarityScore(current, cosmeticCatalog).highest;
 
     final showChrome = !_loading && !_revealing;
 
@@ -75,7 +82,24 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
             Padding(
               padding: const EdgeInsets.only(right: 16),
               child: Center(
-                child: Text('\$${(valuationCents / 100).toStringAsFixed(2)}'),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (highestRarity != null) ...[
+                      Text(
+                        highestRarity.label,
+                        style: rarityLabelStyle(context, highestRarity),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Text(
+                      '\$${(valuationCents / 100).toStringAsFixed(2)}',
+                      style: amiroMono(
+                        context,
+                      ).copyWith(color: AmiroColors.primary),
+                    ),
+                  ],
+                ),
               ),
             ),
         ],
@@ -86,11 +110,11 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
             child: _loading
                 ? const AvatarLoadingIndicator()
                 : _revealing
-                    ? _AvatarReveal(
-                        onRevealed: () => setState(() => _revealing = false),
-                        child: renderer.buildView(),
-                      )
-                    : renderer.buildView(),
+                ? _AvatarReveal(
+                    onRevealed: () => setState(() => _revealing = false),
+                    child: renderer.buildView(),
+                  )
+                : renderer.buildView(),
           ),
           Padding(
             padding: const EdgeInsets.all(16),
@@ -104,7 +128,9 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
                         minimumSize: const Size.fromHeight(44),
                       ),
                       onPressed: _toggleGlasses,
-                      child: Text(_glassesOn ? 'Remove glasses' : 'Add glasses'),
+                      child: Text(
+                        _glassesOn ? 'Remove glasses' : 'Add glasses',
+                      ),
                     ),
                   )
                 : const SizedBox(height: 44),
@@ -128,7 +154,8 @@ class _AvatarReveal extends StatefulWidget {
   State<_AvatarReveal> createState() => _AvatarRevealState();
 }
 
-class _AvatarRevealState extends State<_AvatarReveal> with SingleTickerProviderStateMixin {
+class _AvatarRevealState extends State<_AvatarReveal>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
