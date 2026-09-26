@@ -7,28 +7,31 @@ environment:
 resolution: workspace
 
 dependencies:
-  isar: ^3.1.0+1
-  isar_flutter_libs: ^3.1.0+1
+  isar_community: ^3.3.2
+  isar_community_flutter_libs: ^3.3.2
   path_provider: ^2.1.4
 
 dev_dependencies:
   test: ^1.25.0
   lints: ^4.0.0
 
-# NOTE: `isar_generator` / `build_runner` are deliberately NOT dev_dependencies
-# here. `isar_generator 3.1.0+1` requires `analyzer >=4.6.0 <6.0.0`, which
-# cannot coexist in a pub workspace with the `matcher` version the current
-# Flutter SDK pins into `flutter_test` (that forces `test >=1.25.13`, which
-# needs `analyzer >=6.0.0`). The one generated artefact — `identity_isar_schema
-# .g.dart` — is therefore committed to the repo (see the `.gitignore`
-# exception) and nothing in CI regenerates it.
+# NOTE: `isar_community_generator` / `build_runner` are deliberately NOT
+# dev_dependencies here: the generator's `analyzer` constraint cannot
+# coexist in a pub workspace with the `matcher` version the current Flutter
+# SDK pins into `flutter_test`. The one generated artefact,
+# `identity_isar_schema.g.dart`, is therefore committed to the repo (see the
+# `.gitignore` exception) and nothing in CI regenerates it.
+#
+# We depend on the `isar_community` fork rather than the abandoned `isar`
+# 3.1.0+1 because the fork's Android `libisar.so` is 16 KB page-aligned,
+# which Google Play requires; the original's is not.
 #
 # To regenerate it after changing `identity_isar_schema.dart`, resolve this
 # package on its own, outside the workspace:
 #
 #   cd packages/identity_core
 #   # temporarily delete the `resolution: workspace` line above and add
-#   #   isar_generator: ^3.1.0+1
+#   #   isar_community_generator: ^3.3.2
 #   #   build_runner: ^2.4.9
 #   # to dev_dependencies, then:
 #   dart pub get
