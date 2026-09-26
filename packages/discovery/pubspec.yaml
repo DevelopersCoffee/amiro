@@ -1,0 +1,15 @@
+name: discovery
+description: Local-first ledger of the Amiro identities a user has encountered (Discovery Passport).
+version: 0.1.0
+publish_to: none
+environment:
+  sdk: ">=3.9.0 <4.0.0"
+resolution: workspace
+
+dependencies:
+  sharing:
+    path: ../sharing
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^4.0.0
