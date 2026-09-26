@@ -11,6 +11,7 @@ workspace:
   - packages/identity_core
   - packages/avatar_core
   - packages/avatar_renderer
+  - packages/discovery
   - packages/sharing
   - packages/nfc
   - packages/qr
