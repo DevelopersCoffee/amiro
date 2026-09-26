@@ -87,3 +87,37 @@ List<CollectionProgress> progressFromCompletion(
         ),
   ];
 }
+
+/// The link behind this user's QR code and NFC tag: their card plus the
+/// public contact fields they chose to share. Null until they have an avatar
+/// or if the card cannot be made small enough for a QR code.
+///
+/// If the contact card is what pushes the link over the size limit, the link
+/// is built without it: sharing who they are matters more than failing to
+/// share at all, and the contact fields are optional decoration.
+String? buildOwnEncounterUri({
+  required Identity identity,
+  required AvatarDefinition? definition,
+  required Set<String> purchasedIds,
+}) {
+  final payload = buildOwnEncounterPayload(
+    identity: identity,
+    definition: definition,
+    purchasedIds: purchasedIds,
+  );
+  if (payload == null) return null;
+
+  try {
+    return encodeEncounterUri(
+      payload,
+      contact: ContactCard.fromIdentity(identity),
+    );
+  } on SharingPayloadException catch (e) {
+    if (e.kind != PayloadErrorKind.tooLarge) return null;
+  }
+  try {
+    return encodeEncounterUri(payload);
+  } on SharingPayloadException {
+    return null;
+  }
+}

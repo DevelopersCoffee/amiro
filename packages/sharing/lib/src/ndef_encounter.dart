@@ -99,6 +99,17 @@ String encounterTextFromNdef(List<NdefRecordData> records) {
       PayloadErrorKind.malformed, 'no Amiro encounter record on the tag');
 }
 
+/// The first record on the tag whose text is any `amiro://` link, encounter
+/// or legacy share, or null. For callers that hand the text on to a resolver
+/// that understands both formats.
+String? amiroLinkTextFromNdef(List<NdefRecordData> records) {
+  for (final record in records) {
+    final text = ndefRecordText(record);
+    if (text != null && text.startsWith('amiro://')) return text;
+  }
+  return null;
+}
+
 /// NFC boundary: tag records in, validated encounter out. Throws
 /// [SharingPayloadException] for anything that isn't a valid card.
 EncounterQr decodeEncounterFromNdef(List<NdefRecordData> records) {

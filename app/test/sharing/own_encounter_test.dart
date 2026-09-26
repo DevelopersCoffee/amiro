@@ -143,4 +143,55 @@ void main() {
       expect(progress.single.total, 3);
     });
   });
+
+  group('buildOwnEncounterUri', () {
+    test('is a decodable encounter link carrying the public contact card', () {
+      final shared = Identity(
+        id: 'id-1',
+        displayName: 'Uday',
+        username: 'uday',
+        bio: 'Engineer',
+        privacy: const {'username': PrivacyFlag(true)},
+      );
+
+      final uri = buildOwnEncounterUri(identity: shared, definition: definition, purchasedIds: const {});
+      final decoded = decodeEncounterUri(uri!);
+
+      expect(decoded.payload.remoteIdentityId, 'id-1');
+      expect(decoded.contact, const ContactCard(username: 'uday'));
+    });
+
+    test('is null until the user has an avatar', () {
+      expect(buildOwnEncounterUri(identity: identity, definition: null, purchasedIds: const {}), isNull);
+    });
+
+    test('drops only the contact card when it is what makes the link too large', () {
+      final wordy = Identity(
+        id: 'id-1',
+        displayName: 'Uday',
+        username: 'uday',
+        bio: 'b' * 256,
+        email: 'e' * 256,
+        mobile: 'm' * 256,
+        xHandle: 'x' * 256,
+        instagramHandle: 'i' * 256,
+        website: 'w' * 256,
+        privacy: const {
+          'bio': PrivacyFlag(true),
+          'email': PrivacyFlag(true),
+          'mobile': PrivacyFlag(true),
+          'xHandle': PrivacyFlag(true),
+          'instagramHandle': PrivacyFlag(true),
+          'website': PrivacyFlag(true),
+        },
+      );
+
+      final uri = buildOwnEncounterUri(identity: wordy, definition: definition, purchasedIds: const {});
+
+      expect(uri, isNotNull);
+      final decoded = decodeEncounterUri(uri!);
+      expect(decoded.payload.displayName, 'Uday');
+      expect(decoded.contact, isNull);
+    });
+  });
 }

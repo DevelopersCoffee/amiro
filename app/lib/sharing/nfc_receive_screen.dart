@@ -4,15 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:nfc/nfc.dart';
-import 'package:sharing/sharing.dart';
-
-import 'shared_profile_screen.dart';
+import 'scan_navigation.dart';
+import 'scan_result.dart';
 import 'sharing_providers.dart';
 
 /// Pushed when the user taps "Receive via NFC" on [ShareScreen]. Starts a
 /// single, explicit, bounded NFC read session and navigates to
-/// [SharedProfileScreen] on a successful parse — mirroring how
-/// `QrScanScreen` pushes the same screen for the QR path.
+/// the screen for whatever the tag carries (see [screenForScan]) — mirroring
+/// how `QrScanScreen` does it for the QR path.
 ///
 /// NFC receive is deliberately on-demand rather than automatic. Two prior
 /// fix rounds tried to make [nfcReaderProvider]'s reader listen
@@ -62,13 +61,19 @@ class _NfcReceiveScreenState extends ConsumerState<NfcReceiveScreen> {
 
   void _onPayload(String payload) {
     if (_handled) return;
-    final profile = parseShareUri(payload);
-    if (profile == null) return;
+    final result = resolveScannedText(payload);
+    final screen = screenForScan(result);
+    if (screen == null) {
+      if (result is InvalidAmiroLink) {
+        setState(() => _error = "That tag isn't a card this version can read");
+      }
+      return;
+    }
 
     _handled = true;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => SharedProfileScreen(profile: profile)),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => screen));
   }
 
   @override

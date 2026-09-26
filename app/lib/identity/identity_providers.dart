@@ -20,4 +20,6 @@ class CurrentIdentityNotifier extends AsyncNotifier<Identity?> {
 }
 
 final currentIdentityProvider =
-    AsyncNotifierProvider<CurrentIdentityNotifier, Identity?>(CurrentIdentityNotifier.new);
+    AsyncNotifierProvider<CurrentIdentityNotifier, Identity?>(
+      CurrentIdentityNotifier.new,
+    );
