@@ -228,4 +228,38 @@ void main() {
       expect(find.text('No one discovered yet'), findsNothing);
     },
   );
+
+  testWidgets('an entry whose series is complete gets the collector\'s frame', (
+    tester,
+  ) async {
+    await _open(tester, [
+      _record(
+        'done',
+        'Done',
+        completion: const [
+          SeriesCompletion(
+            seriesId: 'series_1',
+            currentCount: 3,
+            totalCount: 3,
+          ),
+        ],
+      ),
+      _record('part', 'Partial'),
+    ]);
+
+    Border borderOf(String id) {
+      final card = tester.widget<Container>(
+        find
+            .descendant(
+              of: find.byKey(Key('passportEntry-$id')),
+              matching: find.byType(Container),
+            )
+            .first,
+      );
+      return (card.decoration as BoxDecoration).border! as Border;
+    }
+
+    expect(borderOf('done').top.color, AmiroColors.primary);
+    expect(borderOf('part').top.color, AmiroColors.surfaceBorder);
+  });
 }

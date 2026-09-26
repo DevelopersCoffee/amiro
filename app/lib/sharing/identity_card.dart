@@ -6,6 +6,7 @@ import 'package:sharing/sharing.dart';
 import '../store/rarity_label_style.dart';
 import '../store/series_progress_row.dart';
 import '../theme/amiro_theme.dart';
+import 'collector_frame.dart';
 import 'own_encounter.dart';
 import 'standouts.dart';
 
@@ -43,7 +44,7 @@ class IdentityCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AmiroColors.surface,
-        border: Border.all(color: AmiroColors.surfaceBorder),
+        border: cardBorder(payload.collectionCompletion),
         borderRadius: BorderRadius.circular(16),
         // A real offset shadow (DESIGN.md), never a glow.
         boxShadow: const [

@@ -87,4 +87,39 @@ void main() {
       expect(p.total, greaterThan(0), reason: p.series.label);
     }
   });
+
+  group('set completion', () {
+    test('isSetComplete matches isComplete', () {
+      final partial = collectionProgress(catalog, const {'f1'}).single;
+      final full = collectionProgress(catalog, const {'f1', 'f2'}).single;
+
+      expect(partial.isSetComplete, isFalse);
+      expect(full.isSetComplete, isTrue);
+    });
+
+    test('completedSeries lists only finished series, in order', () {
+      const second = CosmeticSeries(2, 'Travel');
+      final both = [
+        ...catalog,
+        const CosmeticListing(
+            id: 's2a', slot: 'top', name: 'S2A', assetId: 's2a', priceCents: 100, series: second),
+        const CosmeticListing(
+            id: 's2b', slot: 'top', name: 'S2B', assetId: 's2b', priceCents: 100, series: second),
+      ];
+
+      expect(completedSeries(both, const {'f1', 'f2'}).map((s) => s.number), [1]);
+      expect(completedSeries(both, const {'f1', 'f2', 's2a', 's2b'}).map((s) => s.number), [1, 2]);
+      expect(completedSeries(both, const {}), isEmpty);
+    });
+
+    test('a series of only free items is complete from the start', () {
+      const basics = CosmeticSeries(1, 'Basics');
+      final freeSeries = [
+        const CosmeticListing(
+            id: 'x', slot: 'top', name: 'X', assetId: 'x', priceCents: 0, series: basics),
+      ];
+
+      expect(completedSeries(freeSeries, const {}), [basics]);
+    });
+  });
 }

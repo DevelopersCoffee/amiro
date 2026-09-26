@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:discovery/discovery.dart';
 
+import '../sharing/collector_frame.dart';
 import '../sharing/own_encounter.dart';
 import '../sharing/standouts.dart';
 import '../store/rarity_label_style.dart';
@@ -107,7 +108,7 @@ class _EntryCard extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: AmiroColors.surface,
-          border: Border.all(color: AmiroColors.surfaceBorder),
+          border: cardBorder(record.observedCollections),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(

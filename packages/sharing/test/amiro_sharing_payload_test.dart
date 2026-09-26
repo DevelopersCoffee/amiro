@@ -341,4 +341,12 @@ void main() {
       );
     });
   });
+
+  group('SeriesCompletion.isComplete', () {
+    test('is true only when every item in the series is collected', () {
+      expect(const SeriesCompletion(seriesId: 's', currentCount: 3, totalCount: 3).isComplete, isTrue);
+      expect(const SeriesCompletion(seriesId: 's', currentCount: 2, totalCount: 3).isComplete, isFalse);
+      expect(const SeriesCompletion(seriesId: 's', currentCount: 0, totalCount: 3).isComplete, isFalse);
+    });
+  });
 }
