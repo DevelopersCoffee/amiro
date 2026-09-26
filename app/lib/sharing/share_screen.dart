@@ -3,12 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:amiro_qr/amiro_qr.dart';
 import 'package:nfc/nfc.dart';
 
+import '../avatar/avatar_loader.dart';
+import '../avatar/avatar_providers.dart';
 import '../identity/identity_providers.dart';
 import '../store/store_providers.dart';
+import 'identity_card.dart';
 import 'nfc_receive_screen.dart';
+import 'own_encounter.dart';
 import 'own_share_uri.dart';
 import 'qr_scan_screen.dart';
 import 'sharing_providers.dart';
@@ -28,10 +31,24 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
   // flutter_riverpod 2.6.1.
   late final NfcEmulator _emulator;
 
+  bool _didInit = false;
+
   @override
   void initState() {
     super.initState();
     _emulator = ref.read(nfcEmulatorProvider);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didInit) return;
+    _didInit = true;
+    // The card needs the user's avatar loaded (same as the Avatar and Store
+    // tabs); rebuild once it is so the card can replace the spinner.
+    ensureAvatarLoaded(ref).then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -61,9 +78,9 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
       }
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('NFC sharing failed: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('NFC sharing failed: $error')));
       return;
     }
     if (!mounted) return;
@@ -75,6 +92,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
     final identityAsync = ref.watch(currentIdentityProvider);
     final emulator = ref.watch(nfcEmulatorProvider);
     final owned = ref.watch(ownedCosmeticsProvider).value ?? const <String>{};
+    final renderer = ref.watch(avatarRendererProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -102,9 +120,9 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
           IconButton(
             key: const Key('openScannerButton'),
             icon: const Icon(Icons.qr_code_scanner),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const QrScanScreen()),
-            ),
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const QrScanScreen())),
           ),
         ],
       ),
@@ -113,14 +131,27 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
           if (identity == null) {
             return const Center(child: Text('Create your identity first'));
           }
+          // The card describes the identity with the same payload discovery
+          // will use. The QR/NFC link itself is still the legacy
+          // `amiro://share` one until the receive side understands
+          // encounter links (see TODOS.md #10).
+          final payload = buildOwnEncounterPayload(
+            identity: identity,
+            definition: renderer.current,
+            purchasedIds: owned,
+          );
+          if (payload == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
           final shareUri = buildOwnShareUri(identity, owned);
 
           return ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              Center(
-                key: const Key('shareQrCode'),
-                child: buildQrWidget(shareUri),
+              IdentityCard(
+                payload: payload,
+                avatar: renderer.buildView(),
+                qrData: shareUri,
               ),
               if (emulator.canEmulate) ...[
                 const SizedBox(height: 32),
@@ -131,7 +162,9 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                     const SizedBox(height: 8),
                     FilledButton(
                       onPressed: () => _toggleNfcEmulate(shareUri),
-                      child: Text(_emulating ? 'Stop NFC sharing' : 'Start NFC sharing'),
+                      child: Text(
+                        _emulating ? 'Stop NFC sharing' : 'Start NFC sharing',
+                      ),
                     ),
                   ],
                 ),

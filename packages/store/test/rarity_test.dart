@@ -98,4 +98,24 @@ void main() {
       expect(avatarRarityScore(definition, cosmeticCatalog).highest, isNull);
     });
   });
+
+  group('wire names', () {
+    test('rarity round-trips through its upper-case wire name', () {
+      for (final r in CosmeticRarity.values) {
+        expect(CosmeticRarity.fromWireName(r.wireName), r);
+      }
+      expect(CosmeticRarity.rare.wireName, 'RARE');
+    });
+
+    test('an unknown or differently-cased wire name is null, not a guess', () {
+      expect(CosmeticRarity.fromWireName('MYTHIC'), isNull);
+      expect(CosmeticRarity.fromWireName('rare'), isNull);
+      expect(CosmeticRarity.fromWireName(''), isNull);
+    });
+
+    test('a series id is stable and derived from its number', () {
+      expect(const CosmeticSeries(1, 'Founders').id, 'series_1');
+      expect(const CosmeticSeries(12, 'X').id, 'series_12');
+    });
+  });
 }
