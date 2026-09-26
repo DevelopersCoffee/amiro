@@ -5,10 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:amiro_qr/amiro_qr.dart';
 import 'package:nfc/nfc.dart';
-import 'package:sharing/sharing.dart';
 
 import '../identity/identity_providers.dart';
+import '../store/store_providers.dart';
 import 'nfc_receive_screen.dart';
+import 'own_share_uri.dart';
 import 'qr_scan_screen.dart';
 import 'sharing_providers.dart';
 
@@ -73,6 +74,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
   Widget build(BuildContext context) {
     final identityAsync = ref.watch(currentIdentityProvider);
     final emulator = ref.watch(nfcEmulatorProvider);
+    final owned = ref.watch(ownedCosmeticsProvider).value ?? const <String>{};
 
     return Scaffold(
       appBar: AppBar(
@@ -111,7 +113,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
           if (identity == null) {
             return const Center(child: Text('Create your identity first'));
           }
-          final shareUri = buildShareUri(identity);
+          final shareUri = buildOwnShareUri(identity, owned);
 
           return ListView(
             padding: const EdgeInsets.all(24),

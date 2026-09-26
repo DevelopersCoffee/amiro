@@ -59,3 +59,12 @@ Inspired by the Steam "Egg" market (rarity ladder, Series #N drops). `CosmeticLi
 - No completion *reward*. A visual reward (aura, frame) needs new avatar assets; today completion is only a state.
 - Progress is per-series inside the Store list; there's no standalone Collections screen yet.
 - Next per the agreed sequence: Identity Card (QR first, then NFC), then Founding Identity. Real scarcity/editions and drops need server-authoritative issuance and are not started.
+
+## 9. Identity card: collection on the shared profile — v1 DONE (2026-09-26)
+The share URI (QR and NFC) now carries the sender's collected cosmetic ids (`owned`, sorted, capped at `maxSharedCosmeticIds` = 32; free items plus purchases via `collectedCosmeticIds`). `SharedProfileScreen` shows a Collection section: rarest item with its rarity label, and per-series progress (`SeriesProgressRow`, shared with the store list). Older payloads without the field, malformed fields, and ids this app version doesn't know all degrade to "no collection section" instead of rejecting the profile. Still payload v1: the field is additive.
+
+**Known gaps, deliberately deferred:**
+- The collection is self-reported and unverified. It is a show-off surface, not proof of ownership; real provenance needs server-authoritative issuance.
+- No privacy toggle for the collection (only contact fields have flags). Decide before real users scan strangers.
+- No "Create your Amiro" call to action on the received card, no encounter history, no discovery rewards (Sparks: one unique person counts once). Next items in the agreed sequence, then Founding Identity.
+- No exportable card image (wallpaper/story); QR/NFC only.

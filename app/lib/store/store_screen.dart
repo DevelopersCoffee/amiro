@@ -7,6 +7,7 @@ import '../avatar/avatar_loader.dart';
 import '../avatar/avatar_providers.dart';
 import '../theme/amiro_theme.dart';
 import 'rarity_label_style.dart';
+import 'series_progress_row.dart';
 import 'store_providers.dart';
 
 /// Unseriesed items first, then each numbered series in order, each series
@@ -32,26 +33,7 @@ class _SeriesHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              progress.series.label,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ),
-          Text(
-            progress.isComplete
-                ? 'Complete'
-                : '${progress.owned} / ${progress.total}',
-            style: amiroMono(context).copyWith(
-              color: progress.isComplete
-                  ? AmiroColors.primary
-                  : AmiroColors.textMuted,
-            ),
-          ),
-        ],
-      ),
+      child: SeriesProgressRow(progress),
     );
   }
 }

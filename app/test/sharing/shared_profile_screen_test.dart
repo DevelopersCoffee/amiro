@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:avatar_core/avatar_core.dart';
 import 'package:avatar_renderer/avatar_renderer.dart';
 import 'package:sharing/sharing.dart';
+import 'package:store/store.dart';
 
 import 'package:amiro_app/avatar/avatar_providers.dart';
 import 'package:amiro_app/sharing/shared_profile_screen.dart';
@@ -40,6 +41,59 @@ void main() {
     expect(find.text('Ada'), findsOneWidget);
     expect(find.text('@ada'), findsOneWidget);
     expect(find.text('Engineer'), findsOneWidget);
+  });
+
+  Widget card(SharedProfile profile) => ProviderScope(
+        child: MaterialApp(home: SharedProfileScreen(profile: profile)),
+      );
+
+  testWidgets('shows the rarest collected item and series progress', (tester) async {
+    tester.view.physicalSize = const Size(800, 2600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final profile = SharedProfile(
+      id: 'id-1',
+      displayName: 'Ada',
+      username: 'ada',
+      ownedCosmeticIds: const ['classic_frame', 'riviera_optics'],
+    );
+
+    await tester.pumpWidget(card(profile));
+    await tester.pumpAndSettle();
+
+    final rarest = rarestCosmetic(cosmeticCatalog, {'classic_frame', 'riviera_optics'})!;
+    final series = rarest.series!;
+    final progress = collectionProgress(cosmeticCatalog, {'riviera_optics'})
+        .firstWhere((p) => p.series.number == series.number);
+
+    expect(find.text(rarest.name), findsOneWidget);
+    expect(find.text(rarest.rarity.label), findsOneWidget);
+    expect(find.text(series.label), findsOneWidget);
+    expect(find.text('${progress.owned} / ${progress.total}'), findsOneWidget);
+  });
+
+  testWidgets('omits the collection section when the card shares nothing', (tester) async {
+    await tester.pumpWidget(
+      card(SharedProfile(id: 'id-1', displayName: 'Ada', username: 'ada')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Collection'), findsNothing);
+  });
+
+  testWidgets('ignores cosmetic ids this app version does not know', (tester) async {
+    await tester.pumpWidget(
+      card(SharedProfile(
+        id: 'id-1',
+        displayName: 'Ada',
+        username: 'ada',
+        ownedCosmeticIds: const ['from_the_future'],
+      )),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ada'), findsOneWidget);
+    expect(find.text('Rarest'), findsNothing);
   });
 
   testWidgets('renders without a bio section when bio is null', (tester) async {

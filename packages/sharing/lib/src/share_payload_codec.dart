@@ -8,11 +8,16 @@ const _kScheme = 'amiro';
 const _kHost = 'share';
 const _kPayloadVersion = 1;
 
+/// Upper bound on cosmetic ids in a card, on both send and receive, so a QR
+/// code stays scannable and a hostile payload can't bloat the profile.
+const maxSharedCosmeticIds = 32;
+
 /// Builds the share URI for [identity]: only fields flagged public via
 /// [Identity.publicFields] are included. `avatarDefinitionJson` is always
 /// included when present — the avatar itself isn't privacy-sensitive the
 /// way contact fields are.
-String buildShareUri(Identity identity) {
+String buildShareUri(Identity identity,
+    {Set<String> ownedCosmeticIds = const {}}) {
   final public = identity.publicFields();
   final payload = <String, dynamic>{
     'v': _kPayloadVersion,
@@ -28,6 +33,10 @@ String buildShareUri(Identity identity) {
     if (public.containsKey('website')) 'website': public['website'],
     if (identity.avatarDefinitionJson != null)
       'avatarDefinitionJson': identity.avatarDefinitionJson,
+    if (ownedCosmeticIds.isNotEmpty)
+      'owned': (ownedCosmeticIds.toList()..sort())
+          .take(maxSharedCosmeticIds)
+          .toList(),
   };
 
   final encoded = base64Url.encode(utf8.encode(jsonEncode(payload)));
@@ -80,6 +89,7 @@ SharedProfile? parseShareUri(String uri) {
       xHandle: json['xHandle'] as String?,
       instagramHandle: json['instagramHandle'] as String?,
       website: json['website'] as String?,
+      ownedCosmeticIds: _parseOwned(json['owned']),
     );
   } catch (_) {
     // Catches FormatException (bad base64/JSON), TypeError (a field
@@ -87,4 +97,11 @@ SharedProfile? parseShareUri(String uri) {
     // else malformed input could throw — all fail closed to `null`.
     return null;
   }
+}
+
+/// A malformed `owned` field is dropped rather than rejecting the whole
+/// profile: the collection is decoration, the identity is what matters.
+List<String> _parseOwned(Object? raw) {
+  if (raw is! List || raw.any((e) => e is! String)) return const [];
+  return raw.cast<String>().take(maxSharedCosmeticIds).toList();
 }

@@ -13,6 +13,10 @@ class SharedProfile {
   final String? instagramHandle;
   final String? website;
 
+  /// Cosmetic ids the sender says they've collected. Self-reported, not
+  /// verified — the card is a show-off surface, not proof of ownership.
+  final List<String> ownedCosmeticIds;
+
   const SharedProfile({
     required this.id,
     required this.displayName,
@@ -24,5 +28,6 @@ class SharedProfile {
     this.xHandle,
     this.instagramHandle,
     this.website,
+    this.ownedCosmeticIds = const [],
   });
 }
