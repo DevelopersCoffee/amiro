@@ -10,19 +10,50 @@ import 'rarity_label_style.dart';
 import 'store_providers.dart';
 
 /// Unseriesed items first, then each numbered series in order, each series
-/// preceded by a header. Returns [CosmeticSeries] for headers and
-/// [CosmeticListing] for items.
-List<Object> _storeRows(List<CosmeticListing> catalog) {
+/// preceded by its [CollectionProgress] header. Returns [CollectionProgress]
+/// for headers and [CosmeticListing] for items.
+List<Object> _storeRows(List<CosmeticListing> catalog, Set<String> owned) {
   final rows = <Object>[...catalog.where((c) => c.series == null)];
-  final seriesNumbers = {
-    for (final c in catalog)
-      if (c.series != null) c.series!.number: c.series!,
-  };
-  for (final number in seriesNumbers.keys.toList()..sort()) {
-    rows.add(seriesNumbers[number]!);
-    rows.addAll(catalog.where((c) => c.series?.number == number));
+  for (final progress in collectionProgress(catalog, owned)) {
+    rows.add(progress);
+    rows.addAll(
+      catalog.where((c) => c.series?.number == progress.series.number),
+    );
   }
   return rows;
+}
+
+class _SeriesHeader extends StatelessWidget {
+  final CollectionProgress progress;
+
+  const _SeriesHeader(this.progress);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              progress.series.label,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          Text(
+            progress.isComplete
+                ? 'Complete'
+                : '${progress.owned} / ${progress.total}',
+            style: amiroMono(context).copyWith(
+              color: progress.isComplete
+                  ? AmiroColors.primary
+                  : AmiroColors.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class StoreScreen extends ConsumerStatefulWidget {
@@ -57,7 +88,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
   Widget build(BuildContext context) {
     final renderer = ref.watch(avatarRendererProvider);
     final owned = ref.watch(ownedCosmeticsProvider).value ?? const <String>{};
-    final rows = _storeRows(cosmeticCatalog);
+    final rows = _storeRows(cosmeticCatalog, owned);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Store')),
@@ -69,15 +100,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
               itemCount: rows.length,
               itemBuilder: (context, index) {
                 final row = rows[index];
-                if (row is CosmeticSeries) {
-                  return Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-                    child: Text(
-                      row.label,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  );
-                }
+                if (row is CollectionProgress) return _SeriesHeader(row);
                 final item = row as CosmeticListing;
                 final isOwned = item.isFree || owned.contains(item.id);
                 final isEquipped =

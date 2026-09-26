@@ -51,3 +51,11 @@ Inspired by the Steam "Egg" market (rarity ladder, Series #N drops). `CosmeticLi
 - No resale/trading market (Egg's market is a Steam feature; Amiro's purchases are stubbed). A real secondary market needs its own payments, fraud and legal decision.
 - Meme/cultural skins: original themes only. No real memes or trademarks (`docs/legal/asset-policy.md`).
 - `docs/product/requirements.md` not updated with a rarity section.
+
+## 8. Collections: series progress — v1 DONE (2026-09-26)
+`collectionProgress(catalog, ownedIds)` (`packages/store/lib/src/collection_progress.dart`) returns per-series owned/total; StoreScreen series headers show "1 / 3" and "Complete" (brass) once every item is owned. Local-first: uses the existing series data and entitlements only.
+
+**Known gaps, deliberately deferred:**
+- No completion *reward*. A visual reward (aura, frame) needs new avatar assets; today completion is only a state.
+- Progress is per-series inside the Store list; there's no standalone Collections screen yet.
+- Next per the agreed sequence: Identity Card (QR first, then NFC), then Founding Identity. Real scarcity/editions and drops need server-authoritative issuance and are not started.
