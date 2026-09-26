@@ -71,7 +71,7 @@ The share URI (QR and NFC) now carries the sender's collected cosmetic ids (`own
 
 ## 10. vNext lib-first sequence — PR 1 DONE (2026-09-26)
 Agreed order (library before UI, protocol tests as the gate before any transport):
-PR1 `sharing` canonical payload (**done**, `AmiroSharingPayload`) → PR2 `discovery` EncounterRecord + repository (**done**) → PR3 encounter state machine (**done**) → PR4 QR bridge → PR5 NFC boundary → PR6 Identity Card → PR7 encounter comparison → PR8 Discovery Passport → PR9 completion engine.
+PR1 `sharing` canonical payload (**done**, `AmiroSharingPayload`) → PR2 `discovery` EncounterRecord + repository (**done**) → PR3 encounter state machine (**done**) → PR4 QR bridge (**done**) → PR5 NFC boundary (**done**) → PR6 Identity Card → PR7 encounter comparison → PR8 Discovery Passport → PR9 completion engine.
 
 PR1 decisions worth remembering:
 - `AmiroSharingPayload` is JSON with a required integer `schemaVersion` (1); unknown extra fields are ignored, unsupported versions are rejected as `PayloadErrorKind.unsupportedVersion`, and `discovery` must only ever receive a payload that passed `validate()`. Cap 4096 bytes, 32 entries per list.
@@ -92,3 +92,15 @@ PR3 decisions (`EncounterProcessor` in `packages/discovery`, library only):
 - `ownIdentityId`: scanning your own card returns `SelfEncounter`, so it can't inflate the unique count that Sparks will later be derived from.
 - `lastEncountered` never moves backwards if the device clock does.
 - Only validated payloads reach the ledger: `receive` decodes and `receivePayload` re-validates.
+
+PR4 decisions (`sharing`: `encodeEncounterUri` / `decodeEncounterUri`, `ContactCard`, library only):
+- Decision (2026-09-26): keep the discovery payload minimal and carry contact details on a separate `c` parameter of the same link, `amiro://encounter?d=<payload>[&c=<contact card>]`. Adding optional contact fields to the payload later stays open (additive under schema v1); nothing here prevents it.
+- `ContactCard` follows `Identity.publicFields()` strictly (`username` only if flagged public, unlike the legacy `amiro://share` codec which always sends it); fields capped at 256 characters.
+- Links over 2000 characters are refused on encode and decode. Encode throws rather than silently dropping the contact card. A malformed contact card on receive is dropped without rejecting the identity.
+- The legacy `amiro://share` link is untouched; the scanner should try encounter first, then legacy, until the app is migrated.
+
+PR5 decisions (`sharing`: `NdefRecordData`, `decodeEncounterFromNdef`, `ingestNfcReads`, library only):
+- The boundary is plugin-independent bytes in, validated `EncounterQr` out. The `nfc` package should convert its platform records to `NdefRecordData` when wired.
+- **Existing `nfc` reader bugs the adapter fixes (not yet migrated):** `ManagerNfcReader` reads only the first record (an Android Application Record first would hide the card) and decodes text with `String.fromCharCodes` (Latin-1, and it ignores the UTF-16 flag). The adapter scans all records, decodes strict UTF-8/UTF-16, and skips URI records with abbreviation prefixes.
+- `ingestNfcReads`: reads become `NfcEncounterRead` or `NfcReadRejected`; a hardware dropout (stream error) becomes a rejection instead of an exception and the stream survives; identical reads within a 3 s window are reported once (continuous contact refreshes the window).
+- Remaining before NFC works end to end: wire `ManagerNfcReader` into this adapter and have the emulator write the encounter link (`encodeNdefTextPayload`), both in the app-wiring PRs.
