@@ -71,7 +71,7 @@ The share URI (QR and NFC) now carries the sender's collected cosmetic ids (`own
 
 ## 10. vNext lib-first sequence — PR 1 DONE (2026-09-26)
 Agreed order (library before UI, protocol tests as the gate before any transport):
-PR1 `sharing` canonical payload (**done**, `AmiroSharingPayload`) → PR2 `discovery` EncounterRecord + repository (**done**) → PR3 encounter state machine (**done**) → PR4 QR bridge (**done**) → PR5 NFC boundary (**done**) → PR6 Identity Card → PR7 encounter comparison → PR8 Discovery Passport → PR9 completion engine.
+PR1 `sharing` canonical payload (**done**, `AmiroSharingPayload`) → PR2 `discovery` EncounterRecord + repository (**done**) → PR3 encounter state machine (**done**) → PR4 QR bridge (**done**) → PR5 NFC boundary (**done**) → PR6 Identity Card (**done**) → PR7 encounter comparison → PR8 Discovery Passport → PR9 completion engine.
 
 PR1 decisions worth remembering:
 - `AmiroSharingPayload` is JSON with a required integer `schemaVersion` (1); unknown extra fields are ignored, unsupported versions are rejected as `PayloadErrorKind.unsupportedVersion`, and `discovery` must only ever receive a payload that passed `validate()`. Cap 4096 bytes, 32 entries per list.
@@ -104,3 +104,10 @@ PR5 decisions (`sharing`: `NdefRecordData`, `decodeEncounterFromNdef`, `ingestNf
 - **Existing `nfc` reader bugs the adapter fixes (not yet migrated):** `ManagerNfcReader` reads only the first record (an Android Application Record first would hide the card) and decodes text with `String.fromCharCodes` (Latin-1, and it ignores the UTF-16 flag). The adapter scans all records, decodes strict UTF-8/UTF-16, and skips URI records with abbreviation prefixes.
 - `ingestNfcReads`: reads become `NfcEncounterRead` or `NfcReadRejected`; a hardware dropout (stream error) becomes a rejection instead of an exception and the stream survives; identical reads within a 3 s window are reported once (continuous contact refreshes the window).
 - Remaining before NFC works end to end: wire `ManagerNfcReader` into this adapter and have the emulator write the encounter link (`encodeNdefTextPayload`), both in the app-wiring PRs.
+
+PR6 decisions (Identity Card, `app/lib/sharing/`):
+- `IdentityCard` is purely presentational (no providers, no discovery): it draws an `AmiroSharingPayload` plus an avatar widget and a QR string, so what the card shows is exactly what the payload carries. `buildOwnEncounterPayload` composes that payload from identity, the live avatar and purchases; `progressFromCompletion` resolves series for display and skips series this app version doesn't know.
+- Card content follows DESIGN.md: serif name, up to 3 standout (above-Common) items with rarity labels (brass from Rare up), series progress in mono, real offset shadow, no glow. Common items are deliberately not listed.
+- **The QR/NFC link is still the legacy `amiro://share` link.** The card describes the identity with the encounter payload, but switching the emitted link to `amiro://encounter` waits for PR7, when the scanner, NFC receive and deep links learn to read it (otherwise a new build's QR would be unreadable by the current scanner). PR7 must also migrate the NFC emulator/reader onto `encodeNdefTextPayload` / `decodeEncounterFromNdef`.
+- `CosmeticSeries.id` (`series_1`) and `CosmeticRarity.wireName` / `fromWireName` are the wire spellings; an unknown rarity is ignored, never guessed.
+- Not eyeballed on a device yet.

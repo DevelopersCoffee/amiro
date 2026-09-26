@@ -8,6 +8,18 @@ enum CosmeticRarity {
 
   final String label;
   const CosmeticRarity(this.label);
+
+  /// Upper-case name used on the sharing wire (`RARE`).
+  String get wireName => name.toUpperCase();
+
+  /// The tier for a wire name, or null for anything unrecognised (a newer
+  /// app's tier must not be guessed at).
+  static CosmeticRarity? fromWireName(String wireName) {
+    for (final rarity in values) {
+      if (rarity.wireName == wireName) return rarity;
+    }
+    return null;
+  }
 }
 
 /// A numbered drop, e.g. "Series #1 Founders". Items sharing a [number]
@@ -17,6 +29,9 @@ class CosmeticSeries {
   final String name;
 
   const CosmeticSeries(this.number, this.name);
+
+  /// Stable id used on the sharing wire (`series_1`).
+  String get id => 'series_$number';
 
   String get label => 'Series #$number \u00b7 $name';
 }
