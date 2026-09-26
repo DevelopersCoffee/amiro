@@ -161,4 +161,54 @@ void main() {
       }
     },
   );
+
+  testWidgets(
+    'a series header shows collection progress out of the series total',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 2600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(_screen(FakeAvatarRenderer()));
+      await tester.pumpAndSettle();
+
+      final progress = collectionProgress(cosmeticCatalog, const {}).first;
+      expect(
+        find.text('${progress.owned} / ${progress.total}'),
+        findsOneWidget,
+      );
+      expect(find.text('Complete'), findsNothing);
+    },
+  );
+
+  testWidgets('progress advances on purchase', (tester) async {
+    tester.view.physicalSize = const Size(800, 2600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_screen(FakeAvatarRenderer()));
+    await tester.pumpAndSettle();
+
+    final before = collectionProgress(cosmeticCatalog, const {}).first;
+    final buy = find.widgetWithText(FilledButton, 'Buy \$2.99');
+    await tester.tap(buy);
+    await tester.pumpAndSettle();
+
+    expect(find.text('${before.owned + 1} / ${before.total}'), findsOneWidget);
+  });
+
+  testWidgets('a fully owned series shows Complete', (tester) async {
+    tester.view.physicalSize = const Size(800, 2600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final entitlements = InMemoryEntitlementStore();
+    for (final item in cosmeticCatalog.where((c) => c.series != null)) {
+      await entitlements.grant(item.id);
+    }
+    await tester.pumpWidget(
+      _screen(FakeAvatarRenderer(), entitlementStore: entitlements),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Complete'), findsOneWidget);
+    expect(find.textContaining(' / '), findsNothing);
+  });
 }

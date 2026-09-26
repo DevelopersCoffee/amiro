@@ -38,7 +38,9 @@ void main() {
       expect(parsed.email, isNull);
     });
 
-    test('always includes avatarDefinitionJson when present, regardless of privacy flags', () {
+    test(
+        'always includes avatarDefinitionJson when present, regardless of privacy flags',
+        () {
       final identity = Identity(
         id: 'id-1',
         displayName: 'Uday',
@@ -49,11 +51,13 @@ void main() {
       final uri = buildShareUri(identity);
       final parsed = parseShareUri(uri)!;
 
-      expect(parsed.avatarDefinitionJson, '{"id":"default","body":"body_superhero_male"}');
+      expect(parsed.avatarDefinitionJson,
+          '{"id":"default","body":"body_superhero_male"}');
     });
 
     test('produces a URI with the amiro://share scheme', () {
-      final identity = Identity(id: 'id-1', displayName: 'Uday', username: 'uday');
+      final identity =
+          Identity(id: 'id-1', displayName: 'Uday', username: 'uday');
       final uri = buildShareUri(identity);
 
       expect(uri, startsWith('amiro://share?d='));
@@ -92,7 +96,8 @@ void main() {
       expect(parseShareUri('amiro://share'), isNull);
     });
 
-    test('returns null (fails closed) when a field has the wrong JSON type', () {
+    test('returns null (fails closed) when a field has the wrong JSON type',
+        () {
       // A non-string `id` would previously throw a _TypeError from the
       // `as String?` cast instead of returning null.
       final uri = _rawShareUri({
@@ -126,4 +131,78 @@ void main() {
       expect(parseShareUri(uri), isNull);
     });
   });
+
+  group('owned cosmetic ids', () {
+    test('round-trip through the share URI, sorted', () {
+      final uri =
+          buildShareUri(_identity(), ownedCosmeticIds: {'b_item', 'a_item'});
+
+      expect(parseShareUri(uri)!.ownedCosmeticIds, ['a_item', 'b_item']);
+    });
+
+    test('default to empty when the sender shares none', () {
+      expect(
+          parseShareUri(buildShareUri(_identity()))!.ownedCosmeticIds, isEmpty);
+    });
+
+    test('a payload from an older sender without the field still parses', () {
+      final parsed = parseShareUri(
+        _rawShareUri(
+            {'v': 1, 'id': 'id-1', 'displayName': 'Uday', 'username': 'uday'}),
+      );
+
+      expect(parsed, isNotNull);
+      expect(parsed!.ownedCosmeticIds, isEmpty);
+    });
+
+    test('a malformed field is ignored without rejecting the profile', () {
+      for (final bad in <Object>[
+        'nope',
+        5,
+        [1, 2],
+        ['ok', 3]
+      ]) {
+        final parsed = parseShareUri(
+          _rawShareUri({
+            'v': 1,
+            'id': 'id-1',
+            'displayName': 'Uday',
+            'username': 'uday',
+            'owned': bad,
+          }),
+        );
+
+        expect(parsed, isNotNull, reason: '$bad');
+        expect(parsed!.ownedCosmeticIds, isEmpty, reason: '$bad');
+      }
+    });
+
+    test('are capped so a QR code stays scannable', () {
+      final many = {
+        for (var i = 0; i < 100; i++) 'item_${i.toString().padLeft(3, '0')}'
+      };
+
+      final parsed =
+          parseShareUri(buildShareUri(_identity(), ownedCosmeticIds: many))!;
+
+      expect(parsed.ownedCosmeticIds, hasLength(maxSharedCosmeticIds));
+    });
+
+    test('an oversized received list is truncated to the cap', () {
+      final parsed = parseShareUri(
+        _rawShareUri({
+          'v': 1,
+          'id': 'id-1',
+          'displayName': 'Uday',
+          'username': 'uday',
+          'owned': [for (var i = 0; i < 500; i++) 'x$i'],
+        }),
+      )!;
+
+      expect(parsed.ownedCosmeticIds, hasLength(maxSharedCosmeticIds));
+    });
+  });
 }
+
+Identity _identity() =>
+    Identity(id: 'id-1', displayName: 'Uday', username: 'uday');
