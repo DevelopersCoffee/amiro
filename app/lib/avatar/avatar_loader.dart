@@ -49,7 +49,9 @@ Future<AvatarLoadResult> ensureAvatarLoaded(WidgetRef ref) async {
   final persisted = identity?.avatarDefinitionJson;
   final definition = persisted == null
       ? defaultAvatarDefinition
-      : AvatarDefinition.fromJson(jsonDecode(persisted) as Map<String, dynamic>);
+      : AvatarDefinition.fromJson(
+          jsonDecode(persisted) as Map<String, dynamic>,
+        );
 
   await renderer.load(definition);
   await persistAvatarDefinition(ref, definition);
@@ -59,10 +61,17 @@ Future<AvatarLoadResult> ensureAvatarLoaded(WidgetRef ref) async {
 /// Stores [definition] on the current [Identity], closing the spec's
 /// "definition JSON -> render -> swap -> persist" pipeline. No-op when the
 /// user hasn't created an identity yet — there's nothing to attach it to.
-Future<void> persistAvatarDefinition(WidgetRef ref, AvatarDefinition definition) async {
+Future<void> persistAvatarDefinition(
+  WidgetRef ref,
+  AvatarDefinition definition,
+) async {
   final identity = ref.read(currentIdentityProvider).value;
   if (identity == null) return;
-  await ref.read(currentIdentityProvider.notifier).save(
-        identity.copyWith(avatarDefinitionJson: jsonEncode(definition.toJson())),
+  await ref
+      .read(currentIdentityProvider.notifier)
+      .save(
+        identity.copyWith(
+          avatarDefinitionJson: jsonEncode(definition.toJson()),
+        ),
       );
 }

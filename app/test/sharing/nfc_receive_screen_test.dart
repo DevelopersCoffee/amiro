@@ -8,8 +8,11 @@ import 'package:identity_core/identity_core.dart';
 import 'package:nfc/nfc.dart';
 import 'package:sharing/sharing.dart';
 
+import 'package:amiro_app/discovery/encounter_screen.dart';
 import 'package:amiro_app/sharing/nfc_receive_screen.dart';
 import 'package:amiro_app/sharing/sharing_providers.dart';
+
+import '../discovery/support.dart';
 
 /// A fake [NfcReader] whose `readIncomingPayload()` stream is driven
 /// directly by the test — stands in for real NFC hardware, which
@@ -32,7 +35,7 @@ class _FakeNfcReader implements NfcReader {
 
 Widget _screen(NfcReader reader) {
   return ProviderScope(
-    overrides: [nfcReaderProvider.overrideWithValue(reader)],
+    overrides: [...TestApp().overrides, nfcReaderProvider.overrideWithValue(reader)],
     child: const MaterialApp(home: NfcReceiveScreen()),
   );
 }
@@ -73,6 +76,34 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('an encounter tag navigates to the encounter screen and stops the reader',
+      (tester) async {
+    final reader = _FakeNfcReader();
+    await tester.pumpWidget(_screen(reader));
+    await tester.pump();
+
+    reader.emit(encodeEncounterUri(payloadFor()));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(EncounterScreen), findsOneWidget);
+    expect(find.text('Ada'), findsOneWidget);
+    expect(reader.stopCallCount, 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('an Amiro tag this version cannot read explains itself and stays on the screen',
+      (tester) async {
+    final reader = _FakeNfcReader();
+    await tester.pumpWidget(_screen(reader));
+    await tester.pump();
+
+    reader.emit('amiro://encounter?d=***');
+    await tester.pumpAndSettle();
+
+    expect(find.byType(EncounterScreen), findsNothing);
+    expect(find.textContaining("isn't a card this version can read"), findsOneWidget);
+  });
 
   testWidgets(
     'a read error shows a message instead of crashing',
