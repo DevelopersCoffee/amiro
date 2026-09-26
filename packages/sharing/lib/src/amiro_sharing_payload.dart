@@ -55,6 +55,10 @@ class EquippedCosmeticInfo {
     required this.rarity,
   });
 
+  /// Parses one wire/ledger entry; throws [SharingPayloadException] when it
+  /// isn't a valid cosmetic.
+  factory EquippedCosmeticInfo.fromJson(Object? json) => _cosmeticFrom(json);
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
@@ -85,6 +89,10 @@ class SeriesCompletion {
     required this.currentCount,
     required this.totalCount,
   });
+
+  /// Parses one wire/ledger entry; throws [SharingPayloadException] when it
+  /// isn't a valid completion.
+  factory SeriesCompletion.fromJson(Object? json) => _completionFrom(json);
 
   Map<String, dynamic> toJson() => {
         'seriesId': seriesId,
