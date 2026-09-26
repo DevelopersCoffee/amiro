@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:identity_core/identity_core.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 import 'package:test/test.dart';
 
 import 'test_isar_setup.dart';
