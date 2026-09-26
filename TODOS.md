@@ -71,7 +71,7 @@ The share URI (QR and NFC) now carries the sender's collected cosmetic ids (`own
 
 ## 10. vNext lib-first sequence — PR 1 DONE (2026-09-26)
 Agreed order (library before UI, protocol tests as the gate before any transport):
-PR1 `sharing` canonical payload (**done**, `AmiroSharingPayload`) → PR2 `discovery` EncounterRecord + repository (**done**) → PR3 encounter state machine → PR4 QR bridge → PR5 NFC boundary → PR6 Identity Card → PR7 encounter comparison → PR8 Discovery Passport → PR9 completion engine.
+PR1 `sharing` canonical payload (**done**, `AmiroSharingPayload`) → PR2 `discovery` EncounterRecord + repository (**done**) → PR3 encounter state machine (**done**) → PR4 QR bridge → PR5 NFC boundary → PR6 Identity Card → PR7 encounter comparison → PR8 Discovery Passport → PR9 completion engine.
 
 PR1 decisions worth remembering:
 - `AmiroSharingPayload` is JSON with a required integer `schemaVersion` (1); unknown extra fields are ignored, unsupported versions are rejected as `PayloadErrorKind.unsupportedVersion`, and `discovery` must only ever receive a payload that passed `validate()`. Cap 4096 bytes, 32 entries per list.
@@ -85,3 +85,10 @@ PR2 decisions (`packages/discovery`, library only, not wired into the app):
 - `DiscoveryRepository` is storage only (`getAll`, `findByRemoteIdentityId`, `save`, `delete`). The spec's `registerEncounter` belongs to the PR3 state machine, not the store.
 - The repository enforces one record per `remoteIdentityId` (`save` throws `ArgumentError` otherwise), so unique encounters = `getAll().length` cannot double-count a person.
 - `FileDiscoveryRepository`: atomic temp-file-and-rename writes, serialised writes, and a corrupt file throws `FormatException` and is never overwritten (losing the passport silently is worse than failing loudly). The app must decide how to surface that when it wires this in.
+
+PR3 decisions (`EncounterProcessor` in `packages/discovery`, library only):
+- Two-phase, matching the spec's explicit "save to passport" gate: `receive`/`receivePayload` validate and classify (`NewEncounter`, `KnownEncounter`, `SelfEncounter`, `EncounterRejected`) and write nothing; `save(PendingEncounter)` commits. A dismissed encounter changes nothing, including the repeat count.
+- `save` is idempotent (a double tap counts once), serialised, and recomputes from the ledger if it changed since the preview (two previews of the same new person saved in order make one record met twice). A record deleted between preview and save becomes a first contact again.
+- `ownIdentityId`: scanning your own card returns `SelfEncounter`, so it can't inflate the unique count that Sparks will later be derived from.
+- `lastEncountered` never moves backwards if the device clock does.
+- Only validated payloads reach the ledger: `receive` decodes and `receivePayload` re-validates.
