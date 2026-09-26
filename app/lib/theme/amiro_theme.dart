@@ -13,6 +13,27 @@ abstract final class AmiroColors {
   static const error = Color(0xFFB4543B);
 }
 
+/// Monospaced, tabular-figure style for prices and valuation (DESIGN.md).
+class AmiroTypography extends ThemeExtension<AmiroTypography> {
+  final TextStyle mono;
+
+  const AmiroTypography({required this.mono});
+
+  @override
+  AmiroTypography copyWith({TextStyle? mono}) =>
+      AmiroTypography(mono: mono ?? this.mono);
+
+  @override
+  AmiroTypography lerp(AmiroTypography? other, double t) => other == null
+      ? this
+      : AmiroTypography(mono: TextStyle.lerp(mono, other.mono, t)!);
+}
+
+/// The mono style from the ambient theme, or a plain tabular fallback.
+TextStyle amiroMono(BuildContext context) =>
+    Theme.of(context).extension<AmiroTypography>()?.mono ??
+    const TextStyle(fontFeatures: [FontFeature.tabularFigures()]);
+
 /// [loadFonts] fetches Instrument Sans/Serif at runtime; tests pass false.
 ThemeData buildAmiroTheme({bool loadFonts = true}) {
   const scheme = ColorScheme.dark(
@@ -26,17 +47,26 @@ ThemeData buildAmiroTheme({bool loadFonts = true}) {
   );
 
   var textTheme = ThemeData(brightness: Brightness.dark).textTheme.apply(
-        bodyColor: AmiroColors.text,
-        displayColor: AmiroColors.text,
-      );
+    bodyColor: AmiroColors.text,
+    displayColor: AmiroColors.text,
+  );
   if (loadFonts) {
     textTheme = GoogleFonts.instrumentSansTextTheme(textTheme).copyWith(
-      headlineSmall: GoogleFonts.instrumentSerif(textStyle: textTheme.headlineSmall),
+      headlineSmall: GoogleFonts.instrumentSerif(
+        textStyle: textTheme.headlineSmall,
+      ),
       titleLarge: GoogleFonts.instrumentSerif(textStyle: textTheme.titleLarge),
     );
   }
 
+  var mono = const TextStyle(
+    fontWeight: FontWeight.w600,
+    fontFeatures: [FontFeature.tabularFigures()],
+  );
+  if (loadFonts) mono = GoogleFonts.jetBrainsMono(textStyle: mono);
+
   return ThemeData(
+    extensions: [AmiroTypography(mono: mono)],
     useMaterial3: true,
     brightness: Brightness.dark,
     colorScheme: scheme,

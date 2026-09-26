@@ -28,4 +28,9 @@ void main() {
     expect(shape.borderRadius, BorderRadius.circular(14));
     expect(style.minimumSize!.resolve({})!.height, 44);
   });
+
+  test('exposes a tabular-figure mono style for prices', () {
+    final mono = theme.extension<AmiroTypography>()!.mono;
+    expect(mono.fontFeatures, contains(const FontFeature.tabularFigures()));
+  });
 }
