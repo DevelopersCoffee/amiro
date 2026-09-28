@@ -1,0 +1,100 @@
+# Amiro — Store Listing Draft
+
+Draft copy for the Play Console / App Store Connect store listing. Fill in
+the actual forms from this; nothing here is auto-published.
+
+## App name
+
+Amiro
+
+## Short description (Play: 80 characters max)
+
+Your digital identity, made wearable. Tap or scan to share.
+
+(60 characters)
+
+## Full description (Play: 4000 characters max)
+
+Amiro is your personal digital identity — a 3D avatar you build once and
+share everywhere.
+
+**Build your avatar**
+Choose a hairstyle, outfit, and accessories. Rotate it a full 360° to see
+every angle. Your avatar is yours: it lives on your device, not on a
+server.
+
+**Share it instantly**
+Show a QR code, or — on Android — just tap phones together. Whoever you
+share with sees your avatar and whichever profile details you've chosen
+to make public: your name, bio, social handles, whatever you decide.
+
+**You control what's public**
+Every field in your profile — email, phone, social handles, website — has
+its own privacy toggle. Nothing you mark private ever leaves your device.
+
+**No account needed**
+There's no sign-up, no password, and no Amiro server. Your identity and
+avatar are stored locally. Uninstalling the app removes them.
+
+**A growing wardrobe**
+Visit the Store to unlock new hairstyles, outfits, and accessories for
+your avatar — some free, some purchasable.
+
+Amiro is a novelty identity app for a simple moment: "This is me." Tap or
+scan, and your digital identity appears.
+
+## Category
+
+Play: Social (or Lifestyle, depending on final policy classification)
+
+## Contact details
+
+- Email: coffee.devloper@gmail.com
+- Privacy policy: https://developerscoffee.github.io/amiro/legal/privacy-policy.html
+
+## Screenshots needed (not yet produced)
+
+Play requires at least 2 phone screenshots (recommend 4-8) at 16:9 or
+9:16, 320-3840px on the long edge. Suggested shots, all from a real
+device, not the emulator:
+
+1. Avatar screen, front-facing, chrome visible (name/valuation bar)
+2. Avatar mid-rotation (side/three-quarter view) — shows the 360° feature
+3. Store screen with a few catalog items visible
+4. Share screen — QR code shown, NFC section visible (Android)
+5. Shared Profile screen — showing a received identity
+
+## Feature graphic (1024x500, required for Play)
+
+Not yet produced. Needs a simple background + the Amiro avatar + a
+tagline, e.g. "Your identity, made wearable."
+
+## App icon
+
+Current icon (`app/assets/icon/icon.png`) is a placeholder generated for
+internal testing (purple background, white person glyph) — not
+production-ready. Needs a real icon before a production listing.
+
+## Content rating questionnaire — draft answers
+
+(Google's IARC questionnaire; answer inside Play Console, this is a guide)
+
+- Violence: None
+- Sexuality: None
+- Profanity: None
+- Controlled substances: None
+- Gambling: None (no real-money mechanics; cosmetic purchases are
+  cosmetic-only, not loot boxes/randomized)
+- User-generated content / user interaction: shares identity data with
+  other users (peer-to-peer, not via a server) — answer "Yes" to
+  "shares user's location" → **No**; "users can interact" → **Yes**
+  (via QR/NFC share, not in-app messaging); "shares personal info with
+  other users" → **Yes** (only fields the user marks public)
+- Digital purchases: **Yes** (cosmetic items in the Store) — currently
+  UI-only, no real payment processor wired up yet; do not submit for
+  production until Play Billing is integrated, or remove priced items
+  from the listing build.
+
+## Data safety form — draft answers
+
+See `docs/legal/data-safety.md` for the full field-by-field draft.
