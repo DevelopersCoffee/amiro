@@ -42,22 +42,36 @@ class _RootTabsState extends State<_RootTabs> {
     ];
     return Scaffold(
       body: screens[_index],
+      // Outline-vs-filled icon pairs make the active tab clear without
+      // depending on colour alone (DESIGN.md: brass is reserved for
+      // equipped/price/primary-action, not a 4th "nav accent" use).
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.person), label: 'Identity'),
           NavigationDestination(
-            icon: Icon(Icons.face_retouching_natural),
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Identity',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.face_outlined),
+            selectedIcon: Icon(Icons.face_retouching_natural),
             label: 'Avatar',
           ),
           NavigationDestination(
             icon: Icon(Icons.storefront_outlined),
+            selectedIcon: Icon(Icons.storefront),
             label: 'Store',
           ),
-          NavigationDestination(icon: Icon(Icons.ios_share), label: 'Share'),
+          NavigationDestination(
+            icon: Icon(Icons.ios_share_outlined),
+            selectedIcon: Icon(Icons.ios_share),
+            label: 'Share',
+          ),
           NavigationDestination(
             icon: Icon(Icons.explore_outlined),
+            selectedIcon: Icon(Icons.explore),
             label: 'Passport',
           ),
         ],

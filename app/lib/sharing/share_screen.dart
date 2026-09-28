@@ -7,8 +7,10 @@ import 'package:nfc/nfc.dart';
 
 import '../avatar/avatar_loader.dart';
 import '../avatar/avatar_providers.dart';
+import '../identity/identity_edit_screen.dart';
 import '../identity/identity_providers.dart';
 import '../store/store_providers.dart';
+import '../theme/empty_state.dart';
 import 'identity_card.dart';
 import 'nfc_receive_screen.dart';
 import 'own_encounter.dart';
@@ -128,7 +130,16 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
       body: identityAsync.when(
         data: (identity) {
           if (identity == null) {
-            return const Center(child: Text('Create your identity first'));
+            return EmptyState(
+              title: 'Create your identity first',
+              hint:
+                  'Your Amiro card — avatar, name and collection — needs a '
+                  'wearable identity to show off before it can be shared.',
+              actionLabel: 'Create identity',
+              onAction: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const IdentityEditScreen()),
+              ),
+            );
           }
           final payload = buildOwnEncounterPayload(
             identity: identity,

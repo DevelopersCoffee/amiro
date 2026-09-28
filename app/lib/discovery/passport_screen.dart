@@ -8,7 +8,10 @@ import '../sharing/own_encounter.dart';
 import '../sharing/standouts.dart';
 import '../store/rarity_label_style.dart';
 import '../store/series_progress_row.dart';
+import '../theme/amiro_card.dart';
 import '../theme/amiro_theme.dart';
+import '../theme/empty_state.dart';
+import '../theme/section_label.dart';
 import 'date_format.dart';
 import 'discovery_providers.dart';
 import 'passport_entry_screen.dart';
@@ -27,13 +30,13 @@ class PassportScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Passport')),
       body: records.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => const _Empty(
+        error: (_, _) => const EmptyState(
           title: "Your passport couldn't be opened",
           hint: 'Restart the app to try again.',
         ),
         data: (all) {
           if (all.isEmpty) {
-            return const _Empty(
+            return const EmptyState(
               title: 'No one discovered yet',
               hint:
                   'Scan or tap another Amiro from the Share tab to start your passport.',
@@ -64,13 +67,9 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = Theme.of(context).textTheme.labelSmall?.copyWith(
-      color: AmiroColors.textMuted,
-      letterSpacing: 2.4,
-    );
     return Row(
       children: [
-        Text('DISCOVERED', style: label),
+        const SectionLabel('DISCOVERED'),
         const SizedBox(width: 12),
         Text(
           '${count.toString().padLeft(2, '0')} ${count == 1 ? 'identity' : 'identities'}',
@@ -95,96 +94,53 @@ class _EntryCard extends StatelessWidget {
       record.observedCollections,
     ).where((p) => p.owned > 0);
 
-    return InkWell(
+    return AmiroCard(
       key: Key('passportEntry-${record.remoteIdentityId}'),
-      borderRadius: BorderRadius.circular(16),
+      border: cardBorder(record.observedCollections),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) =>
               PassportEntryScreen(remoteIdentityId: record.remoteIdentityId),
         ),
       ),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AmiroColors.surface,
-          border: cardBorder(record.observedCollections),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(record.displayName, style: textTheme.headlineSmall),
-            const SizedBox(height: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(record.displayName, style: textTheme.headlineSmall),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Text(
+                'First met ${formatShortDate(record.firstEncountered)}',
+                style: textTheme.labelMedium?.copyWith(
+                  color: AmiroColors.textMuted,
+                ),
+              ),
+              if (record.encounterCount > 1) ...[
+                const SizedBox(width: 8),
+                Text(
+                  '${record.encounterCount}×',
+                  style: amiroMono(
+                    context,
+                  ).copyWith(color: AmiroColors.textMuted),
+                ),
+              ],
+            ],
+          ),
+          for (final (item, rarity) in standouts) ...[
+            const SizedBox(height: 8),
             Row(
               children: [
-                Text(
-                  'First met ${formatShortDate(record.firstEncountered)}',
-                  style: textTheme.labelMedium?.copyWith(
-                    color: AmiroColors.textMuted,
-                  ),
-                ),
-                if (record.encounterCount > 1) ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    '${record.encounterCount}×',
-                    style: amiroMono(
-                      context,
-                    ).copyWith(color: AmiroColors.textMuted),
-                  ),
-                ],
+                Expanded(child: Text(item.name)),
+                Text(rarity.label, style: rarityLabelStyle(context, rarity)),
               ],
             ),
-            for (final (item, rarity) in standouts) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(child: Text(item.name)),
-                  Text(rarity.label, style: rarityLabelStyle(context, rarity)),
-                ],
-              ),
-            ],
-            for (final progress in series) ...[
-              const SizedBox(height: 8),
-              SeriesProgressRow(progress),
-            ],
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Empty extends StatelessWidget {
-  final String title;
-  final String hint;
-
-  const _Empty({required this.title, required this.hint});
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              title,
-              style: textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
+          for (final progress in series) ...[
             const SizedBox(height: 8),
-            Text(
-              hint,
-              style: textTheme.bodyMedium?.copyWith(
-                color: AmiroColors.textMuted,
-              ),
-              textAlign: TextAlign.center,
-            ),
+            SeriesProgressRow(progress),
           ],
-        ),
+        ],
       ),
     );
   }

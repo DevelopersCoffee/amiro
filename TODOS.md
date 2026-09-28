@@ -122,3 +122,17 @@ PR7-9 decisions (shipped together as one PR; taken autonomously while the owner 
 - **Completion engine** (`completedSeries`, `isSetComplete`, `SeriesCompletion.isComplete`): derived from catalog + entitlements, never stored, no remote validation. The v1 reward is a 2px brass **collector's frame** on the identity card and passport entries (DESIGN.md's equipped-card border), because no avatar asset exists to unlock. An avatar-level reward stays open until there is an asset.
 - **Not built (deliberately):** Sparks / milestones on the unique-encounter count (`EncounterProcessor.uniqueEncounterCount` is the primitive), encounter history snapshots, real scarcity/editions, signed provenance, a rarity filter in the store, an exportable card image.
 - **Not eyeballed on a device**: card and encounter screen layout, the 5-item navigation bar, and NFC end to end.
+
+## 11. Design polish PR 1: tokens + shared components — DONE (2026-09-28)
+Scope agreed with the owner after an external design critique (see DESIGN.md's 2026-09-28 decision): keep the brass/warm-charcoal/Instrument Serif system, do execution polish only, defer new product behavior.
+
+- `AmiroCard` (`app/lib/theme/amiro_card.dart`): the one elevated-surface treatment (surface fill, radius 16, real offset shadow, neutral hairline border unless overridden). Replaces duplicated `BoxDecoration` in `IdentityCard` and the passport entry card.
+- `SectionLabel` / `sectionLabelStyle`: the muted, wide-tracked uppercase caption pattern (AMIRO, DISCOVERED, ...), deduplicated.
+- `EmptyState`: title + hint + optional action button. Replaces Passport's ad hoc `_Empty` and the Share screen's bare "Create your identity first" label, which now explains itself and offers a "Create identity" button that opens `IdentityEditScreen`.
+- `AmiroSpacing` / `AmiroRadius`: DESIGN.md's 4px/radius scales as named constants.
+- Disabled `FilledButton` now actually matches DESIGN.md's spec (40% opacity brass, no shadow) — it never had before; Material's default grey-out was still in effect.
+- Bottom nav: outline/filled icon pairs per tab (selected state readable without relying on color, since brass is reserved for equipped/price/primary-action only) and consistent selected/unselected label weight.
+
+**Deliberately not touched this pass (Phase 2/3, separate PRs):**
+- Identity screen hierarchy/profile-preview, avatar full-screen/rotate-lighting-preset polish, Store card visual redesign — each is its own screen/workstream per the agreed incremental approach.
+- New product behavior: outfit presets, background/lighting picker, before/after preview, unlock/reveal animations, live username availability, dirty-state save gating.
