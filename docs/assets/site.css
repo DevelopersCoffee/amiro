@@ -1,0 +1,366 @@
+:root {
+  --primary: #C08A3E;
+  --primary-hover: #D6A254;
+  --on-primary: #1D1509;
+  --surface: #1F1D17;
+  --surface-border: #322F26;
+  --text: #EDE8DE;
+  --text-muted: #8C8474;
+  --ground: #161510;
+  --success: #6E8F5C;
+  --error: #B4543B;
+  --max: 1080px;
+  --header: 72px;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--header) + 16px);
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--text);
+  font-family: "Instrument Sans", -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, .display {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-weight: 400;
+  line-height: 1.15;
+  margin: 0;
+  letter-spacing: 0.005em;
+}
+
+p { margin: 0 0 1em; color: var(--text); }
+p:last-child { margin-bottom: 0; }
+
+.mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+a { color: inherit; text-decoration: none; }
+
+.container {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* -------- Header -------- */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: var(--header);
+  display: flex;
+  align-items: center;
+  background: rgba(22, 21, 16, 0.88);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.nav-shell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand img, .brand svg { width: 28px; height: 28px; display: block; }
+
+.brand span {
+  font-family: "Instrument Serif", serif;
+  font-size: 1.3rem;
+  color: var(--text);
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.site-nav a:not(.button) {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  transition: color 150ms ease-out;
+}
+.site-nav a:not(.button):hover { color: var(--text); }
+
+.menu-button {
+  display: none;
+  background: none;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 8px 10px;
+}
+
+/* -------- Buttons -------- */
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: 14px;
+  font-family: "Instrument Sans", sans-serif;
+  font-weight: 600;
+  font-size: 0.92rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  box-shadow: 0 12px 24px -16px rgba(0,0,0,0.7);
+}
+.button-primary {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+.button-primary:hover { background: var(--primary-hover); }
+.button-secondary {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--surface-border);
+  box-shadow: none;
+}
+.button-secondary:hover { border-color: var(--text-muted); }
+
+/* -------- Hero -------- */
+.hero {
+  padding: 88px 0 64px;
+}
+.hero-mark {
+  width: 84px;
+  height: 84px;
+  margin-bottom: 28px;
+  filter: drop-shadow(0 20px 32px rgba(0,0,0,0.55));
+}
+.eyebrow {
+  font-family: "Instrument Sans", sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin: 0 0 14px;
+  font-weight: 600;
+}
+.hero h1 {
+  font-size: clamp(3rem, 8vw, 5.2rem);
+  color: var(--text);
+}
+.hero-lede {
+  font-family: "Instrument Serif", serif;
+  font-size: clamp(1.3rem, 3vw, 1.7rem);
+  color: var(--text);
+  max-width: 640px;
+  margin: 18px 0 14px;
+}
+.hero-copy {
+  color: var(--text-muted);
+  max-width: 560px;
+  font-size: 1.02rem;
+}
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 32px 0 18px;
+}
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 9999px;
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.status-pill .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--success);
+}
+
+/* -------- Proof strip -------- */
+.proof-strip {
+  border-top: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--surface-border);
+  padding: 32px 0;
+}
+.proof-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+.proof-item strong {
+  display: block;
+  font-family: "Instrument Sans", sans-serif;
+  font-size: 0.95rem;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.proof-item span {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* -------- Sections -------- */
+.band { padding: 80px 0; }
+.band-alt { background: var(--surface); }
+.section-intro { max-width: 640px; margin-bottom: 44px; }
+.section-intro h2 { font-size: clamp(1.8rem, 4vw, 2.4rem); margin: 8px 0 12px; }
+.section-intro p { color: var(--text-muted); }
+
+/* How it works: numbered steps */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+.step {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 16px;
+  padding: 24px 20px;
+  box-shadow: 0 18px 30px -22px rgba(0,0,0,0.6);
+}
+.step-num {
+  font-family: "JetBrains Mono", monospace;
+  color: var(--primary);
+  font-size: 0.85rem;
+  margin-bottom: 14px;
+  display: block;
+}
+.step h3 {
+  font-size: 1.2rem;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+.step p { color: var(--text-muted); font-size: 0.92rem; }
+
+/* Feature grid */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.feature-card {
+  background: var(--ground);
+  border: 1px solid var(--surface-border);
+  border-radius: 16px;
+  padding: 22px 20px;
+}
+.feature-card h3 {
+  font-size: 1.05rem;
+  color: var(--text);
+  margin-bottom: 8px;
+  font-family: "Instrument Sans", sans-serif;
+  font-weight: 600;
+}
+.feature-card p { color: var(--text-muted); font-size: 0.9rem; }
+.feature-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 14px;
+  color: var(--primary);
+  font-size: 1.1rem;
+}
+
+/* Philosophy quote */
+.philosophy {
+  padding: 88px 0;
+  text-align: left;
+}
+.philosophy blockquote {
+  font-family: "Instrument Serif", serif;
+  font-size: clamp(1.6rem, 4vw, 2.3rem);
+  color: var(--text);
+  margin: 0 0 20px;
+  max-width: 760px;
+  line-height: 1.3;
+}
+.philosophy cite {
+  font-style: normal;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* Privacy band */
+.privacy-band {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  border: 1px solid var(--surface-border);
+  border-radius: 16px;
+  padding: 28px 28px;
+  background: var(--surface);
+}
+.privacy-band h3 { font-size: 1.3rem; margin-bottom: 6px; color: var(--text); }
+.privacy-band p { color: var(--text-muted); max-width: 480px; }
+
+/* Footer */
+.site-footer {
+  border-top: 1px solid var(--surface-border);
+  padding: 40px 0;
+}
+.footer-grid {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.footer-links {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+.footer-links a { color: var(--text-muted); font-size: 0.88rem; }
+.footer-links a:hover { color: var(--text); }
+.footer-meta { color: var(--text-muted); font-size: 0.82rem; }
+
+/* -------- Responsive -------- */
+@media (max-width: 860px) {
+  .proof-grid { grid-template-columns: repeat(2, 1fr); }
+  .steps { grid-template-columns: repeat(2, 1fr); }
+  .feature-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .site-nav:not(.open) { display: none; }
+  .menu-button { display: inline-flex; }
+  .site-nav.open {
+    position: absolute;
+    top: var(--header);
+    left: 0; right: 0;
+    background: var(--ground);
+    border-bottom: 1px solid var(--surface-border);
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 20px;
+    gap: 18px;
+  }
+  .proof-grid { grid-template-columns: 1fr 1fr; }
+  .steps { grid-template-columns: 1fr; }
+  .feature-grid { grid-template-columns: 1fr; }
+  .privacy-band { flex-direction: column; align-items: flex-start; }
+}
