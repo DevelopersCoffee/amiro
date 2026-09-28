@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amiro — Your digital identity, made wearable</title>
+<meta name="description" content="Amiro is a local-first 3D identity you build once and share by tap or scan. No accounts, no servers, no ads — just a status object worth collecting.">
+<meta name="theme-color" content="#161510">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://developerscoffee.github.io/amiro/">
+<meta property="og:title" content="Amiro — Your digital identity, made wearable">
+<meta property="og:description" content="A local-first 3D identity you build once and share by tap or scan.">
+<meta property="og:image" content="https://developerscoffee.github.io/amiro/assets/amiro-icon-1024.png">
+<link rel="icon" href="assets/amiro-mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav-shell">
+    <a class="brand" href="#top">
+      <img src="assets/amiro-mark.svg" alt="" width="28" height="28">
+      <span>Amiro</span>
+    </a>
+    <button class="menu-button" type="button" aria-label="Open navigation" aria-expanded="false" onclick="document.querySelector('.site-nav').classList.toggle('open')">☰</button>
+    <nav class="site-nav">
+      <a href="#how-it-works">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#philosophy">Philosophy</a>
+      <a href="legal/privacy-policy.html">Privacy</a>
+      <a class="button button-secondary" href="https://github.com/DevelopersCoffee/amiro" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="container">
+      <img class="hero-mark" src="assets/amiro-mark.svg" alt="Amiro mark">
+      <p class="eyebrow">A wearable digital identity</p>
+      <h1>This is me.</h1>
+      <p class="hero-lede">Tap phones, or scan a code — and your identity appears.</p>
+      <p class="hero-copy">Amiro is a 3D identity you build once: an avatar you customize with hair, outfits, and accessories, and a profile with privacy toggles on every field. Share it by NFC tap or QR code, no account required — everything lives on your device, not on a server.</p>
+      <div class="hero-actions">
+        <a class="button button-primary" href="#how-it-works">See how it works</a>
+        <a class="button button-secondary" href="legal/privacy-policy.html">Read the privacy policy</a>
+      </div>
+      <span class="status-pill"><span class="dot"></span> Currently in closed testing — not yet on the Play Store</span>
+    </div>
+  </section>
+
+  <section class="proof-strip">
+    <div class="container proof-grid">
+      <div class="proof-item"><strong>Local-first</strong><span>Your identity and avatar live on your device. No server, no account.</span></div>
+      <div class="proof-item"><strong>You choose what's public</strong><span>Every field — email, phone, handles — has its own privacy toggle.</span></div>
+      <div class="proof-item"><strong>Tap or scan</strong><span>NFC on Android, QR on both platforms. No app-to-app pairing.</span></div>
+      <div class="proof-item"><strong>Worth collecting</strong><span>Rarity tiers and numbered series — a status object, not a gate.</span></div>
+    </div>
+  </section>
+
+  <section class="band" id="how-it-works">
+    <div class="container">
+      <div class="section-intro">
+        <p class="eyebrow">How it works</p>
+        <h2>Build it once. Share it everywhere.</h2>
+        <p>The whole loop happens on your phone — nothing round-trips to a server.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <span class="step-num mono">01</span>
+          <h3>Build your identity</h3>
+          <p>Set a name, bio, and contact details — each with its own public/private toggle — then build a 3D avatar: hair, outfit, accessories, rotate it a full 360° to see every angle.</p>
+        </div>
+        <div class="step">
+          <span class="step-num mono">02</span>
+          <h3>Share it</h3>
+          <p>Show a QR code, or — on Android — tap phones together. The other person sees only the fields you marked public. Nothing passes through a server, because none exists.</p>
+        </div>
+        <div class="step">
+          <span class="step-num mono">03</span>
+          <h3>Collect who you meet</h3>
+          <p>Every person you scan or tap is logged in your Discovery Passport — who you met, when, and what they were wearing at the time.</p>
+        </div>
+        <div class="step">
+          <span class="step-num mono">04</span>
+          <h3>Grow your wardrobe</h3>
+          <p>Visit the Store for new hairstyles, outfits, and accessories — common pieces free, rarer pieces in numbered series, worth showing off.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band band-alt" id="features">
+    <div class="container">
+      <div class="section-intro">
+        <p class="eyebrow">Features</p>
+        <h2>Everything the loop needs, nothing it doesn't.</h2>
+      </div>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">◐</div>
+          <h3>3D avatar, 360°</h3>
+          <p>Drag to rotate. Hair, outfits, and accessories rendered in real time on your device.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">▦</div>
+          <h3>Tap or scan sharing</h3>
+          <p>NFC tap-to-share on Android, QR code on every platform. No pairing, no waiting.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">◈</div>
+          <h3>Field-level privacy</h3>
+          <p>Email, phone, socials, website — each one is public or private, your choice alone.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">▤</div>
+          <h3>Discovery Passport</h3>
+          <p>A private log of everyone you've met through Amiro, and what they were wearing.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">✦</div>
+          <h3>Rarity &amp; series</h3>
+          <p>Cosmetics come in tiers, some in numbered series — a few free, some worth collecting.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">◍</div>
+          <h3>Nothing leaves your phone</h3>
+          <p>No analytics, no ads, no account. Uninstalling removes everything Amiro stored.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="philosophy" id="philosophy">
+    <div class="container">
+      <p class="eyebrow">Why it looks like this</p>
+      <blockquote>&ldquo;A wearable digital identity styled as a status object — one brass accent does all the emphasis work, and nothing is decorated for decoration's sake.&rdquo;</blockquote>
+      <cite>Amiro is built for premium, cult-status positioning: people collect it because it feels worth showing off, not because they're locked out of a free experience.</cite>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="container">
+      <div class="privacy-band">
+        <div>
+          <h3>Built local-first, on purpose</h3>
+          <p>There is no Amiro server. Your identity, avatar, and Discovery Passport are stored only on your device. Sharing sends data directly, phone to phone.</p>
+        </div>
+        <a class="button button-primary" href="legal/privacy-policy.html">Read the full privacy policy</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div>
+      <div class="brand" style="margin-bottom: 10px;">
+        <img src="assets/amiro-mark.svg" alt="" width="22" height="22">
+        <span style="font-size: 1.05rem;">Amiro</span>
+      </div>
+      <p class="footer-meta">By Developer's Coffee</p>
+    </div>
+    <nav class="footer-links">
+      <a href="legal/privacy-policy.html">Privacy policy</a>
+      <a href="https://github.com/DevelopersCoffee/amiro" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://developerscoffee.github.io/" target="_blank" rel="noopener">Developer's Coffee</a>
+      <a href="mailto:coffee.devloper@gmail.com">Contact</a>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>

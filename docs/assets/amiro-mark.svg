@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 432 432">
+<defs><linearGradient id="brass" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="#D6A254"/><stop offset="1" stop-color="#C08A3E"/>
+</linearGradient></defs>
+<g fill="none" stroke="url(#brass)" stroke-width="48" stroke-linecap="round" stroke-linejoin="round">
+<path d="M92 310 L174 116 Q216 42 258 116 L340 310"/>
+<path d="M137 310 Q216 218 295 310"/>
+</g><circle cx="216" cy="190" r="27" fill="url(#brass)"/>
+</svg>
