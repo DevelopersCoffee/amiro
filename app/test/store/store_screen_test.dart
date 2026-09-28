@@ -97,8 +97,37 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Buy \$2.99'));
     await tester.pumpAndSettle();
 
+    // A mock purchase sheet confirms first — no processor is wired up yet,
+    // so a single tap must not silently grant the item.
+    expect(find.text('Confirm (demo)'), findsOneWidget);
+    expect(await entitlements.ownedCosmeticIds(), isNot(contains('riviera_optics')));
+
+    await tester.tap(find.text('Confirm (demo)'));
+    await tester.pumpAndSettle();
+
     expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsNothing);
     expect(await entitlements.ownedCosmeticIds(), contains('riviera_optics'));
+  });
+
+  testWidgets('canceling the mock purchase dialog does not grant the item', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 2600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final renderer = FakeAvatarRenderer();
+    final entitlements = InMemoryEntitlementStore();
+    await tester.pumpWidget(_screen(renderer, entitlementStore: entitlements));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Buy \$2.99'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
+    expect(await entitlements.ownedCosmeticIds(), isNot(contains('riviera_optics')));
   });
 
   testWidgets('prices use the monospaced tabular style', (tester) async {
@@ -190,6 +219,8 @@ void main() {
     final before = collectionProgress(cosmeticCatalog, const {}).first;
     final buy = find.widgetWithText(FilledButton, 'Buy \$2.99');
     await tester.tap(buy);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Confirm (demo)'));
     await tester.pumpAndSettle();
 
     expect(find.text('${before.owned + 1} / ${before.total}'), findsOneWidget);
