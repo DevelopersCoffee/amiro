@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:avatar_core/avatar_core.dart';
 import 'package:avatar_renderer/avatar_renderer.dart';
 import 'package:store/store.dart';
 
@@ -9,6 +10,7 @@ import 'package:amiro_app/avatar/avatar_providers.dart';
 import 'package:amiro_app/identity/identity_providers.dart';
 import 'package:amiro_app/store/store_providers.dart';
 import 'package:amiro_app/store/store_screen.dart';
+import 'package:amiro_app/theme/amiro_card.dart';
 import 'package:amiro_app/theme/amiro_theme.dart';
 
 import '../avatar/fake_avatar_renderer.dart';
@@ -100,7 +102,10 @@ void main() {
     // A mock purchase sheet confirms first — no processor is wired up yet,
     // so a single tap must not silently grant the item.
     expect(find.text('Confirm (demo)'), findsOneWidget);
-    expect(await entitlements.ownedCosmeticIds(), isNot(contains('riviera_optics')));
+    expect(
+      await entitlements.ownedCosmeticIds(),
+      isNot(contains('riviera_optics')),
+    );
 
     await tester.tap(find.text('Confirm (demo)'));
     await tester.pumpAndSettle();
@@ -127,7 +132,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
-    expect(await entitlements.ownedCosmeticIds(), isNot(contains('riviera_optics')));
+    expect(
+      await entitlements.ownedCosmeticIds(),
+      isNot(contains('riviera_optics')),
+    );
   });
 
   testWidgets('prices use the monospaced tabular style', (tester) async {
@@ -241,5 +249,94 @@ void main() {
 
     expect(find.text('Complete'), findsOneWidget);
     expect(find.textContaining(' / '), findsNothing);
+  });
+
+  group('cosmetic card treatment (DESIGN.md)', () {
+    testWidgets(
+      'an equipped item gets a 2px brass border and an EQUIPPED badge',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        final renderer = FakeAvatarRenderer();
+        await renderer.load(
+          const AvatarDefinition(
+            id: 'default',
+            body: 'body_superhero_male',
+            glasses: 'glasses_placeholder',
+          ),
+        );
+        await tester.pumpWidget(_screen(renderer));
+        await tester.pumpAndSettle();
+
+        expect(find.text('EQUIPPED'), findsOneWidget);
+        final card = tester.widget<Container>(
+          find
+              .descendant(
+                of: find.ancestor(
+                  of: find.text('EQUIPPED'),
+                  matching: find.byType(AmiroCard),
+                ),
+                matching: find.byType(Container),
+              )
+              .first,
+        );
+        final border = (card.decoration as BoxDecoration).border! as Border;
+        expect(border.top.width, 2);
+        expect(border.top.color, AmiroColors.primary);
+      },
+    );
+
+    testWidgets(
+      'an item that is not equipped has no badge and the neutral hairline border',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(_screen(FakeAvatarRenderer()));
+        await tester.pumpAndSettle();
+
+        // Classic Frame's asset (glasses_placeholder) is never in the
+        // default avatar, unlike the default outfit's free items — so it is
+        // always unequipped regardless of what else the default fits.
+        expect(
+          find.descendant(
+            of: find.ancestor(
+              of: find.text('Classic Frame'),
+              matching: find.byType(AmiroCard),
+            ),
+            matching: find.text('EQUIPPED'),
+          ),
+          findsNothing,
+        );
+        final card = tester.widget<Container>(
+          find
+              .descendant(
+                of: find.ancestor(
+                  of: find.text('Classic Frame'),
+                  matching: find.byType(AmiroCard),
+                ),
+                matching: find.byType(Container),
+              )
+              .first,
+        );
+        final border = (card.decoration as BoxDecoration).border! as Border;
+        expect(border.top.width, 1);
+        expect(border.top.color, AmiroColors.surfaceBorder);
+      },
+    );
+
+    testWidgets('each catalog row is an AmiroCard, not a flat list tile', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 3600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(_screen(FakeAvatarRenderer()));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AmiroCard), findsNWidgets(cosmeticCatalog.length));
+      expect(find.byType(ListTile), findsNothing);
+    });
   });
 }

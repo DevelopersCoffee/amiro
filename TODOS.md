@@ -136,3 +136,7 @@ Scope agreed with the owner after an external design critique (see DESIGN.md's 2
 **Deliberately not touched this pass (Phase 2/3, separate PRs):**
 - Identity screen hierarchy/profile-preview, avatar full-screen/rotate-lighting-preset polish, Store card visual redesign — each is its own screen/workstream per the agreed incremental approach.
 - New product behavior: outfit presets, background/lighting picker, before/after preview, unlock/reveal animations, live username availability, dirty-state save gating.
+
+## 12. Design polish PR 2: Store card redesign — DONE (2026-09-29)
+Implements DESIGN.md's already-written but never-built "Cosmetic item card" spec: default = surface + hairline border; equipped = 2px brass border + `EQUIPPED` badge (on-primary text on primary fill); purchased-but-unequipped = default, no badge. Rows are now `AmiroCard` instead of `ListTile`. Preview-before-buy is unchanged (the whole card is tappable, including unowned items — see #6).
+Not built: locked/premium 55% overlay + lock icon (no "locked" concept distinct from "not owned" exists in the data model — would be a new state, deferred) and SOLD OUT (no supply concept exists — deferred with real scarcity/editions, TODOS #10).
