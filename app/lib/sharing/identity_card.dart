@@ -5,7 +5,9 @@ import 'package:sharing/sharing.dart';
 
 import '../store/rarity_label_style.dart';
 import '../store/series_progress_row.dart';
+import '../theme/amiro_card.dart';
 import '../theme/amiro_theme.dart';
+import '../theme/section_label.dart';
 import 'collector_frame.dart';
 import 'own_encounter.dart';
 import 'standouts.dart';
@@ -40,32 +42,12 @@ class IdentityCard extends StatelessWidget {
       payload.collectionCompletion,
     ).where((p) => p.owned > 0);
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AmiroColors.surface,
-        border: cardBorder(payload.collectionCompletion),
-        borderRadius: BorderRadius.circular(16),
-        // A real offset shadow (DESIGN.md), never a glow.
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0xB3000000),
-            offset: Offset(0, 24),
-            blurRadius: 40,
-            spreadRadius: -18,
-          ),
-        ],
-      ),
+    return AmiroCard(
+      border: cardBorder(payload.collectionCompletion),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'AMIRO',
-            style: textTheme.labelSmall?.copyWith(
-              color: AmiroColors.textMuted,
-              letterSpacing: 2.4,
-            ),
-          ),
+          const SectionLabel('AMIRO'),
           const SizedBox(height: 12),
           SizedBox(height: 220, child: avatar),
           const SizedBox(height: 16),

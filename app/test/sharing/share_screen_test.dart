@@ -9,6 +9,7 @@ import 'package:store/store.dart';
 
 import 'package:amiro_app/avatar/avatar_providers.dart';
 import 'package:amiro_app/identity/identity_providers.dart';
+import 'package:amiro_app/identity/identity_edit_screen.dart';
 import 'package:amiro_app/sharing/share_screen.dart';
 import 'package:amiro_app/sharing/sharing_providers.dart'
     show nfcEmulatorProvider;
@@ -20,7 +21,7 @@ import '../identity/in_memory_identity_repository.dart';
 
 Widget _screen(
   NfcEmulator emulator,
-  Identity identity, {
+  Identity? identity, {
   FakeAvatarRenderer? renderer,
   EntitlementStore? entitlements,
 }) {
@@ -44,6 +45,33 @@ Widget _screen(
 }
 
 void main() {
+  testWidgets(
+    'no identity yet shows an explained empty state, not a bare label',
+    (tester) async {
+      await tester.pumpWidget(_screen(NoopNfcEmulator(), null));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Create your identity first'), findsOneWidget);
+      expect(find.textContaining('wearable'), findsOneWidget);
+      expect(
+        find.widgetWithText(FilledButton, 'Create identity'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('the empty state\'s action opens identity editing', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_screen(NoopNfcEmulator(), null));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Create identity'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(IdentityEditScreen), findsOneWidget);
+  });
+
   testWidgets('shows a QR code for the current identity', (tester) async {
     final identity = Identity(
       id: 'id-1',
@@ -147,9 +175,9 @@ void main() {
     'stops emulating when the screen is disposed mid-emulation, without '
     'throwing',
     (tester) async {
-    tester.view.physicalSize = const Size(800, 2600);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
+      tester.view.physicalSize = const Size(800, 2600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
       // Regression test for the round-3 review finding: `dispose()` used
       // to call `ref.read(...)` to reach the emulator and reset the
       // coordination flag. In flutter_riverpod 2.6.1 that throws

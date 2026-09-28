@@ -13,6 +13,34 @@ abstract final class AmiroColors {
   static const error = Color(0xFFB4543B);
 }
 
+/// Base-4px spacing scale (DESIGN.md).
+abstract final class AmiroSpacing {
+  static const xs = 4.0;
+  static const sm = 8.0;
+  static const md = 16.0;
+  static const lg = 24.0;
+  static const xl = 32.0;
+  static const xl2 = 48.0;
+}
+
+/// Corner-radius scale (DESIGN.md). `full` is a pill/circle, not a fixed value.
+abstract final class AmiroRadius {
+  static const sm = 6.0;
+  static const md = 14.0;
+  static const lg = 16.0;
+}
+
+/// The authored offset shadow every elevated card uses (DESIGN.md's
+/// "Elevation & Depth": real offset + blur only, never a zero-offset glow).
+const amiroCardShadow = [
+  BoxShadow(
+    color: Color(0x59000000),
+    offset: Offset(0, 12),
+    blurRadius: 24,
+    spreadRadius: -12,
+  ),
+];
+
 /// Monospaced, tabular-figure style for prices and valuation (DESIGN.md).
 class AmiroTypography extends ThemeExtension<AmiroTypography> {
   final TextStyle mono;
@@ -79,17 +107,49 @@ ThemeData buildAmiroTheme({bool loadFonts = true}) {
       scrolledUnderElevation: 0,
       titleTextStyle: textTheme.titleLarge?.copyWith(fontSize: 23),
     ),
-    navigationBarTheme: const NavigationBarThemeData(
+    navigationBarTheme: NavigationBarThemeData(
       backgroundColor: AmiroColors.surface,
       indicatorColor: AmiroColors.surfaceBorder,
+      // Selected vs unselected differ in weight, not colour — the active
+      // tab's icon (filled vs outline, see app.dart) already carries the
+      // colour-independent signal, so the label just confirms it.
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        final base = textTheme.labelMedium ?? const TextStyle();
+        return states.contains(WidgetState.selected)
+            ? base.copyWith(
+                color: AmiroColors.text,
+                fontWeight: FontWeight.w600,
+              )
+            : base.copyWith(color: AmiroColors.textMuted);
+      }),
     ),
     filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(
-        backgroundColor: AmiroColors.primary,
-        foregroundColor: AmiroColors.onPrimary,
-        minimumSize: const Size(64, 44),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600),
+      style: ButtonStyle(
+        // Disabled = 40% opacity, no shadow, not tappable (DESIGN.md's fix
+        // for the "dead tap on unchanged save" gap) — not Material's default
+        // grey-out, which would read as a broken button rather than "wait".
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) {
+            return AmiroColors.primary.withValues(alpha: 0.4);
+          }
+          return AmiroColors.primary;
+        }),
+        foregroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) {
+            return AmiroColors.onPrimary.withValues(alpha: 0.4);
+          }
+          return AmiroColors.onPrimary;
+        }),
+        elevation: const WidgetStatePropertyAll(0),
+        minimumSize: const WidgetStatePropertyAll(Size(64, 44)),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AmiroRadius.md),
+          ),
+        ),
+        textStyle: const WidgetStatePropertyAll(
+          TextStyle(fontWeight: FontWeight.w600),
+        ),
       ),
     ),
     listTileTheme: const ListTileThemeData(iconColor: AmiroColors.textMuted),
