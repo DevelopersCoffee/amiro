@@ -140,3 +140,9 @@ Scope agreed with the owner after an external design critique (see DESIGN.md's 2
 ## 12. Design polish PR 2: Store card redesign — DONE (2026-09-29)
 Implements DESIGN.md's already-written but never-built "Cosmetic item card" spec: default = surface + hairline border; equipped = 2px brass border + `EQUIPPED` badge (on-primary text on primary fill); purchased-but-unequipped = default, no badge. Rows are now `AmiroCard` instead of `ListTile`. Preview-before-buy is unchanged (the whole card is tappable, including unowned items — see #6).
 Not built: locked/premium 55% overlay + lock icon (no "locked" concept distinct from "not owned" exists in the data model — would be a new state, deferred) and SOLD OUT (no supply concept exists — deferred with real scarcity/editions, TODOS #10).
+
+## 13. Design polish PR 3: Avatar screen token consistency — DONE (2026-09-29)
+Avatar screen's app-bar chrome and equip-button padding now use `AmiroSpacing.md`/`.sm` instead of hardcoded 16/8. No layout, capability or behavior change — the avatar stage was already full-bleed, three-point-lit and rotatable from earlier commits (`a2f0612`, `6bbcbad`); DESIGN.md's floor shadow and framing are renderer-level (Filament), not something this pass touches.
+Not built (explicitly excluded per the 2026-09-28 decision): full-screen/hero treatment beyond what already exists, background/lighting picker, before/after preview, outfit presets, idle animation, equip transition — all new product behavior, deferred.
+
+This closes the agreed Phase 1/2 polish scope (tokens, Store cards, Avatar consistency, Share/Passport empty states from PR 1). Remaining items from the critique — Identity screen hierarchy, and every explicitly-deferred new capability — stay open as separate future work, not folded into this sequence.

@@ -80,7 +80,7 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
         actions: [
           if (showChrome)
             Padding(
-              padding: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.only(right: AmiroSpacing.md),
               child: Center(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -90,7 +90,7 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
                         highestRarity.label,
                         style: rarityLabelStyle(context, highestRarity),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AmiroSpacing.sm),
                     ],
                     Text(
                       '\$${(valuationCents / 100).toStringAsFixed(2)}',
@@ -117,7 +117,7 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
                 : renderer.buildView(),
           ),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AmiroSpacing.md),
             child: showChrome
                 ? Semantics(
                     button: true,

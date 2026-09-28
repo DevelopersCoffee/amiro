@@ -10,6 +10,7 @@ import 'package:identity_core/identity_core.dart';
 
 import 'package:amiro_app/avatar/avatar_providers.dart';
 import 'package:amiro_app/avatar/avatar_screen.dart';
+import 'package:amiro_app/theme/amiro_theme.dart';
 import 'package:amiro_app/identity/identity_providers.dart';
 
 import 'package:avatar_core/avatar_core.dart';
@@ -261,4 +262,22 @@ void main() {
       expect(find.byKey(const Key('toggleGlassesButton')), findsOneWidget);
     },
   );
+
+  testWidgets('chrome padding uses AmiroSpacing tokens, not magic numbers', (
+    tester,
+  ) async {
+    final renderer = FakeAvatarRenderer();
+    await tester.pumpWidget(_screen(renderer, InMemoryIdentityRepository()));
+    await tester.pumpAndSettle();
+
+    final padding = tester.widget<Padding>(
+      find
+          .ancestor(
+            of: find.byKey(const Key('toggleGlassesButton')),
+            matching: find.byType(Padding),
+          )
+          .first,
+    );
+    expect(padding.padding, const EdgeInsets.all(AmiroSpacing.md));
+  });
 }
