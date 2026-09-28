@@ -66,6 +66,37 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
     if (mounted) setState(() {});
   }
 
+  // No payment processor is wired up yet (see EntitlementStore's own doc
+  // comment) — this dialog stands in for a real purchase sheet so the flow
+  // reads as an actual purchase, not a silent instant-grant, and is clearly
+  // labeled as a demo so nobody mistakes it for a real charge.
+  Future<void> _buy(CosmeticListing item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(item.name),
+        content: Text(
+          'Buy for \$${(item.priceCents / 100).toStringAsFixed(2)}?\n\n'
+          'This is a demo purchase — no payment processor is connected yet, '
+          'so nothing will actually be charged.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Confirm (demo)'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(ownedCosmeticsProvider.notifier).purchase(item.id);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final renderer = ref.watch(avatarRendererProvider);
@@ -109,9 +140,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                   trailing: isOwned
                       ? (item.isFree ? const Text('FREE') : const Text('OWNED'))
                       : FilledButton(
-                          onPressed: () => ref
-                              .read(ownedCosmeticsProvider.notifier)
-                              .purchase(item.id),
+                          onPressed: () => _buy(item),
                           child: Text(
                             'Buy \$${(item.priceCents / 100).toStringAsFixed(2)}',
                             style: amiroMono(context),

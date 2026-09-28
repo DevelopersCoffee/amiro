@@ -42,8 +42,11 @@ dev_dependencies:
 
 flutter_launcher_icons:
   android: true
+  ios: true
   image_path: "assets/icon/icon.png"
-  adaptive_icon_background: "#673AB7"
+  # DESIGN.md's `ground` color — matches the icon's own near-black
+  # background exactly, replacing the earlier placeholder purple.
+  adaptive_icon_background: "#161510"
   adaptive_icon_foreground: "assets/icon/icon_foreground.png"
 
 flutter:
