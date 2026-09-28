@@ -52,17 +52,31 @@ Play: Social (or Lifestyle, depending on final policy classification)
 - Email: coffee.devloper@gmail.com
 - Privacy policy: https://developerscoffee.github.io/amiro/legal/privacy-policy.html
 
-## Screenshots needed (not yet produced)
+## Screenshots
+
+4 captured 2026-09-28 on a real Pixel 9, from the actual release-signed
+build (not debug — no compatibility ribbon), full device resolution
+(1080x2424). Also published, downscaled to WebP, on the product page's
+screenshot strip (`docs/index.html#screenshots`,
+`docs/assets/screenshots/`):
+
+1. Avatar screen, front-facing, chrome visible (name/valuation bar) —
+   `avatar.webp`
+2. Avatar mid-rotation (three-quarter view) — shows the 360° feature —
+   `avatar-rotate.webp`
+3. Store screen with the catalog visible — `store.webp`
+4. Share screen — QR code shown, NFC section visible (Android) —
+   `share.webp`
 
 Play requires at least 2 phone screenshots (recommend 4-8) at 16:9 or
-9:16, 320-3840px on the long edge. Suggested shots, all from a real
-device, not the emulator:
+9:16, 320-3840px on the long edge — the full-resolution originals (not
+the downscaled web copies) satisfy this; re-export from the device if
+Play's upload rejects the web-sized copies.
 
-1. Avatar screen, front-facing, chrome visible (name/valuation bar)
-2. Avatar mid-rotation (side/three-quarter view) — shows the 360° feature
-3. Store screen with a few catalog items visible
-4. Share screen — QR code shown, NFC section visible (Android)
-5. Shared Profile screen — showing a received identity
+**Not captured:** a Shared Profile screenshot (needs a second device or
+person to actually send a profile to scan/receive) — the identity used
+for these shots ("Alex" / "alex") is a generic placeholder, not a real
+person's data.
 
 ## Feature graphic (1024x500, required for Play)
 
