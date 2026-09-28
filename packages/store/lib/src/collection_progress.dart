@@ -13,6 +13,9 @@ class CollectionProgress {
   });
 
   bool get isComplete => owned == total;
+
+  /// The name the completion engine exposes to the visual layer.
+  bool get isSetComplete => isComplete;
 }
 
 /// Per-series collection progress for [catalog], ordered by series number.
@@ -37,5 +40,17 @@ List<CollectionProgress> collectionProgress(
             .length,
         total: bySeries[number]!.length,
       ),
+  ];
+}
+
+/// The series [ownedIds] has finished, ordered by series number. This is the
+/// whole completion engine: what a user has completed is derived from the
+/// catalog and their entitlements, never stored, so it cannot drift from them
+/// and needs no remote validation. Rewards are local visual treatments (see
+/// the identity card's collector's frame).
+List<CosmeticSeries> completedSeries(List<CosmeticListing> catalog, Set<String> ownedIds) {
+  return [
+    for (final progress in collectionProgress(catalog, ownedIds))
+      if (progress.isSetComplete) progress.series,
   ];
 }

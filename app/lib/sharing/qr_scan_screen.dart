@@ -1,22 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
-import 'package:sharing/sharing.dart';
+import 'scan_navigation.dart';
+import 'scan_result.dart';
 
-import 'shared_profile_screen.dart';
-
-/// Extracts a [SharedProfile] from a detected [BarcodeCapture], or `null`
-/// if nothing usable was found — no barcode, no raw value, or a raw value
-/// that isn't a valid `amiro://share` link. Pulled out of
+/// Resolves a detected [BarcodeCapture] to what it carries, or `null` if no
+/// barcode with a raw value was found. Pulled out of
 /// [_QrScanScreenState._onDetect] so the decode step can be unit tested
 /// without a real camera (see `test/sharing/qr_scan_screen_test.dart`);
 /// `MobileScanner`'s camera view itself isn't meaningfully testable in a
 /// widget test environment and is covered by the Task 9 device spike
 /// instead.
-SharedProfile? profileFromCapture(BarcodeCapture capture) {
+ScanResult? scanResultFromCapture(BarcodeCapture capture) {
   final raw = capture.barcodes.firstOrNull?.rawValue;
   if (raw == null) return null;
-  return parseShareUri(raw);
+  return resolveScannedText(raw);
 }
 
 class QrScanScreen extends StatefulWidget {
@@ -32,13 +30,14 @@ class _QrScanScreenState extends State<QrScanScreen> {
   void _onDetect(BarcodeCapture capture) {
     if (_handled) return;
 
-    final profile = profileFromCapture(capture);
-    if (profile == null) return;
+    final result = scanResultFromCapture(capture);
+    final screen = result == null ? null : screenForScan(result);
+    if (screen == null) return; // keep scanning until something usable shows up
 
     _handled = true;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => SharedProfileScreen(profile: profile)),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => screen));
   }
 
   @override

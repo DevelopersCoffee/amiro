@@ -7,11 +7,13 @@ import 'package:path_provider/path_provider.dart';
 import 'package:identity_core/identity_core.dart';
 import 'package:avatar_renderer/avatar_renderer.dart';
 import 'package:nfc/nfc.dart';
+import 'package:discovery/discovery.dart';
 import 'package:store/store.dart';
 
 import 'app.dart';
 import 'identity/identity_providers.dart';
 import 'avatar/avatar_providers.dart';
+import 'discovery/discovery_providers.dart';
 import 'sharing/sharing_providers.dart';
 import 'store/store_providers.dart';
 
@@ -27,8 +29,12 @@ void main() async {
   // import `thermion_flutter` directly.
   final avatarRenderer = await ThermionAvatarRenderer.create();
 
-  final entitlementStore =
-      FileEntitlementStore(File('${supportDir.path}/entitlements.json'));
+  final entitlementStore = FileEntitlementStore(
+    File('${supportDir.path}/entitlements.json'),
+  );
+
+  final discoveryRepository =
+      FileDiscoveryRepository(File('${supportDir.path}/discovery.json'));
 
   runApp(
     ProviderScope(
@@ -43,6 +49,7 @@ void main() async {
         ),
         nfcReaderProvider.overrideWithValue(ManagerNfcReader()),
         entitlementStoreProvider.overrideWithValue(entitlementStore),
+        discoveryRepositoryProvider.overrideWithValue(discoveryRepository),
       ],
       child: const AmiroApp(),
     ),

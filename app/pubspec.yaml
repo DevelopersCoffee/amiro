@@ -19,6 +19,8 @@ dependencies:
     path: ../packages/avatar_renderer
   store:
     path: ../packages/store
+  discovery:
+    path: ../packages/discovery
   # NOTE: no `thermion_flutter` here on purpose. The spec's global constraint
   # is that nothing outside `packages/avatar_renderer` imports it directly;
   # the app obtains a live renderer via `ThermionAvatarRenderer.create()`.

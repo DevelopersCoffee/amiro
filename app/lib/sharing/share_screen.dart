@@ -12,7 +12,6 @@ import '../store/store_providers.dart';
 import 'identity_card.dart';
 import 'nfc_receive_screen.dart';
 import 'own_encounter.dart';
-import 'own_share_uri.dart';
 import 'qr_scan_screen.dart';
 import 'sharing_providers.dart';
 
@@ -131,10 +130,6 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
           if (identity == null) {
             return const Center(child: Text('Create your identity first'));
           }
-          // The card describes the identity with the same payload discovery
-          // will use. The QR/NFC link itself is still the legacy
-          // `amiro://share` one until the receive side understands
-          // encounter links (see TODOS.md #10).
           final payload = buildOwnEncounterPayload(
             identity: identity,
             definition: renderer.current,
@@ -143,7 +138,12 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
           if (payload == null) {
             return const Center(child: CircularProgressIndicator());
           }
-          final shareUri = buildOwnShareUri(identity, owned);
+          // One link feeds both the QR code and the NFC tag.
+          final shareUri = buildOwnEncounterUri(
+            identity: identity,
+            definition: renderer.current,
+            purchasedIds: owned,
+          );
 
           return ListView(
             padding: const EdgeInsets.all(24),
@@ -161,7 +161,9 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                     const Text('Or tap another phone to share'),
                     const SizedBox(height: 8),
                     FilledButton(
-                      onPressed: () => _toggleNfcEmulate(shareUri),
+                      onPressed: shareUri == null
+                          ? null
+                          : () => _toggleNfcEmulate(shareUri),
                       child: Text(
                         _emulating ? 'Stop NFC sharing' : 'Start NFC sharing',
                       ),

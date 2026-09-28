@@ -112,10 +112,7 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
                 onTap: () => setState(
                   () => _isPublic['email'] = !(_isPublic['email'] ?? false),
                 ),
-                child: Switch(
-                  value: _isPublic['email']!,
-                  onChanged: null,
-                ),
+                child: Switch(value: _isPublic['email']!, onChanged: null),
               ),
             ],
           ),

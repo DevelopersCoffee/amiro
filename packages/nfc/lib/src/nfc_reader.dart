@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:nfc_manager/nfc_manager_android.dart';
 import 'package:nfc_manager/nfc_manager_ios.dart';
+import 'package:sharing/sharing.dart';
 
 /// Listens for an incoming NDEF tag read (either a physical tag or an
 /// Android device emulating one via HCE) and emits its text payload.
@@ -54,12 +54,20 @@ class ManagerNfcReader implements NfcReader {
           final message =
               NdefAndroid.from(tag)?.cachedNdefMessage ??
               NdefIos.from(tag)?.cachedNdefMessage;
-          final records = message?.records;
-          final record = (records == null || records.isEmpty) ? null : records.first;
-          if (record != null) {
-            final text = decodeNdefTextPayload(record.payload);
-            if (text != null) _controller.add(text);
-          }
+          if (message == null) return;
+          // Every record is considered (an Android Application Record may
+          // come first) and text is decoded strictly by the sharing
+          // package's NDEF adapter, so both the encounter link and a legacy
+          // share link reach the caller as text.
+          final text = amiroLinkTextFromNdef([
+            for (final record in message.records)
+              NdefRecordData(
+                tnf: record.typeNameFormat.index, // enum order == NDEF TNF codes
+                type: record.type,
+                payload: record.payload,
+              ),
+          ]);
+          if (text != null) _controller.add(text);
         },
         // iOS's `NFCTagReaderSession` invalidates itself automatically —
         // after a successful read (`invalidateAfterFirstReadIos` defaults
@@ -93,26 +101,4 @@ class ManagerNfcReader implements NfcReader {
       await NfcManager.instance.stopSession();
     }
   }
-}
-
-/// Decodes an NDEF well-known text record's payload to its text content.
-///
-/// Pure, hardware-independent logic pulled out of [ManagerNfcReader] as its
-/// own top-level function so it can be unit-tested directly (see
-/// `test/nfc_reader_test.dart`) without a real NFC session — the same
-/// seam-and-fake approach used for `ThermionFilamentSurface` in
-/// `avatar_renderer` (design spec §8).
-///
-/// NDEF well-known text records store a status byte + IANA language code
-/// before the actual text — strip that prefix rather than assume offset 0,
-/// since the language code length is encoded in the status byte's low bits
-/// (typically 2 for "en", but not guaranteed). Returns `null` for an empty
-/// payload or a language-code length that would overflow the payload.
-String? decodeNdefTextPayload(Uint8List payload) {
-  if (payload.isEmpty) return null;
-  final statusByte = payload[0];
-  final languageCodeLength = statusByte & 0x3F;
-  final textStart = 1 + languageCodeLength;
-  if (textStart > payload.length) return null;
-  return String.fromCharCodes(payload.sublist(textStart));
 }

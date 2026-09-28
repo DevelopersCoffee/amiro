@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   nfc_manager: ^4.2.1
+  sharing:
+    path: ../sharing
 
 dev_dependencies:
   flutter_test:

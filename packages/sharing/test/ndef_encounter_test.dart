@@ -314,4 +314,21 @@ void main() {
       await done.future;
     });
   });
+
+  group('amiroLinkTextFromNdef', () {
+    test('finds an encounter link, a legacy share link, or nothing', () {
+      expect(amiroLinkTextFromNdef([_text(_link)]), _link);
+      expect(amiroLinkTextFromNdef([_text('amiro://share?d=abc')]), 'amiro://share?d=abc');
+      expect(amiroLinkTextFromNdef([_text('hello')]), isNull);
+      expect(amiroLinkTextFromNdef(const []), isNull);
+    });
+
+    test('skips other records and reads non-ASCII text properly', () {
+      expect(amiroLinkTextFromNdef([_androidAppRecord(), _uri(_link)]), _link);
+    });
+
+    test('takes the first Amiro link on the tag', () {
+      expect(amiroLinkTextFromNdef([_text('amiro://share?d=first'), _text(_link)]), 'amiro://share?d=first');
+    });
+  });
 }

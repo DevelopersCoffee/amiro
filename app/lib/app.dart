@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'identity/identity_edit_screen.dart';
 import 'avatar/avatar_screen.dart';
+import 'discovery/passport_screen.dart';
 import 'sharing/incoming_share_listener.dart';
 import 'sharing/share_screen.dart';
 import 'store/store_screen.dart';
@@ -37,6 +38,7 @@ class _RootTabsState extends State<_RootTabs> {
       AvatarScreen(),
       StoreScreen(),
       ShareScreen(),
+      PassportScreen(),
     ];
     return Scaffold(
       body: screens[_index],
@@ -45,9 +47,19 @@ class _RootTabsState extends State<_RootTabs> {
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.person), label: 'Identity'),
-          NavigationDestination(icon: Icon(Icons.face_retouching_natural), label: 'Avatar'),
-          NavigationDestination(icon: Icon(Icons.storefront_outlined), label: 'Store'),
+          NavigationDestination(
+            icon: Icon(Icons.face_retouching_natural),
+            label: 'Avatar',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.storefront_outlined),
+            label: 'Store',
+          ),
           NavigationDestination(icon: Icon(Icons.ios_share), label: 'Share'),
+          NavigationDestination(
+            icon: Icon(Icons.explore_outlined),
+            label: 'Passport',
+          ),
         ],
       ),
     );

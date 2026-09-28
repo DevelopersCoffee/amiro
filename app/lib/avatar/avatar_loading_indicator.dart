@@ -47,7 +47,10 @@ class _AvatarLoadingIndicatorState extends State<AvatarLoadingIndicator>
                 height: 160,
                 decoration: BoxDecoration(
                   color: AmiroColors.surface,
-                  border: Border.all(color: AmiroColors.surfaceBorder, width: 1.5),
+                  border: Border.all(
+                    color: AmiroColors.surfaceBorder,
+                    width: 1.5,
+                  ),
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(48),
                     bottom: Radius.circular(16),

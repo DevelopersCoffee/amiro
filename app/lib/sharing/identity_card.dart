@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 
 import 'package:amiro_qr/amiro_qr.dart';
 import 'package:sharing/sharing.dart';
-import 'package:store/store.dart';
 
 import '../store/rarity_label_style.dart';
 import '../store/series_progress_row.dart';
 import '../theme/amiro_theme.dart';
+import 'collector_frame.dart';
 import 'own_encounter.dart';
-
-const _maxStandouts = 3;
+import 'standouts.dart';
 
 /// The artifact a user shows another person: avatar, name, what makes their
 /// look distinctive, how far through each series they are, and a QR code.
@@ -22,7 +21,9 @@ class IdentityCard extends StatelessWidget {
 
   /// The 3D avatar view, supplied by the caller (the card doesn't own a renderer).
   final Widget avatar;
-  final String qrData;
+
+  /// The link for the QR code, or null when the card can't be shared as one.
+  final String? qrData;
 
   const IdentityCard({
     super.key,
@@ -34,7 +35,7 @@ class IdentityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final standouts = _standouts(payload.equippedCosmetics);
+    final standouts = standoutCosmetics(payload.equippedCosmetics);
     final series = progressFromCompletion(
       payload.collectionCompletion,
     ).where((p) => p.owned > 0);
@@ -43,7 +44,7 @@ class IdentityCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AmiroColors.surface,
-        border: Border.all(color: AmiroColors.surfaceBorder),
+        border: cardBorder(payload.collectionCompletion),
         borderRadius: BorderRadius.circular(16),
         // A real offset shadow (DESIGN.md), never a glow.
         boxShadow: const [
@@ -83,32 +84,30 @@ class IdentityCard extends StatelessWidget {
             SeriesProgressRow(progress),
           ],
           const SizedBox(height: 20),
-          Center(key: const Key('shareQrCode'), child: buildQrWidget(qrData)),
-          const SizedBox(height: 12),
-          Center(
-            child: Text(
-              'Tap or scan to discover',
+          if (qrData != null) ...[
+            Center(
+              key: const Key('shareQrCode'),
+              child: buildQrWidget(qrData!),
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: Text(
+                'Tap or scan to discover',
+                style: textTheme.labelMedium?.copyWith(
+                  color: AmiroColors.textMuted,
+                ),
+              ),
+            ),
+          ] else
+            Text(
+              'This card is too large to share as a QR code.',
+              key: const Key('cardTooLarge'),
               style: textTheme.labelMedium?.copyWith(
                 color: AmiroColors.textMuted,
               ),
             ),
-          ),
         ],
       ),
     );
   }
-}
-
-/// Up to [_maxStandouts] equipped items above Common, rarest first. Items
-/// whose rarity this app version does not know are left out.
-List<(EquippedCosmeticInfo, CosmeticRarity)> _standouts(
-  List<EquippedCosmeticInfo> equipped,
-) {
-  final known = [
-    for (final item in equipped)
-      if (CosmeticRarity.fromWireName(item.rarity) case final rarity?
-          when rarity != CosmeticRarity.common)
-        (item, rarity),
-  ]..sort((a, b) => b.$2.index.compareTo(a.$2.index));
-  return known.take(_maxStandouts).toList();
 }

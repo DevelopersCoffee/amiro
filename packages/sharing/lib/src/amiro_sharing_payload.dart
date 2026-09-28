@@ -94,6 +94,9 @@ class SeriesCompletion {
   /// isn't a valid completion.
   factory SeriesCompletion.fromJson(Object? json) => _completionFrom(json);
 
+  /// Every item in the series is collected.
+  bool get isComplete => currentCount == totalCount;
+
   Map<String, dynamic> toJson() => {
         'seriesId': seriesId,
         'currentCount': currentCount,

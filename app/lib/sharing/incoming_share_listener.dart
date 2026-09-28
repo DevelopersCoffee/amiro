@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:sharing/sharing.dart';
-
-import 'shared_profile_screen.dart';
+import 'scan_navigation.dart';
+import 'scan_result.dart';
 import 'sharing_providers.dart';
 
 /// Wraps [child] and watches for an incoming share arriving via an
 /// `amiro://` deep link ([incomingShareLinkProvider]), pushing
-/// [SharedProfileScreen] as soon as the stream produces a
-/// successfully-parsed [SharedProfile].
+/// the matching screen (see [screenForScan]) as soon as the stream produces a
+/// usable card.
 ///
 /// NFC receive is deliberately *not* wired in here — see
 /// `NfcReceiveScreen` and `sharing_providers.dart`'s `nfcReaderProvider`
@@ -32,20 +31,17 @@ class IncomingShareListener extends ConsumerWidget {
 
   const IncomingShareListener({super.key, required this.child});
 
-  void _showProfile(BuildContext context, SharedProfile profile) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => SharedProfileScreen(profile: profile)),
-    );
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.listen<AsyncValue<SharedProfile?>>(incomingShareLinkProvider, (
+    ref.listen<AsyncValue<ScanResult>>(incomingShareLinkProvider, (
       previous,
       next,
     ) {
-      final profile = next.valueOrNull;
-      if (profile != null) _showProfile(context, profile);
+      final result = next.valueOrNull;
+      final screen = result == null ? null : screenForScan(result);
+      if (screen != null) {
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+      }
     });
 
     return child;

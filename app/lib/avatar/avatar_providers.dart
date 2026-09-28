@@ -23,5 +23,7 @@ final avatarRendererProvider = Provider<AvatarRenderer>((ref) {
 /// factory.
 final avatarRendererFactoryProvider =
     Provider<Future<AvatarRenderer> Function()>((ref) {
-  throw UnimplementedError('avatarRendererFactoryProvider must be overridden');
-});
+      throw UnimplementedError(
+        'avatarRendererFactoryProvider must be overridden',
+      );
+    });

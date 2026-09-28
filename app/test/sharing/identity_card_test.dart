@@ -35,7 +35,10 @@ AmiroSharingPayload _payload({
   );
 }
 
-Widget _card(AmiroSharingPayload payload) {
+Widget _card(
+  AmiroSharingPayload payload, {
+  String? qrData = 'amiro://encounter?d=abc',
+}) {
   return MaterialApp(
     theme: buildAmiroTheme(loadFonts: false),
     home: Scaffold(
@@ -43,7 +46,7 @@ Widget _card(AmiroSharingPayload payload) {
         child: IdentityCard(
           payload: payload,
           avatar: const SizedBox(key: Key('avatarStage'), height: 220),
-          qrData: 'amiro://share?d=abc',
+          qrData: qrData,
         ),
       ),
     ),
@@ -206,4 +209,57 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'says so instead of drawing a QR code when the card cannot be shared',
+    (tester) async {
+      await tester.pumpWidget(_card(_payload(), qrData: null));
+
+      expect(find.byKey(const Key('shareQrCode')), findsNothing);
+      expect(find.byKey(const Key('cardTooLarge')), findsOneWidget);
+      expect(find.text('Tap or scan to discover'), findsNothing);
+    },
+  );
+
+  group('collector\'s frame', () {
+    Border border(WidgetTester tester) {
+      final box = tester.widget<Container>(
+        find
+            .descendant(
+              of: find.byType(IdentityCard),
+              matching: find.byType(Container),
+            )
+            .first,
+      );
+      return (box.decoration as BoxDecoration).border! as Border;
+    }
+
+    testWidgets('a completed series earns a 2px brass frame', (tester) async {
+      await tester.pumpWidget(
+        _card(
+          _payload(
+            completion: const [
+              SeriesCompletion(
+                seriesId: 'series_1',
+                currentCount: 3,
+                totalCount: 3,
+              ),
+            ],
+          ),
+        ),
+      );
+
+      expect(border(tester).top.color, AmiroColors.primary);
+      expect(border(tester).top.width, 2);
+    });
+
+    testWidgets('an unfinished collection keeps the neutral hairline', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_card(_payload()));
+
+      expect(border(tester).top.color, AmiroColors.surfaceBorder);
+      expect(border(tester).top.width, 1);
+    });
+  });
 }

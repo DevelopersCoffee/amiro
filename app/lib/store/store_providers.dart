@@ -23,4 +23,6 @@ class OwnedCosmeticsNotifier extends AsyncNotifier<Set<String>> {
 }
 
 final ownedCosmeticsProvider =
-    AsyncNotifierProvider<OwnedCosmeticsNotifier, Set<String>>(OwnedCosmeticsNotifier.new);
+    AsyncNotifierProvider<OwnedCosmeticsNotifier, Set<String>>(
+      OwnedCosmeticsNotifier.new,
+    );
