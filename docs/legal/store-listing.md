@@ -104,10 +104,14 @@ production-ready. Needs a real icon before a production listing.
   "shares user's location" → **No**; "users can interact" → **Yes**
   (via QR/NFC share, not in-app messaging); "shares personal info with
   other users" → **Yes** (only fields the user marks public)
-- Digital purchases: **Yes** (cosmetic items in the Store) — currently
-  UI-only, no real payment processor wired up yet; do not submit for
-  production until Play Billing is integrated, or remove priced items
-  from the listing build.
+- Digital purchases: **Yes** (cosmetic items in the Store) — real Play
+  Billing via RevenueCat as of 2026-09-29 (see
+  `packages/store/lib/src/revenuecat_entitlement_store.dart`). The 3
+  priced catalog items (`amiro_riviera_optics`, `amiro_long_flow`,
+  `amiro_full_beard`) must still be created as in-app products in Play
+  Console — Monetize → Products → In-app products — with matching product
+  IDs before a release build can actually sell them; RevenueCat's catalog
+  side is already set up (`rc products list`).
 
 ## Data safety form — draft answers
 

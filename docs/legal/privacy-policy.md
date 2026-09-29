@@ -1,10 +1,13 @@
 # Amiro Privacy Policy
 
-**Last updated:** 2026-09-28
+**Last updated:** 2026-09-29
 
 This policy describes what Amiro ("the App") does with your information.
-Amiro is built to keep your data on your own device. There is no Amiro
-server, no account system, and no analytics or advertising SDK in the App.
+Amiro is built to keep your identity, avatar, and profile data on your own
+device — there is no Amiro account system, and no analytics or advertising
+SDK in the App. The only server-side processing Amiro does is limited to
+verifying real-money Store purchases (see "Purchases" below); nothing about
+your identity, avatar, or who you've shared with ever leaves your device.
 
 ## Who this covers
 
@@ -55,15 +58,43 @@ deleting it) on your device.
   (Android only) to let your phone emulate a tag so someone else can read
   your shared profile via NFC. No other NFC use.
 
+## Purchases
+
+The Store lets you buy optional cosmetic items with real money through
+Google Play Billing. Purchases are processed by
+[RevenueCat](https://www.revenuecat.com/privacy), which we use to verify a
+purchase actually happened before unlocking the item — this is the one
+part of Amiro that talks to a server.
+
+What that involves:
+
+- The App SDK sends RevenueCat a random per-install identifier (not your
+  name, email, or anything from your Amiro profile) and the product you're
+  buying. RevenueCat validates the purchase with Google Play and reports
+  the result back to the App.
+- RevenueCat notifies our backend (a Cloudflare Worker) when a purchase
+  completes. We record the event — the random per-install identifier, the
+  product bought, and the timestamp — in a Supabase database, so we can
+  look up and restore your purchases if needed (for example, after
+  reinstalling). This record never includes your name, email, phone
+  number, or any other profile field, because the App never sends them.
+- None of this is used for advertising, and we don't sell or share it with
+  anyone beyond RevenueCat and Google Play, who process it to complete the
+  purchase.
+
+If you don't use the Store's paid items, none of this applies to you —
+free cosmetics unlock without any network request.
+
 ## What the App does not do
 
 - No account creation, no sign-in, no password.
 - No analytics, crash reporting, or advertising SDKs.
-- No network requests of any kind, from the App to Developer's Coffee or
-  anyone else.
+- No network requests from the App to Developer's Coffee or anyone else,
+  except the purchase verification described above, and only when you buy
+  a paid Store item.
 - No location data is collected.
-- No data is sold or shared with third parties, because none is collected
-  by us in the first place.
+- No data is sold or shared with third parties, other than what's
+  described under "Purchases" above.
 
 ## Your control over your data
 
@@ -74,6 +105,12 @@ Because everything lives on your device:
   your device's own OS behavior (for example, an OS-level backup you
   created yourself, which is outside the App's control).
 - There is no Amiro account to delete, because there is no Amiro account.
+- If you've made a paid purchase, we also keep a purchase record (the
+  random per-install identifier, product, and timestamp — see
+  "Purchases") in RevenueCat and our Supabase database. Email
+  coffee.devloper@gmail.com to request deletion of that record; it isn't
+  removed automatically by uninstalling, since it exists to protect your
+  purchase across reinstalls.
 
 ## Children's privacy
 

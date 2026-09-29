@@ -1,11 +1,17 @@
 /// Tracks which cosmetic ids the current user has purchased.
 ///
-/// Real purchase verification (StoreKit / Play Billing) is a later
-/// milestone — see this package's README. `grant` is the seam that a
-/// real payments integration will call after a verified purchase.
+/// `grant` is what a real payments integration calls after a verified
+/// purchase (see [RevenueCatEntitlementStore] in this package).
 abstract class EntitlementStore {
   Future<Set<String>> ownedCosmeticIds();
   Future<void> grant(String cosmeticId);
+}
+
+/// Thrown by [EntitlementStore.grant] when the user backs out of the
+/// native purchase sheet — distinct from a real failure so callers can
+/// stay quiet instead of showing an error.
+class PurchaseCancelledException implements Exception {
+  const PurchaseCancelledException();
 }
 
 /// In-process entitlement store. Not persisted across app restarts —

@@ -7,9 +7,14 @@ environment:
 resolution: workspace
 
 dependencies:
+  flutter:
+    sdk: flutter
   avatar_core:
     path: ../avatar_core
+  purchases_flutter: ^10.13.2
 
 dev_dependencies:
+  flutter_test:
+    sdk: flutter
   test: ^1.25.0
   lints: ^4.0.0

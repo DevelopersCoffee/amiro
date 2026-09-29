@@ -2,11 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:store/store.dart';
 
-/// Real purchase verification (StoreKit / Play Billing) is a later
-/// milestone; overridden in tests with a fresh [InMemoryEntitlementStore]
-/// per test so purchases don't leak between them.
+/// Real purchases go through RevenueCat/Play Billing; overridden in tests
+/// with a fresh [InMemoryEntitlementStore] per test so purchases don't
+/// leak between them.
 final entitlementStoreProvider = Provider<EntitlementStore>((ref) {
-  return InMemoryEntitlementStore();
+  return RevenueCatEntitlementStore();
 });
 
 class OwnedCosmeticsNotifier extends AsyncNotifier<Set<String>> {

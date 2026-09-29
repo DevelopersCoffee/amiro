@@ -1,0 +1,8 @@
+name = "amiro-revenuecat-webhook"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# Secrets (set with `wrangler secret put <NAME>`, not here):
+#   WEBHOOK_PATH_TOKEN   random token that must match the URL path segment
+#   SUPABASE_URL         e.g. https://srvhqmfjqmxxvrdctbtf.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY
