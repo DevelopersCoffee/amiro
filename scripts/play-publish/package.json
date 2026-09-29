@@ -1,0 +1,12 @@
+{
+  "name": "amiro-play-publish",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "upload": "node upload.mjs",
+    "create-products": "node create_products.mjs"
+  },
+  "dependencies": {
+    "googleapis": "^182.0.0"
+  }
+}
