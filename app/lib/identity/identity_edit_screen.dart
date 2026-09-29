@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:identity_core/identity_core.dart';
 
+import '../theme/amiro_card.dart';
+import '../theme/amiro_theme.dart';
+import '../theme/section_label.dart';
 import 'identity_providers.dart';
 
 class IdentityEditScreen extends ConsumerStatefulWidget {
@@ -73,50 +76,73 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Your Amiro')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AmiroSpacing.md),
         children: [
-          TextField(
-            key: const Key('displayNameField'),
-            controller: _displayNameController,
-            decoration: const InputDecoration(labelText: 'Display name'),
-          ),
-          TextField(
-            key: const Key('usernameField'),
-            controller: _usernameController,
-            decoration: const InputDecoration(labelText: 'Username'),
-          ),
-          TextField(
-            key: const Key('bioField'),
-            controller: _bioController,
-            decoration: const InputDecoration(labelText: 'Bio'),
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  key: const Key('emailField'),
-                  controller: _emailController,
-                  decoration: const InputDecoration(labelText: 'Email'),
+          AmiroCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SectionLabel('PROFILE'),
+                const SizedBox(height: AmiroSpacing.md),
+                TextField(
+                  key: const Key('displayNameField'),
+                  controller: _displayNameController,
+                  decoration: const InputDecoration(labelText: 'Display name'),
                 ),
-              ),
-              GestureDetector(
-                key: const Key('emailPrivacyToggle'),
-                // A plain `Switch.onChanged` reads `!widget.value` from the
-                // widget's own build-time snapshot, so two taps issued back
-                // to back without an intervening rebuild (e.g. in a widget
-                // test with no `pump()` between taps) both resolve against
-                // the same stale value and fail to toggle back. Reading the
-                // live `_isPublic` map here instead of the Switch's captured
-                // `value` keeps each tap correct regardless of rebuild
-                // timing.
-                onTap: () => setState(
-                  () => _isPublic['email'] = !(_isPublic['email'] ?? false),
+                TextField(
+                  key: const Key('usernameField'),
+                  controller: _usernameController,
+                  decoration: const InputDecoration(labelText: 'Username'),
                 ),
-                child: Switch(value: _isPublic['email']!, onChanged: null),
-              ),
-            ],
+                TextField(
+                  key: const Key('bioField'),
+                  controller: _bioController,
+                  decoration: const InputDecoration(labelText: 'Bio'),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AmiroSpacing.md),
+          AmiroCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SectionLabel('CONTACT'),
+                const SizedBox(height: AmiroSpacing.md),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        key: const Key('emailField'),
+                        controller: _emailController,
+                        decoration: const InputDecoration(labelText: 'Email'),
+                      ),
+                    ),
+                    GestureDetector(
+                      key: const Key('emailPrivacyToggle'),
+                      // A plain `Switch.onChanged` reads `!widget.value` from
+                      // the widget's own build-time snapshot, so two taps
+                      // issued back to back without an intervening rebuild
+                      // (e.g. in a widget test with no `pump()` between taps)
+                      // both resolve against the same stale value and fail to
+                      // toggle back. Reading the live `_isPublic` map here
+                      // instead of the Switch's captured `value` keeps each
+                      // tap correct regardless of rebuild timing.
+                      onTap: () => setState(
+                        () =>
+                            _isPublic['email'] = !(_isPublic['email'] ?? false),
+                      ),
+                      child: Switch(
+                        value: _isPublic['email']!,
+                        onChanged: null,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AmiroSpacing.lg),
           FilledButton(
             key: const Key('saveButton'),
             onPressed: _save,
