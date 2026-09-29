@@ -1,9 +1,16 @@
 # Amiro — Play Console "Data safety" form, draft answers
 
 Fill the actual Play Console form from this. Re-check against the code
-before submitting — this reflects the app as of 2026-09-28
-(`main`, commit `289788b`); if data handling changes, update both this
-file and the live form together.
+before submitting — this reflects the app as of 2026-09-29, after wiring
+real Play Billing purchases through RevenueCat + a Cloudflare Worker +
+Supabase (see `workers/revenuecat-webhook/` and
+`packages/store/lib/src/revenuecat_entitlement_store.dart`). If data
+handling changes again, update both this file and the live form together.
+
+**This form was already submitted once (2026-09-29, before the payments
+backend existed) declaring no data collection beyond device-to-device
+identity sharing.** It must be re-submitted in Play Console now that a
+real purchase-verification backend exists — see "Purchases" below.
 
 ## Does your app collect or share any of the required user data types?
 
@@ -42,12 +49,34 @@ broadly, not just server-side collection.
 - None collected or transmitted. (No advertising ID, no device ID sent
   anywhere — there is nowhere to send it.)
 
+### Purchase history / financial info
+
+RevenueCat's own SDK integration handles this disclosure category
+directly — Play Console surfaces RevenueCat as a declared SDK once its
+Android app credentials are linked (Setup → API access in Play Console).
+In our own words for this draft:
+
+| Field | Collected? | Shared? | Processing | Purpose | Optional? |
+|---|---|---|---|---|---|
+| Purchase history (product id, timestamp) | Yes | Yes (RevenueCat, Google Play) | Sent to RevenueCat over HTTPS; RevenueCat webhooks the event to our Cloudflare Worker, which stores it in Supabase | App functionality (purchase verification, restore) | No — only triggered when the user buys a paid Store item; free items never touch the network |
+| App-set installation identifier (RevenueCat's `$RCAnonymousID`) | Yes | Yes (RevenueCat) | Generated on-device by the RevenueCat SDK, not derived from any personal field | App functionality | No, same as above |
+
+This identifier is **not** linked to the profile identity (name, email,
+phone, handles) described elsewhere in this file — the purchase path and
+the identity-sharing path never share data with each other.
+
 ## Is all of the user data collected by your app encrypted in transit?
 
-Not applicable in the usual sense — there is no network transit to
-Developer's Coffee. Device-to-device transit (QR/NFC) is answered per
-Play's guidance for peer-to-peer sharing features; consult current Play
-policy wording for the exact checkbox, since this category evolves.
+Two separate answers depending on which data:
+
+- **Identity/profile sharing (QR/NFC):** not applicable in the usual
+  sense — there is no network transit to Developer's Coffee. Answered per
+  Play's guidance for peer-to-peer sharing features; consult current Play
+  policy wording for the exact checkbox, since this category evolves.
+- **Purchase data (RevenueCat/Worker/Supabase):** all of it is HTTPS —
+  the RevenueCat SDK talks to RevenueCat over TLS, RevenueCat's webhook to
+  our Cloudflare Worker is HTTPS, and the Worker's write to Supabase is
+  HTTPS. Answer **Yes** for this category.
 
 ## Do you provide a way for users to request that their data be deleted?
 
