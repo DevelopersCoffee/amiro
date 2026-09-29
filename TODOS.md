@@ -146,3 +146,8 @@ Avatar screen's app-bar chrome and equip-button padding now use `AmiroSpacing.md
 Not built (explicitly excluded per the 2026-09-28 decision): full-screen/hero treatment beyond what already exists, background/lighting picker, before/after preview, outfit presets, idle animation, equip transition — all new product behavior, deferred.
 
 This closes the agreed Phase 1/2 polish scope (tokens, Store cards, Avatar consistency, Share/Passport empty states from PR 1). Remaining items from the critique — Identity screen hierarchy, and every explicitly-deferred new capability — stay open as separate future work, not folded into this sequence.
+
+## 14. Design polish PR 4: Identity screen hierarchy — DONE (2026-09-29)
+Fields grouped under two `AmiroCard`s with `SectionLabel` headers: PROFILE (display name, username, bio) and CONTACT (email, privacy toggle). Pure regrouping/spacing — no new interaction added.
+Explicitly not built (new capability, stays deferred): username availability check, live character count, dirty-state save gating, inline validation, success animation, an avatar thumbnail/profile preview (would need this screen to depend on the avatar renderer, which it doesn't today — a bigger change than hierarchy).
+This was the last item from the original critique's "include" list; everything remaining is new product behavior and needs its own scoping conversation before starting.

@@ -29,7 +29,9 @@ void main() {
     expect(saved.username, 'uday');
   });
 
-  testWidgets('toggling a field private excludes it from publicFields', (tester) async {
+  testWidgets('toggling a field private excludes it from publicFields', (
+    tester,
+  ) async {
     final repo = InMemoryIdentityRepository();
 
     await tester.pumpWidget(
@@ -42,7 +44,10 @@ void main() {
 
     await tester.enterText(find.byKey(const Key('displayNameField')), 'Uday');
     await tester.enterText(find.byKey(const Key('usernameField')), 'uday');
-    await tester.enterText(find.byKey(const Key('emailField')), 'coffee.devloper@gmail.com');
+    await tester.enterText(
+      find.byKey(const Key('emailField')),
+      'coffee.devloper@gmail.com',
+    );
     // Default is private; explicitly flip to public then back to private
     // to exercise the toggle path deterministically.
     await tester.tap(find.byKey(const Key('emailPrivacyToggle')));
@@ -59,4 +64,53 @@ void main() {
     final saved = await repo.getCurrent();
     expect(saved!.publicFields().containsKey('email'), isFalse);
   });
+
+  testWidgets('groups fields under Profile and Contact section labels', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          identityRepositoryProvider.overrideWithValue(
+            InMemoryIdentityRepository(),
+          ),
+        ],
+        child: const MaterialApp(home: IdentityEditScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('PROFILE'), findsOneWidget);
+    expect(find.text('CONTACT'), findsOneWidget);
+    // Display name/username/bio sit under PROFILE, above CONTACT; email sits under CONTACT.
+    final profileY = tester.getTopLeft(find.text('PROFILE')).dy;
+    final contactY = tester.getTopLeft(find.text('CONTACT')).dy;
+    final nameY = tester
+        .getTopLeft(find.byKey(const Key('displayNameField')))
+        .dy;
+    final emailY = tester.getTopLeft(find.byKey(const Key('emailField'))).dy;
+    expect(profileY, lessThan(nameY));
+    expect(nameY, lessThan(contactY));
+    expect(contactY, lessThan(emailY));
+  });
+
+  testWidgets(
+    'existing field and toggle behaviour is unaffected by the new grouping',
+    (tester) async {
+      final repo = InMemoryIdentityRepository();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [identityRepositoryProvider.overrideWithValue(repo)],
+          child: const MaterialApp(home: IdentityEditScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('bioField')), 'Engineer');
+      await tester.tap(find.byKey(const Key('saveButton')));
+      await tester.pumpAndSettle();
+
+      expect((await repo.getCurrent())!.bio, 'Engineer');
+    },
+  );
 }
