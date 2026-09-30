@@ -13,8 +13,11 @@ Both scripts expect the service account key at
 That key belongs to `amiro-play-publisher@developerscoffee.iam.gserviceaccount.com`
 — created in GCP project `developerscoffee`, invited in Play Console
 (Users and permissions) with **Release apps to testing tracks**, **Manage
-testing tracks and edit tester lists**, and **Manage store presence** on
-the Amiro app only. Deliberately does *not* have "Release to production" —
+testing tracks and edit tester lists**, **Manage store presence**, and
+**Edit and delete draft apps** on the Amiro app only. The draft-apps grant
+is required while the app has never been published to production — without
+it, store-listing and product writes fail with a 403 at `edits.commit` even
+though "Manage store presence" is granted. Deliberately does *not* have "Release to production" —
 that's a separate, higher-stakes grant to add explicitly when you're ready
 to actually ship to real users.
 
@@ -36,12 +39,21 @@ npm run upload
 
 Upserts the 3 paid Store catalog items as Play Console one-time products
 (`monetization.onetimeproducts.patch` with `allowMissing: true`), matching
-the RevenueCat catalog (`workers/revenuecat-webhook/README.md`). As of
-2026-09-29 this fails with a 403 even though reads with the same key
-succeed — the "Manage store presence" grant hadn't propagated to Google's
-write-path backends yet. Retry it; no changes needed if it was just
-propagation lag.
+the RevenueCat catalog (`workers/revenuecat-webhook/README.md`). A 403 here
+means the service account is missing "Edit and delete draft apps" (see
+Setup).
 
 ```bash
 npm run create-products
+```
+
+## update_listing.mjs
+
+Sets the en-US store listing text (title, short and full description) and
+replaces the icon, feature graphic, and phone screenshots with the files
+in `docs/store-assets/`. Changes are sent for review automatically on
+commit.
+
+```bash
+npm run update-listing
 ```
