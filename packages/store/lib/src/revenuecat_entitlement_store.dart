@@ -52,6 +52,12 @@ class RevenueCatEntitlementStore implements EntitlementStore {
   }
 
   @override
+  Future<void> restore() async {
+    if (!await _ensureConfigured()) return;
+    await Purchases.restorePurchases();
+  }
+
+  @override
   Future<void> grant(String cosmeticId) async {
     if (!await _ensureConfigured()) {
       throw StateError(

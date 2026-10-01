@@ -152,6 +152,53 @@ void main() {
     expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
   });
 
+  testWidgets(
+    'Restore purchases re-reads ownership from the store and confirms',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 2600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final entitlements = _RestorableEntitlementStore(
+        owned: {'riviera_optics'},
+      );
+      await tester.pumpWidget(
+        _screen(FakeAvatarRenderer(), entitlementStore: entitlements),
+      );
+      await tester.pumpAndSettle();
+      // Ownership only becomes visible to the app once restore runs.
+      expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
+
+      await tester.tap(find.text('Restore purchases'));
+      await tester.pumpAndSettle();
+
+      expect(entitlements.restoreCalls, 1);
+      expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsNothing);
+      expect(find.text('Purchases restored'), findsOneWidget);
+    },
+  );
+
+  testWidgets('a failed restore says so and leaves the Store usable', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 2600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final entitlements = _RestorableEntitlementStore(
+      owned: {'riviera_optics'},
+      failRestore: true,
+    );
+    await tester.pumpWidget(
+      _screen(FakeAvatarRenderer(), entitlementStore: entitlements),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Restore purchases'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Restore failed'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
+  });
+
   testWidgets('prices use the monospaced tabular style', (tester) async {
     tester.view.physicalSize = const Size(800, 2600);
     tester.view.devicePixelRatio = 1.0;
@@ -409,6 +456,9 @@ class _CancellingEntitlementStore implements EntitlementStore {
   Future<void> grant(String cosmeticId) {
     throw const PurchaseCancelledException();
   }
+
+  @override
+  Future<void> restore() async {}
 }
 
 /// Simulates a real purchase failure (network error, billing unavailable).
@@ -421,5 +471,35 @@ class _FailingEntitlementStore implements EntitlementStore {
   @override
   Future<void> grant(String cosmeticId) {
     throw Exception('billing unavailable');
+  }
+
+  @override
+  Future<void> restore() async {}
+}
+
+/// Models a store whose purchases only surface after an explicit restore,
+/// like a fresh install before RevenueCat has synced.
+class _RestorableEntitlementStore implements EntitlementStore {
+  final Set<String> _remote;
+  final bool failRestore;
+  final Set<String> _visible = {};
+  int restoreCalls = 0;
+
+  _RestorableEntitlementStore({
+    required Set<String> owned,
+    this.failRestore = false,
+  }) : _remote = owned;
+
+  @override
+  Future<Set<String>> ownedCosmeticIds() async => Set.unmodifiable(_visible);
+
+  @override
+  Future<void> grant(String cosmeticId) async {}
+
+  @override
+  Future<void> restore() async {
+    restoreCalls++;
+    if (failRestore) throw Exception('billing unavailable');
+    _visible.addAll(_remote);
   }
 }

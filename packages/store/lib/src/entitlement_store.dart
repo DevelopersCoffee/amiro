@@ -5,6 +5,10 @@
 abstract class EntitlementStore {
   Future<Set<String>> ownedCosmeticIds();
   Future<void> grant(String cosmeticId);
+
+  /// Re-attaches purchases the user's store account already owns (after a
+  /// reinstall or a new phone). Call [ownedCosmeticIds] afterwards.
+  Future<void> restore();
 }
 
 /// Thrown by [EntitlementStore.grant] when the user backs out of the
@@ -27,4 +31,7 @@ class InMemoryEntitlementStore implements EntitlementStore {
   Future<void> grant(String cosmeticId) async {
     _owned.add(cosmeticId);
   }
+
+  @override
+  Future<void> restore() async {}
 }
