@@ -8,14 +8,12 @@ import 'package:identity_core/identity_core.dart';
 import 'package:avatar_renderer/avatar_renderer.dart';
 import 'package:nfc/nfc.dart';
 import 'package:discovery/discovery.dart';
-import 'package:store/store.dart';
 
 import 'app.dart';
 import 'identity/identity_providers.dart';
 import 'avatar/avatar_providers.dart';
 import 'discovery/discovery_providers.dart';
 import 'sharing/sharing_providers.dart';
-import 'store/store_providers.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,10 +26,6 @@ void main() async {
   // spec's global constraint, nothing outside `packages/avatar_renderer` may
   // import `thermion_flutter` directly.
   final avatarRenderer = await ThermionAvatarRenderer.create();
-
-  final entitlementStore = FileEntitlementStore(
-    File('${supportDir.path}/entitlements.json'),
-  );
 
   final discoveryRepository =
       FileDiscoveryRepository(File('${supportDir.path}/discovery.json'));
@@ -48,7 +42,9 @@ void main() async {
           Platform.isAndroid ? AndroidNfcEmulator() : NoopNfcEmulator(),
         ),
         nfcReaderProvider.overrideWithValue(ManagerNfcReader()),
-        entitlementStoreProvider.overrideWithValue(entitlementStore),
+        // entitlementStoreProvider is deliberately not overridden: its
+        // default is the RevenueCat-backed store, so every purchase goes
+        // through Play Billing.
         discoveryRepositoryProvider.overrideWithValue(discoveryRepository),
       ],
       child: const AmiroApp(),
