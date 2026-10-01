@@ -12,22 +12,25 @@ import 'revenuecat_keys.dart';
 /// `rc products list` / `rc entitlements list` in the RevenueCat project):
 /// store product id `amiro_<id>`, entitlement lookup key `cosmetic_<id>`.
 class RevenueCatEntitlementStore implements EntitlementStore {
+  final bool _isAndroid;
   bool _configured = false;
+
+  /// [isAndroid] defaults to the real platform; tests pass it explicitly.
+  RevenueCatEntitlementStore({bool? isAndroid})
+    : _isAndroid = isAndroid ?? Platform.isAndroid;
 
   /// Configuring is idempotent and safe to call from every constructor —
   /// nothing purchase-related can happen before this resolves.
   Future<bool> _ensureConfigured() async {
     if (_configured) return true;
-    if (!Platform.isAndroid) {
+    if (!_isAndroid) {
       // iOS has no App Store Connect credentials registered in RevenueCat
       // yet, so purchases would fail server-side validation — see
       // TODOS.md. Treat iOS as "no purchases available" rather than
       // crashing.
       return false;
     }
-    await Purchases.configure(
-      PurchasesConfiguration(revenueCatAndroidApiKey),
-    );
+    await Purchases.configure(PurchasesConfiguration(revenueCatAndroidApiKey));
     _configured = true;
     return true;
   }
@@ -57,14 +60,16 @@ class RevenueCatEntitlementStore implements EntitlementStore {
       );
     }
     final storeId = _storeProductId(cosmeticId);
-    final products = await Purchases.getProducts([storeId]);
+    // Catalog items are Play one-time products; getProducts looks up
+    // subscriptions unless told otherwise and would find nothing.
+    final products = await Purchases.getProducts([
+      storeId,
+    ], productCategory: ProductCategory.nonSubscription);
     if (products.isEmpty) {
       throw StateError('No store product found for "$storeId".');
     }
     try {
-      await Purchases.purchase(
-        PurchaseParams.storeProduct(products.first),
-      );
+      await Purchases.purchase(PurchaseParams.storeProduct(products.first));
     } on PlatformException catch (e) {
       if (PurchasesErrorHelper.getErrorCode(e) ==
           PurchasesErrorCode.purchaseCancelledError) {
