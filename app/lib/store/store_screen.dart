@@ -111,34 +111,32 @@ class _CosmeticCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        item.name,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                    if (isEquipped) ...[
-                      const SizedBox(width: AmiroSpacing.sm),
-                      const _EquippedBadge(),
-                    ],
-                  ],
-                ),
+                Text(item.name, style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 4),
-                Row(
+                // The badge sits with the metadata, not the name: beside a
+                // Buy button the name's row is too narrow to share.
+                Wrap(
+                  spacing: AmiroSpacing.sm,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Text(
-                      item.slot,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AmiroColors.textMuted,
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: item.slot,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: AmiroColors.textMuted),
+                          ),
+                          const TextSpan(text: ' · '),
+                          TextSpan(
+                            text: item.rarity.label,
+                            style: rarityLabelStyle(context, item.rarity),
+                          ),
+                        ],
                       ),
                     ),
-                    const Text(' · '),
-                    Text(
-                      item.rarity.label,
-                      style: rarityLabelStyle(context, item.rarity),
-                    ),
+                    if (isEquipped) const _EquippedBadge(),
                   ],
                 ),
               ],
@@ -203,9 +201,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
       // User backed out of the native sheet — nothing to report.
     } catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Purchase failed: $e')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text('Purchase failed: $e')));
     }
   }
 
