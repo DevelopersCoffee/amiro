@@ -15,6 +15,14 @@ class OwnedCosmeticsNotifier extends AsyncNotifier<Set<String>> {
     return ref.read(entitlementStoreProvider).ownedCosmeticIds();
   }
 
+  /// Asks the store account for existing purchases, then refreshes what
+  /// the app shows as owned.
+  Future<void> restore() async {
+    final store = ref.read(entitlementStoreProvider);
+    await store.restore();
+    state = AsyncData(await store.ownedCosmeticIds());
+  }
+
   Future<void> purchase(String cosmeticId) async {
     final store = ref.read(entitlementStoreProvider);
     await store.grant(cosmeticId);

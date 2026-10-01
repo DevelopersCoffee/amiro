@@ -15,6 +15,28 @@ void main() {
         .setMockMethodCallHandler(channel, (call) async {
           calls.add(call);
           if (call.method == 'getProductInfo') return <dynamic>[];
+          if (call.method == 'restorePurchases') {
+            return <String, dynamic>{
+              'entitlements': {
+                'all': {},
+                'active': {},
+                'verification': 'NOT_REQUESTED',
+              },
+              'allPurchasedProductIdentifiers': [],
+              'activeSubscriptions': [],
+              'latestExpirationDate': null,
+              'firstSeen': '2026-10-01T00:00:00Z',
+              'originalAppUserId': 'test',
+              'requestDate': '2026-10-01T00:00:00Z',
+              'allExpirationDates': {},
+              'allPurchaseDates': {},
+              'originalApplicationVersion': null,
+              'originalPurchaseDate': null,
+              'managementURL': null,
+              'nonSubscriptionTransactions': [],
+              'subscriptionsByProductIdentifier': {},
+            };
+          }
           return null;
         });
   });
@@ -34,6 +56,22 @@ void main() {
     final lookup = calls.singleWhere((c) => c.method == 'getProductInfo');
     expect(lookup.arguments['productIdentifiers'], ['amiro_full_beard']);
     expect(lookup.arguments['type'], 'nonSubscription');
+  });
+
+  test('restore asks the SDK to restore purchases', () async {
+    final store = RevenueCatEntitlementStore(isAndroid: true);
+
+    await store.restore();
+
+    expect(calls.map((c) => c.method), contains('restorePurchases'));
+  });
+
+  test('off Android, restore is a quiet no-op', () async {
+    final store = RevenueCatEntitlementStore(isAndroid: false);
+
+    await store.restore();
+
+    expect(calls, isEmpty);
   });
 
   test('off Android, nothing is owned and purchases are refused', () async {

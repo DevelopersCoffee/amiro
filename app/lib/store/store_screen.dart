@@ -205,6 +205,20 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
     }
   }
 
+  Future<void> _restore() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(ownedCosmeticsProvider.notifier).restore();
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Purchases restored')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text('Restore failed: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final renderer = ref.watch(avatarRendererProvider);
@@ -212,7 +226,15 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
     final rows = _storeRows(cosmeticCatalog, owned);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Store')),
+      appBar: AppBar(
+        title: const Text('Store'),
+        actions: [
+          TextButton(
+            onPressed: _restore,
+            child: const Text('Restore purchases'),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           SizedBox(height: 220, child: renderer.buildView()),
