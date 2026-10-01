@@ -6,16 +6,14 @@ Owns the cosmetic catalog, entitlement records, and avatar valuation math.
   the `.glb` assets that exist in `packages/avatar_renderer/assets/cosmetics/`
   today; add a listing here only once its asset exists.
 - `EntitlementStore` — tracks which cosmetic ids the current user owns.
-  `FileEntitlementStore` (used in the real app, wired in `main.dart`)
-  persists owned ids as a JSON file in the app's support directory.
-  `InMemoryEntitlementStore` is the test/default fallback (used by
-  `entitlementStoreProvider`'s default and in widget tests) — it does not
-  survive app restarts, which is fine for a fake but is never what
-  `main.dart` actually uses.
+  `RevenueCatEntitlementStore` is the real one: it is
+  `entitlementStoreProvider`'s default, and `main.dart` must not override
+  it. `InMemoryEntitlementStore` is a fake for widget tests only.
 - `avatarValuationCents` — sums the catalog price of whatever's equipped on
   an `AvatarDefinition`.
 
-**Purchases are stubbed, not real.** `EntitlementStore.grant` is the seam a
-real payments integration calls after a verified purchase — platform-native
-purchase APIs only (StoreKit / Play Billing), no custom payment system, per
-the PRD's Monetization section. No money moves today.
+**Purchases are real.** `RevenueCatEntitlementStore.grant` opens the Play
+Billing purchase sheet through RevenueCat, and ownership is read from
+RevenueCat's active entitlements — platform-native purchase APIs only, no
+custom payment system, per the PRD's Monetization section. iOS has no
+store credentials yet, so it reports nothing owned and refuses purchases.

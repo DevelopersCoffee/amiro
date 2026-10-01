@@ -24,7 +24,7 @@ of `app/lib/avatar/avatar_screen.dart` + cosmetic asset swap.
 - No "cancel preview" — tapping an item both previews AND persists it immediately (matches the existing AvatarScreen toggle's behavior), so browsing the store changes your live avatar/identity as you go. A true try-before-you-commit preview needs a revert path in `AvatarRenderer`.
 - Only 3 cosmetic items exist because only 3 `.glb` assets exist. More catalog items need new assets, not more code.
 
-**Entitlement persistence — DONE (2026-09-23).** `FileEntitlementStore` (`packages/store/lib/src/file_entitlement_store.dart`) persists owned cosmetic ids as a JSON file under the app's support directory (`entitlements.json`, alongside the Isar identity DB) — deliberately *not* a new Isar collection or an `Identity` field, to avoid touching `identity_core`'s hand-maintained Isar codegen (see that package's pubspec comment) for an unrelated feature. Wired into `main.dart`'s `entitlementStoreProvider` override; TDD'd (4 tests, including a real restart-simulating "fresh instance, same file" round trip).
+**Entitlement persistence — superseded (2026-10-01).** The local `FileEntitlementStore` was removed. Build 4 shipped with `main.dart` still overriding `entitlementStoreProvider` with it, so Buy granted paid items for free and never opened Play Billing. Ownership now comes only from RevenueCat (`RevenueCatEntitlementStore`, the provider default).
 
 ## 5. Disable "Save look" when nothing changed
 **What:** Once a multi-slot cosmetic tray exists with an explicit save action, disable/grey that button until an equip action actually changes the definition from what's persisted.
