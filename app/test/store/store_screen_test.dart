@@ -236,7 +236,10 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      _screen(FakeAvatarRenderer(), entitlementStore: InMemoryEntitlementStore()),
+      _screen(
+        FakeAvatarRenderer(),
+        entitlementStore: InMemoryEntitlementStore(),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -298,6 +301,46 @@ void main() {
         final border = (card.decoration as BoxDecoration).border! as Border;
         expect(border.top.width, 2);
         expect(border.top.color, AmiroColors.primary);
+      },
+    );
+
+    testWidgets(
+      'an equipped, unowned item keeps its name on one line at phone width',
+      (tester) async {
+        // The EQUIPPED badge and the Buy button used to share the name's
+        // row and squeeze it to one letter per line. 560 is the phone-width
+        // equivalent for the test font, whose glyphs are much wider than
+        // the real typeface: the name fits on one line only if it has the
+        // row to itself.
+        tester.view.physicalSize = const Size(560, 4000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        final renderer = FakeAvatarRenderer();
+        await renderer.load(
+          const AvatarDefinition(
+            id: 'default',
+            body: 'body_superhero_male',
+            glasses: 'glasses_realistic',
+          ),
+        );
+        await tester.pumpWidget(_screen(renderer));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.descendant(
+            of: find.ancestor(
+              of: find.text('Riviera Optics'),
+              matching: find.byType(AmiroCard),
+            ),
+            matching: find.text('EQUIPPED'),
+          ),
+          findsOneWidget,
+        );
+        expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
+        expect(
+          tester.getSize(find.text('Riviera Optics')).height,
+          tester.getSize(find.text('Classic Frame')).height,
+        );
       },
     );
 
