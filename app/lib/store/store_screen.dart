@@ -5,7 +5,6 @@ import 'package:store/store.dart';
 
 import '../avatar/avatar_loader.dart';
 import '../avatar/avatar_providers.dart';
-import '../theme/amiro_card.dart';
 import '../theme/amiro_theme.dart';
 import 'rarity_label_style.dart';
 import 'series_progress_row.dart';
@@ -23,6 +22,18 @@ List<Object> _storeRows(List<CosmeticListing> catalog, Set<String> owned) {
     );
   }
   return rows;
+}
+
+String _slotCategoryLabel(String slot) {
+  switch (slot) {
+    case 'facialHair':
+      return 'Facial hair';
+    case 'goldChain':
+      return 'Chain';
+    default:
+      if (slot.isEmpty) return slot;
+      return slot[0].toUpperCase() + slot.substring(1);
+  }
 }
 
 class _SeriesHeader extends StatelessWidget {
@@ -44,8 +55,7 @@ class _SeriesHeader extends StatelessWidget {
   }
 }
 
-/// The small brass "EQUIPPED" badge DESIGN.md's cosmetic-item-card spec
-/// defines: on-primary text on a primary fill.
+/// The small brass "EQUIPPED" badge — primary fill, on-primary text.
 class _EquippedBadge extends StatelessWidget {
   const _EquippedBadge();
 
@@ -72,12 +82,7 @@ class _EquippedBadge extends StatelessWidget {
   }
 }
 
-/// One catalog row, styled to DESIGN.md's cosmetic-item-card spec: default =
-/// surface + hairline border; equipped = 2px brass border + EQUIPPED badge;
-/// purchased-but-unequipped = default, no badge (tap to equip). The whole
-/// card previews the item on the avatar — including unowned items, which is
-/// the deliberate try-before-you-buy behaviour (see TODOS.md #6) — so a
-/// locked item is decorated, not disabled.
+/// Boutique store row — minimal surface, hierarchy-first, gold only when equipped.
 class _CosmeticCard extends StatelessWidget {
   final CosmeticListing item;
   final bool isOwned;
@@ -95,68 +100,125 @@ class _CosmeticCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AmiroCard(
-      onTap: onPreview,
-      border: isEquipped
-          ? Border.all(color: AmiroColors.primary, width: 2)
-          : null,
-      child: Row(
-        children: [
-          Icon(
-            isEquipped ? Icons.check_circle : Icons.remove_red_eye_outlined,
-            color: isEquipped ? AmiroColors.primary : AmiroColors.textMuted,
+    final metaStyle = Theme.of(
+      context,
+    ).textTheme.bodySmall?.copyWith(color: AmiroColors.textMuted);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPreview,
+        borderRadius: BorderRadius.circular(AmiroRadius.md),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: AmiroColors.surface.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(AmiroRadius.md),
+            border: Border.all(
+              color: AmiroColors.surfaceBorder.withValues(alpha: 0.65),
+            ),
           ),
-          const SizedBox(width: AmiroSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.name, style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 4),
-                // The badge sits with the metadata, not the name: beside a
-                // Buy button the name's row is too narrow to share.
-                Wrap(
-                  spacing: AmiroSpacing.sm,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text.rich(
-                      TextSpan(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AmiroRadius.md),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (isEquipped)
+                    const ColoredBox(
+                      color: AmiroColors.primary,
+                      child: SizedBox(width: 3),
+                    ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AmiroSpacing.md,
+                        AmiroSpacing.md,
+                        AmiroSpacing.sm,
+                        AmiroSpacing.md,
+                      ),
+                      child: Row(
                         children: [
-                          TextSpan(
-                            text: item.slot,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: AmiroColors.textMuted),
+                          Icon(
+                            Icons.visibility_outlined,
+                            size: 18,
+                            color: AmiroColors.textMuted.withValues(alpha: 0.85),
                           ),
-                          const TextSpan(text: ' · '),
-                          TextSpan(
-                            text: item.rarity.label,
-                            style: rarityLabelStyle(context, item.rarity),
+                          const SizedBox(width: AmiroSpacing.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.name,
+                                  style: Theme.of(context).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: 4),
+                                Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: item.rarity.label,
+                                        style: rarityLabelStyle(
+                                          context,
+                                          item.rarity,
+                                        ),
+                                      ),
+                                      TextSpan(text: ' · ', style: metaStyle),
+                                      TextSpan(
+                                        text: _slotCategoryLabel(item.slot),
+                                        style: metaStyle,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (isEquipped) ...[
+                                  const SizedBox(height: 6),
+                                  const _EquippedBadge(),
+                                ],
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: AmiroSpacing.sm),
+                          if (isOwned && !item.isFree)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AmiroSpacing.sm,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AmiroColors.surfaceBorder.withValues(
+                                  alpha: 0.45,
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                  AmiroRadius.sm,
+                                ),
+                              ),
+                              child: Text(
+                                'OWNED',
+                                style: amiroMono(
+                                  context,
+                                ).copyWith(color: AmiroColors.textMuted),
+                              ),
+                            )
+                          else if (!isOwned)
+                            FilledButton(
+                              onPressed: onBuy,
+                              child: Text(
+                                item.isFree
+                                    ? 'Get'
+                                    : 'Buy \$${(item.priceCents / 100).toStringAsFixed(2)}',
+                                style: amiroMono(context),
+                              ),
+                            ),
                         ],
                       ),
                     ),
-                    if (isEquipped) const _EquippedBadge(),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: AmiroSpacing.md),
-          if (isOwned)
-            Text(
-              item.isFree ? 'FREE' : 'OWNED',
-              style: amiroMono(context).copyWith(color: AmiroColors.textMuted),
-            )
-          else
-            FilledButton(
-              onPressed: onBuy,
-              child: Text(
-                'Buy \$${(item.priceCents / 100).toStringAsFixed(2)}',
-                style: amiroMono(context),
+                  ),
+                ],
               ),
             ),
-        ],
+          ),
+        ),
       ),
     );
   }
@@ -237,7 +299,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
       ),
       body: Column(
         children: [
-          SizedBox(height: 220, child: renderer.buildView()),
+          SizedBox(height: 280, child: renderer.buildView()),
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.all(AmiroSpacing.md),

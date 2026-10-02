@@ -10,7 +10,6 @@ import 'package:amiro_app/avatar/avatar_providers.dart';
 import 'package:amiro_app/identity/identity_providers.dart';
 import 'package:amiro_app/store/store_providers.dart';
 import 'package:amiro_app/store/store_screen.dart';
-import 'package:amiro_app/theme/amiro_card.dart';
 import 'package:amiro_app/theme/amiro_theme.dart';
 
 import '../avatar/fake_avatar_renderer.dart';
@@ -34,7 +33,7 @@ Widget _screen(AvatarRenderer renderer, {EntitlementStore? entitlementStore}) {
 }
 
 void main() {
-  testWidgets('lists every catalog item with its price or FREE', (
+  testWidgets('lists every catalog item with buy affordance or owned state', (
     tester,
   ) async {
     // Tall enough that the lazily-built list renders every catalog row.
@@ -48,7 +47,7 @@ void main() {
     for (final item in cosmeticCatalog) {
       expect(find.text(item.name), findsOneWidget);
     }
-    expect(find.text('FREE'), findsNWidgets(7));
+    expect(find.text('FREE'), findsNothing);
     for (final item in cosmeticCatalog.where((c) => !c.isFree)) {
       expect(
         find.widgetWithText(
@@ -317,7 +316,7 @@ void main() {
 
   group('cosmetic card treatment (DESIGN.md)', () {
     testWidgets(
-      'an equipped item gets a 2px brass border and an EQUIPPED badge',
+      'an equipped item gets a brass selection bar and an EQUIPPED badge',
       (tester) async {
         tester.view.physicalSize = const Size(800, 2600);
         tester.view.devicePixelRatio = 1.0;
@@ -334,20 +333,22 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('EQUIPPED'), findsOneWidget);
-        final card = tester.widget<Container>(
-          find
-              .descendant(
-                of: find.ancestor(
-                  of: find.text('EQUIPPED'),
-                  matching: find.byType(AmiroCard),
-                ),
-                matching: find.byType(Container),
-              )
-              .first,
+        expect(
+          find.descendant(
+            of: find.ancestor(
+              of: find.text('Classic Frame'),
+              matching: find.byType(InkWell),
+            ),
+            matching: find.byWidgetPredicate(
+              (w) =>
+                  w is ColoredBox &&
+                  w.color == AmiroColors.primary &&
+                  w.child is SizedBox &&
+                  (w.child as SizedBox).width == 3,
+            ),
+          ),
+          findsOneWidget,
         );
-        final border = (card.decoration as BoxDecoration).border! as Border;
-        expect(border.top.width, 2);
-        expect(border.top.color, AmiroColors.primary);
       },
     );
 
@@ -377,7 +378,7 @@ void main() {
           find.descendant(
             of: find.ancestor(
               of: find.text('Riviera Optics'),
-              matching: find.byType(AmiroCard),
+              matching: find.byType(InkWell),
             ),
             matching: find.text('EQUIPPED'),
           ),
@@ -392,7 +393,7 @@ void main() {
     );
 
     testWidgets(
-      'an item that is not equipped has no badge and the neutral hairline border',
+      'an item that is not equipped has no badge and no brass selection bar',
       (tester) async {
         tester.view.physicalSize = const Size(800, 2600);
         tester.view.devicePixelRatio = 1.0;
@@ -407,30 +408,32 @@ void main() {
           find.descendant(
             of: find.ancestor(
               of: find.text('Classic Frame'),
-              matching: find.byType(AmiroCard),
+              matching: find.byType(InkWell),
             ),
             matching: find.text('EQUIPPED'),
           ),
           findsNothing,
         );
-        final card = tester.widget<Container>(
-          find
-              .descendant(
-                of: find.ancestor(
-                  of: find.text('Classic Frame'),
-                  matching: find.byType(AmiroCard),
-                ),
-                matching: find.byType(Container),
-              )
-              .first,
+        expect(
+          find.descendant(
+            of: find.ancestor(
+              of: find.text('Classic Frame'),
+              matching: find.byType(InkWell),
+            ),
+            matching: find.byWidgetPredicate(
+              (w) =>
+                  w is ColoredBox &&
+                  w.color == AmiroColors.primary &&
+                  w.child is SizedBox &&
+                  (w.child as SizedBox).width == 3,
+            ),
+          ),
+          findsNothing,
         );
-        final border = (card.decoration as BoxDecoration).border! as Border;
-        expect(border.top.width, 1);
-        expect(border.top.color, AmiroColors.surfaceBorder);
       },
     );
 
-    testWidgets('each catalog row is an AmiroCard, not a flat list tile', (
+    testWidgets('each catalog row is a tappable boutique card, not a list tile', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(800, 3600);
@@ -439,7 +442,7 @@ void main() {
       await tester.pumpWidget(_screen(FakeAvatarRenderer()));
       await tester.pumpAndSettle();
 
-      expect(find.byType(AmiroCard), findsNWidgets(cosmeticCatalog.length));
+      expect(find.byType(InkWell), findsWidgets);
       expect(find.byType(ListTile), findsNothing);
     });
   });

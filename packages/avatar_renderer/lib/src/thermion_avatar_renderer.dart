@@ -118,13 +118,32 @@ class ThermionAvatarRenderer implements AvatarRenderer {
   static const double _orbitFocusHeight = avatarOrbitFocusHeight;
   static const double _orbitCameraHeight = avatarOrbitCameraHeight;
 
-  // Cinematic three-point rig: warm key, cool fill, strong rim from behind.
+  // Boutique three-point rig: warm key (with floor shadow), cool fill, rim.
   // Re-aimed with the camera on every rotation so full-body stays lit while
-  // orbiting (hero-showcase energy, not flat face-only lighting).
+  // orbiting.
   static final _rig = <_LightSpec>[
-    _LightSpec(const thermion.LinearColor(1.0, 0.90, 0.78), 98000, -0.55, -0.32, -1),
-    _LightSpec(const thermion.LinearColor(0.62, 0.76, 1.0), 52000, 0.78, -0.22, -1),
-    _LightSpec(const thermion.LinearColor(0.82, 0.90, 1.0), 78000, 0.08, -0.12, 1),
+    _LightSpec(
+      const thermion.LinearColor(1.0, 0.90, 0.78),
+      105000,
+      -0.55,
+      -0.38,
+      -1,
+      castShadows: true,
+    ),
+    _LightSpec(
+      const thermion.LinearColor(0.62, 0.76, 1.0),
+      48000,
+      0.78,
+      -0.18,
+      -1,
+    ),
+    _LightSpec(
+      const thermion.LinearColor(0.92, 0.88, 1.0),
+      82000,
+      0.05,
+      -0.08,
+      1,
+    ),
   ];
 
   Future<void> _applyRig(thermion.ThermionViewer viewer, double yaw) async {
@@ -136,7 +155,7 @@ class ThermionAvatarRenderer implements AvatarRenderer {
         thermion.DirectLight.sun(
           color: l.color,
           intensity: l.intensity,
-          castShadows: false,
+          castShadows: l.castShadows,
           direction: thermion.Vector3(
             l.x * c + l.z * sn,
             l.y,
@@ -145,6 +164,22 @@ class ThermionAvatarRenderer implements AvatarRenderer {
         ),
       );
     }
+
+    // Soft top-back wash — studio rim without gaming neon.
+    final spotX = 0.15 * c + 0.55 * sn;
+    final spotZ = -0.15 * sn + 0.55 * c;
+    await viewer.addDirectLight(
+      thermion.DirectLight.spot(
+        color: const thermion.LinearColor(0.98, 0.86, 0.62),
+        intensity: 95000,
+        castShadows: false,
+        position: thermion.Vector3(spotX, 2.35, spotZ),
+        direction: thermion.Vector3(-spotX * 0.35, -1.05, -spotZ * 0.35),
+        spotLightConeInner: math.pi / 10,
+        spotLightConeOuter: math.pi / 5,
+        falloffRadius: 8,
+      ),
+    );
   }
 
   /// Orbits the camera (and the light rig with it) around the avatar by
@@ -206,13 +241,20 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     // instead, confirmed necessary on-device: the default direction left
     // the (correctly loaded, correctly framed) mesh silhouette solid black.
     try {
-      await viewer.setBackgroundColor(
-        avatarStageBackgroundR,
-        avatarStageBackgroundG,
-        avatarStageBackgroundB,
-        1.0,
+      await viewer.setBackgroundImage(
+        avatarStageBackdropAsset,
+        fillHeight: true,
       );
-    } catch (_) {}
+    } catch (_) {
+      try {
+        await viewer.setBackgroundColor(
+          avatarStageBackgroundR,
+          avatarStageBackgroundG,
+          avatarStageBackgroundB,
+          1.0,
+        );
+      } catch (_) {}
+    }
     try {
       await _installStagePlinth(viewer);
     } catch (_) {}
@@ -232,45 +274,32 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     return renderer;
   }
 
-  /// Ground disk + low lip so the avatar reads grounded, not floating in void.
+  /// Extended floor, circular plinth, and brass ring so the avatar reads as a
+  /// fashion hero on a boutique stage — not floating in a flat void.
   static Future<void> _installStagePlinth(thermion.ThermionViewer viewer) async {
-    final diskMaterial = await viewer.app.createUbershaderMaterialInstance(
-      unlit: false,
-      hasVertexColors: false,
+    final floorMaterial = await _pbrStageMaterial(
+      viewer,
+      avatarStageFloorColorR,
+      avatarStageFloorColorG,
+      avatarStageFloorColorB,
+      roughness: 0.98,
     );
-    await diskMaterial.setParameterFloat4(
-      'baseColorFactor',
-      avatarStageDiskColorR,
-      avatarStageDiskColorG,
-      avatarStageDiskColorB,
-      1.0,
-    );
-    await diskMaterial.setParameterFloat('roughnessFactor', 0.92);
-    await diskMaterial.setParameterFloat('metallicFactor', 0.0);
-
-    final disk = await viewer.createGeometry(
+    final floor = await viewer.createGeometry(
       thermion.GeometryUtils.plane(
-        width: avatarStageDiskDiameter,
-        height: avatarStageDiskDiameter,
+        width: avatarStageFloorDiameter,
+        height: avatarStageFloorDiameter,
       ),
-      materialInstances: [diskMaterial],
+      materialInstances: [floorMaterial],
     );
-    await disk.setTransform(Matrix4.identity());
+    await floor.setTransform(Matrix4.identity());
 
-    final lipMaterial = await viewer.app.createUbershaderMaterialInstance(
-      unlit: false,
-      hasVertexColors: false,
-    );
-    await lipMaterial.setParameterFloat4(
-      'baseColorFactor',
+    final lipMaterial = await _pbrStageMaterial(
+      viewer,
       avatarStagePlinthColorR,
       avatarStagePlinthColorG,
       avatarStagePlinthColorB,
-      1.0,
+      roughness: 0.94,
     );
-    await lipMaterial.setParameterFloat('roughnessFactor', 0.95);
-    await lipMaterial.setParameterFloat('metallicFactor', 0.0);
-
     final lip = await viewer.createGeometry(
       thermion.GeometryUtils.cylinder(
         radius: avatarStagePlinthRadius,
@@ -281,6 +310,73 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     await lip.setTransform(
       Matrix4.translation(Vector3(0, avatarStagePlinthCenterY, 0)),
     );
+
+    final diskMaterial = await _pbrStageMaterial(
+      viewer,
+      avatarStageDiskColorR,
+      avatarStageDiskColorG,
+      avatarStageDiskColorB,
+      roughness: 0.88,
+      metallic: 0.04,
+    );
+    final disk = await viewer.createGeometry(
+      thermion.GeometryUtils.plane(
+        width: avatarStageDiskDiameter,
+        height: avatarStageDiskDiameter,
+      ),
+      materialInstances: [diskMaterial],
+    );
+    await disk.setTransform(
+      Matrix4.translation(Vector3(0, avatarStagePlinthHeight, 0)),
+    );
+
+    final ringMaterial = await _pbrStageMaterial(
+      viewer,
+      avatarStageRingColorR,
+      avatarStageRingColorG,
+      avatarStageRingColorB,
+      roughness: 0.35,
+      metallic: 0.55,
+      emissiveScale: 0.22,
+    );
+    final ring = await viewer.createGeometry(
+      thermion.GeometryUtils.cylinder(
+        radius: avatarStageRingRadius,
+        length: avatarStageRingHeight,
+      ),
+      materialInstances: [ringMaterial],
+    );
+    await ring.setTransform(
+      Matrix4.translation(Vector3(0, avatarStageRingCenterY, 0)),
+    );
+  }
+
+  static Future<dynamic> _pbrStageMaterial(
+    thermion.ThermionViewer viewer,
+    double r,
+    double g,
+    double b, {
+    double roughness = 0.9,
+    double metallic = 0.0,
+    double emissiveScale = 0.0,
+  }) async {
+    final material = await viewer.app.createUbershaderMaterialInstance(
+      unlit: false,
+      hasVertexColors: false,
+    );
+    await material.setParameterFloat4('baseColorFactor', r, g, b, 1.0);
+    await material.setParameterFloat('roughnessFactor', roughness);
+    await material.setParameterFloat('metallicFactor', metallic);
+    if (emissiveScale > 0) {
+      await material.setParameterFloat4(
+        'emissiveFactor',
+        r * emissiveScale,
+        g * emissiveScale,
+        b * emissiveScale,
+        1.0,
+      );
+    }
+    return material;
   }
 
   @override
@@ -354,5 +450,13 @@ class _LightSpec {
   final thermion.LinearColor color;
   final double intensity;
   final double x, y, z;
-  const _LightSpec(this.color, this.intensity, this.x, this.y, this.z);
+  final bool castShadows;
+  const _LightSpec(
+    this.color,
+    this.intensity,
+    this.x,
+    this.y,
+    this.z, {
+    this.castShadows = false,
+  });
 }
