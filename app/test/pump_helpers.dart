@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -20,17 +22,38 @@ Future<void> pumpUntilFound(
   fail('pumpUntilFound timed out waiting for $finder');
 }
 
+/// Waits for [_avatarLoadChain] while pumping — never await [waitForAvatarLoadIdle]
+/// alone (deadlocks without [tester.pump]).
+Future<void> pumpUntilAvatarLoadIdle(
+  WidgetTester tester, {
+  Duration step = const Duration(milliseconds: 50),
+  int maxPumps = 120,
+}) async {
+  var idle = false;
+  unawaited(waitForAvatarLoadIdle().then((_) => idle = true));
+  for (var i = 0; i < maxPumps; i++) {
+    if (idle) break;
+    await tester.pump(step);
+  }
+  await tester.pump(const Duration(milliseconds: 100));
+}
+
 /// After [pumpWidget], wait for in-flight [ensureAvatarLoaded] and a few frames.
 Future<void> pumpAfterAvatarLoad(WidgetTester tester) async {
   await tester.pump();
-  await waitForAvatarLoadIdle();
-  await tester.pump(const Duration(milliseconds: 100));
+  await pumpUntilAvatarLoadIdle(tester);
 }
 
 /// Enough time for the first-launch reveal animation (500ms) to finish.
 Future<void> pumpThroughAvatarReveal(WidgetTester tester) async {
   await pumpAfterAvatarLoad(tester);
   await tester.pump(const Duration(milliseconds: 600));
+}
+
+Future<void> pumpShort(WidgetTester tester, {int frames = 5}) async {
+  for (var i = 0; i < frames; i++) {
+    await tester.pump(const Duration(milliseconds: 50));
+  }
 }
 
 void useTallTestViewport(WidgetTester tester) {

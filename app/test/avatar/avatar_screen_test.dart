@@ -250,8 +250,7 @@ void main() {
       final renderer = FakeAvatarRenderer();
 
       await tester.pumpWidget(_screen(renderer, InMemoryIdentityRepository()));
-      await tester.pump();
-      await waitForAvatarLoadIdle();
+      await pumpUntilAvatarLoadIdle(tester);
 
       // Chrome (the equip control) hasn't appeared yet — the avatar itself is
       // still materializing.
