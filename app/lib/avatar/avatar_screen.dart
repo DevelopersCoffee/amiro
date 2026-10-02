@@ -66,6 +66,7 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
     final identity = ref.watch(currentIdentityProvider).value;
     final bodyAssetPending = !canRenderAvatarForIdentity(identity);
 
+    ref.watch(avatarSceneRevisionProvider);
     final renderer = ref.watch(avatarRendererProvider);
     final current = renderer.current;
     // Sums whatever's equipped against the store catalog's prices — not

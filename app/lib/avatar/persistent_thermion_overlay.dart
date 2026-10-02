@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:avatar_renderer/avatar_renderer.dart';
+
 import '../identity/identity_providers.dart';
 import 'avatar_defaults.dart';
 import 'avatar_providers.dart';
@@ -46,6 +48,7 @@ class _PersistentThermionOverlayState
   void initState() {
     super.initState();
     _schedulePresentationSync();
+    _scheduleSceneAvailabilitySync();
   }
 
   void _schedulePresentationSync() {
@@ -63,14 +66,45 @@ class _PersistentThermionOverlayState
 
     final renderer = ref.read(avatarRendererProvider);
     if (_onThermionTab) {
-      await renderer.resumePresentation();
+      await _resumeIfSceneReady(renderer);
     } else {
       await renderer.pausePresentation();
     }
   }
 
+  void _scheduleSceneAvailabilitySync() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncSceneAvailability();
+    });
+  }
+
+  Future<void> _syncSceneAvailability() async {
+    if (!mounted) return;
+    final renderer = ref.read(avatarRendererProvider);
+    final identity = ref.read(currentIdentityProvider).value;
+    final shouldShow = _onThermionTab &&
+        canRenderAvatarForIdentity(identity) &&
+        renderer.current != null;
+    if (shouldShow) {
+      await _resumeIfSceneReady(renderer);
+    }
+  }
+
+  Future<void> _resumeIfSceneReady(AvatarRenderer renderer) async {
+    if (renderer.current == null) return;
+    await renderer.resumePresentation();
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen(avatarSceneRevisionProvider, (previous, next) {
+      if (previous != next) {
+        _scheduleSceneAvailabilitySync();
+      }
+    });
+
+    ref.watch(avatarSceneRevisionProvider);
     final renderer = ref.watch(avatarRendererProvider);
     final identity = ref.watch(currentIdentityProvider).value;
     final showScene = _onThermionTab &&

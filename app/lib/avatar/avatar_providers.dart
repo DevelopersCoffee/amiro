@@ -12,6 +12,20 @@ final avatarRendererProvider = Provider<AvatarRenderer>((ref) {
   throw UnimplementedError('avatarRendererProvider must be overridden');
 });
 
+/// Bumped when the singleton renderer [load]s or [unload]s — the provider
+/// instance identity never changes, so widgets must watch this to rebuild.
+class AvatarSceneRevisionNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void bump() => state++;
+}
+
+final avatarSceneRevisionProvider =
+    NotifierProvider<AvatarSceneRevisionNotifier, int>(
+      AvatarSceneRevisionNotifier.new,
+    );
+
 /// Factory for a fresh, screen-scoped [AvatarRenderer] instance — for
 /// anywhere that needs to render an avatar without touching the
 /// app-lifetime singleton behind [avatarRendererProvider]. The only

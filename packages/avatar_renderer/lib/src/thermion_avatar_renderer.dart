@@ -298,6 +298,9 @@ class ThermionAvatarRenderer implements AvatarRenderer {
       }
     }
     _current = definition;
+    try {
+      await _viewer?.renderSingleFrame();
+    } catch (_) {}
   }
 
   @override

@@ -8,6 +8,10 @@ import '../identity/identity_providers.dart';
 import 'avatar_defaults.dart';
 import 'avatar_providers.dart';
 
+void notifyAvatarSceneChanged(WidgetRef ref) {
+  ref.read(avatarSceneRevisionProvider.notifier).bump();
+}
+
 /// Male default — prefer [defaultAvatarDefinitionForGender] when identity is known.
 const defaultAvatarDefinition = AvatarDefinition(
   id: 'default',
@@ -47,6 +51,7 @@ Future<AvatarLoadResult> ensureAvatarLoaded(WidgetRef ref) async {
   if (!canRenderAvatarForIdentity(identity)) {
     if (renderer.current != null) {
       await renderer.unload();
+      notifyAvatarSceneChanged(ref);
     }
     return (
       definition: null,
@@ -71,6 +76,8 @@ Future<AvatarLoadResult> ensureAvatarLoaded(WidgetRef ref) async {
         );
 
   await renderer.load(definition);
+  await renderer.resumePresentation();
+  notifyAvatarSceneChanged(ref);
   await persistAvatarDefinition(ref, definition);
   return (
     definition: definition,
