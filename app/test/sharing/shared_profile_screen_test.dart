@@ -243,6 +243,10 @@ class _SpyAvatarRenderer implements AvatarRenderer {
     _current = null;
   }
   @override
+  Future<void> pausePresentation() async {}
+  @override
+  Future<void> resumePresentation() async {}
+  @override
   Future<void> dispose() async {}
 }
 
@@ -264,6 +268,10 @@ class _FailingLoadAvatarRenderer implements AvatarRenderer {
   Future<void> updateSlot(String slot, String? assetId) async {}
   @override
   Future<void> unload() async {}
+  @override
+  Future<void> pausePresentation() async {}
+  @override
+  Future<void> resumePresentation() async {}
   @override
   Future<void> dispose() async {
     disposeCallCount++;

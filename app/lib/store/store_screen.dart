@@ -7,7 +7,7 @@ import 'package:store/store.dart';
 import '../avatar/avatar_defaults.dart';
 import '../avatar/avatar_loader.dart';
 import '../avatar/avatar_providers.dart';
-import '../avatar/avatar_thermion_view.dart';
+import '../avatar/avatar_viewport_placeholder.dart';
 import '../identity/identity_providers.dart';
 import '../theme/amiro_card.dart';
 import '../theme/amiro_theme.dart';
@@ -263,7 +263,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
       ),
       body: Column(
         children: [
-          const SizedBox(height: 220, child: AvatarThermionView()),
+          const SizedBox(height: 220, child: AvatarViewportPlaceholder()),
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.all(AmiroSpacing.md),

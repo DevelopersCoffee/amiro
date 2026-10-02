@@ -48,6 +48,12 @@ class _GatedLoadRenderer implements AvatarRenderer {
   Future<void> unload() => _inner.unload();
 
   @override
+  Future<void> pausePresentation() => _inner.pausePresentation();
+
+  @override
+  Future<void> resumePresentation() => _inner.resumePresentation();
+
+  @override
   Future<void> dispose() => _inner.dispose();
 }
 

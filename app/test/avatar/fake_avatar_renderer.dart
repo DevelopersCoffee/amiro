@@ -32,5 +32,11 @@ class FakeAvatarRenderer implements AvatarRenderer {
   }
 
   @override
+  Future<void> pausePresentation() async {}
+
+  @override
+  Future<void> resumePresentation() async {}
+
+  @override
   Future<void> dispose() async {}
 }

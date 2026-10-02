@@ -1,5 +1,5 @@
-/// Lets the app detach [ThermionWidget] from the tree before Filament mutates
-/// or destroys skinned assets (avoids SIGSEGV on Android when leaving tabs).
+/// Lets the app pause Filament presentation before destroying skinned assets
+/// (see [ThermionAvatarRenderer.pausePresentation]).
 ///
 /// Registered once from the app shell (`main` / root tabs). When null, mutations
 /// run immediately (unit tests and fakes).

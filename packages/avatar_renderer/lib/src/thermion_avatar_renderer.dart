@@ -112,6 +112,8 @@ class ThermionAvatarRenderer implements AvatarRenderer {
   thermion.Camera? _camera;
   double _yaw = 0;
   bool _applying = false;
+  bool _presentationPaused = false;
+  Widget? _cachedViewWidget;
 
   ThermionAvatarRenderer({required this.surface});
 
@@ -333,26 +335,44 @@ class ThermionAvatarRenderer implements AvatarRenderer {
 
   @override
   Widget buildView() {
-    // `ThermionWidget` (unlike the brief's assumed const, no-arg
-    // constructor) requires a live `ThermionViewer` to render into — see
-    // API reality check note on `ThermionFilamentSurface` above. That
-    // viewer only exists on the real surface, not the test fake, so this
-    // is the one place that reaches past the `FilamentSurface` seam.
+    // One app-lifetime widget tree for the singleton viewer — never create a
+    // second [ThermionWidget] on the same [ThermionViewer] (Android UAF).
+    final cached = _cachedViewWidget;
+    if (cached != null) return cached;
+
     final surface = this.surface;
     if (surface is ThermionFilamentSurface) {
-      // Horizontal drag orbits the camera: ~one full turn per 2 screen
-      // widths of dragging feels natural without needing a second swipe.
-      return GestureDetector(
+      _cachedViewWidget = GestureDetector(
         behavior: HitTestBehavior.opaque,
         onHorizontalDragUpdate: (details) =>
             rotateBy(-details.delta.dx * 0.012),
         child: thermion.ThermionWidget(viewer: surface._viewer),
       );
+      return _cachedViewWidget!;
     }
     throw StateError(
       'buildView() requires a ThermionFilamentSurface backed by a live '
       'ThermionViewer',
     );
+  }
+
+  @override
+  Future<void> pausePresentation() async {
+    if (_presentationPaused) return;
+    _presentationPaused = true;
+    try {
+      thermion.ThermionFlutterPlugin.pauseFrameScheduler();
+      await _viewer?.setRendering(false);
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> resumePresentation() async {
+    _presentationPaused = false;
+    try {
+      await _viewer?.setRendering(true);
+      thermion.ThermionFlutterPlugin.resumeFrameScheduler();
+    } catch (_) {}
   }
 
   @override
