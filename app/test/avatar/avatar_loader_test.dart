@@ -149,7 +149,7 @@ void main() {
         avatarGender: 'male',
       ),
     );
-    await ensureAvatarLoaded(container.read, forceReload: true);
+    await ensureAvatarLoaded(container, forceReload: true);
     expect(renderer.current, isNotNull);
     expect(renderer.calls.where((c) => c == 'unload').length, greaterThanOrEqualTo(1));
     expect(renderer.calls.where((c) => c.startsWith('load:')).length, greaterThanOrEqualTo(2));
@@ -177,7 +177,7 @@ void main() {
     expect(renderer.current, isNotNull);
 
     // Simulate stale current without meshes — forceReload must unload first.
-    await ensureAvatarLoaded(container.read, forceReload: true);
+    await ensureAvatarLoaded(container, forceReload: true);
     expect(renderer.calls.where((c) => c == 'unload').length, greaterThanOrEqualTo(1));
     expect(renderer.calls.where((c) => c.startsWith('load:')).length, greaterThanOrEqualTo(2));
   });

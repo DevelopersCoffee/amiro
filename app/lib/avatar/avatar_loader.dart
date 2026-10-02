@@ -31,8 +31,11 @@ typedef AvatarLoadResult = ({
   bool bodyAssetPending,
 });
 
-void _publishSceneDefinition(Ref ref, AvatarDefinition? definition) {
-  ref.read(avatarSceneDefinitionProvider.notifier).set(definition);
+void _publishSceneDefinition(
+  ProviderContainer container,
+  AvatarDefinition? definition,
+) {
+  container.read(avatarSceneDefinitionProvider.notifier).set(definition);
 }
 
 /// Resolves which [AvatarDefinition] to load for [identity].
@@ -72,14 +75,14 @@ Future<void> waitForAvatarLoadIdle() => _avatarLoadChain;
 /// unload/pause cycle cannot leave a stale [AvatarRenderer.current] or orphan
 /// Filament assets when [current] is already null.
 Future<AvatarLoadResult> ensureAvatarLoaded(
-  Ref ref, {
+  ProviderContainer container, {
   bool forceReload = false,
 }) {
   final completer = Completer<AvatarLoadResult>();
   _avatarLoadChain = _avatarLoadChain.then((_) async {
     try {
       completer.complete(
-        await _ensureAvatarLoadedOnce(ref, forceReload: forceReload),
+        await _ensureAvatarLoadedOnce(container, forceReload: forceReload),
       );
     } catch (e, st) {
       completer.completeError(e, st);
@@ -89,15 +92,15 @@ Future<AvatarLoadResult> ensureAvatarLoaded(
 }
 
 Future<AvatarLoadResult> _ensureAvatarLoadedOnce(
-  Ref ref, {
+  ProviderContainer container, {
   required bool forceReload,
 }) async {
-  final identity = await ref.read(currentIdentityProvider.future);
-  final renderer = ref.read(avatarRendererProvider);
+  final identity = await container.read(currentIdentityProvider.future);
+  final renderer = container.read(avatarRendererProvider);
 
   if (!canRenderAvatarForIdentity(identity)) {
     await renderer.unload();
-    _publishSceneDefinition(ref, null);
+    _publishSceneDefinition(container, null);
     return (
       definition: null,
       isFirstReveal: false,
@@ -111,7 +114,7 @@ Future<AvatarLoadResult> _ensureAvatarLoadedOnce(
 
   final loaded = renderer.current;
   if (loaded != null && !forceReload) {
-    _publishSceneDefinition(ref, loaded);
+    _publishSceneDefinition(container, loaded);
     return (
       definition: loaded,
       isFirstReveal: false,
@@ -124,8 +127,8 @@ Future<AvatarLoadResult> _ensureAvatarLoadedOnce(
   );
 
   await renderer.load(definition);
-  _publishSceneDefinition(ref, definition);
-  await persistAvatarDefinition(ref, definition);
+  _publishSceneDefinition(container, definition);
+  await persistAvatarDefinition(container, definition);
   return (
     definition: definition,
     isFirstReveal: identity?.avatarDefinitionJson == null,
@@ -137,12 +140,12 @@ Future<AvatarLoadResult> _ensureAvatarLoadedOnce(
 /// "definition JSON -> render -> swap -> persist" pipeline. No-op when the
 /// user hasn't created an identity yet — there's nothing to attach it to.
 Future<void> persistAvatarDefinition(
-  Ref ref,
+  ProviderContainer container,
   AvatarDefinition definition,
 ) async {
-  final identity = ref.read(currentIdentityProvider).value;
+  final identity = container.read(currentIdentityProvider).value;
   if (identity == null) return;
-  await ref
+  await container
       .read(currentIdentityProvider.notifier)
       .save(
         identity.copyWith(

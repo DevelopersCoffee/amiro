@@ -27,7 +27,7 @@ class AvatarIdentitySyncListener extends ConsumerWidget {
           prevGender == nextGender) {
         return;
       }
-      unawaited(ensureAvatarLoaded(ref, forceReload: true));
+      unawaited(ensureAvatarLoaded(ref.container, forceReload: true));
     });
     return child;
   }

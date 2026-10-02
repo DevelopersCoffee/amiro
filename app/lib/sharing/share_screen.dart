@@ -48,7 +48,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
     _didInit = true;
     // The card needs the user's avatar loaded (same as the Avatar and Store
     // tabs); rebuild once it is so the card can replace the spinner.
-    ensureAvatarLoaded(ref).then((_) {
+    ensureAvatarLoaded(ref.container).then((_) {
       if (mounted) setState(() {});
     });
   }
