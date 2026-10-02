@@ -6,6 +6,7 @@ import 'package:thermion_flutter/thermion_flutter.dart' as thermion;
 import 'package:avatar_core/avatar_core.dart';
 
 import 'avatar_asset_resolver.dart';
+import 'avatar_body_pose.dart';
 import 'avatar_renderer_interface.dart';
 
 /// Thin seam over the Filament surface so slot-swap bookkeeping is unit
@@ -65,6 +66,15 @@ class ThermionFilamentSurface implements FilamentSurface {
                 'baseColorFactor', tint[0], tint[1], tint[2], 1.0);
           }
         }
+      } catch (_) {}
+    }
+
+    // Body meshes are rigged but ship with no idle clip — Filament shows the
+    // bind (T) pose until bones are driven. Best-effort: a pose failure must
+    // never prevent the model from appearing.
+    if (shouldApplyRelaxedArmPose(assetPath)) {
+      try {
+        await applyRelaxedArmPose(asset);
       } catch (_) {}
     }
   }
