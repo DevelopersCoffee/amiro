@@ -29,17 +29,12 @@ typedef AvatarLoadResult = ({
   bool bodyAssetPending,
 });
 
+void _publishSceneDefinition(WidgetRef ref, AvatarDefinition? definition) {
+  ref.read(avatarSceneDefinitionProvider.notifier).set(definition);
+}
+
 /// Ensures the singleton [AvatarRenderer] has a loaded definition, loading
 /// the persisted (or default) one if nothing is loaded yet.
-///
-/// The renderer is an app-lifetime singleton, but a screen's State is
-/// recreated every time the user switches back to its tab. Reloading here
-/// would queue a duplicate set of Filament asset loads and reset the UI's
-/// idea of what is equipped, so any screen that needs the avatar visible or
-/// equippable (Avatar tab, Store tab) should call this rather than loading
-/// directly — a call after the first is a no-op that just returns the
-/// already-loaded definition (and `isFirstReveal: false`, since there's
-/// nothing to reveal a second time).
 Future<AvatarLoadResult> ensureAvatarLoaded(WidgetRef ref) async {
   final identity = await ref.read(currentIdentityProvider.future);
   final renderer = ref.read(avatarRendererProvider);
@@ -48,6 +43,7 @@ Future<AvatarLoadResult> ensureAvatarLoaded(WidgetRef ref) async {
     if (renderer.current != null) {
       await renderer.unload();
     }
+    _publishSceneDefinition(ref, null);
     return (
       definition: null,
       isFirstReveal: false,
@@ -57,6 +53,7 @@ Future<AvatarLoadResult> ensureAvatarLoaded(WidgetRef ref) async {
 
   final loaded = renderer.current;
   if (loaded != null) {
+    _publishSceneDefinition(ref, loaded);
     return (
       definition: loaded,
       isFirstReveal: false,
@@ -71,6 +68,7 @@ Future<AvatarLoadResult> ensureAvatarLoaded(WidgetRef ref) async {
         );
 
   await renderer.load(definition);
+  _publishSceneDefinition(ref, definition);
   await persistAvatarDefinition(ref, definition);
   return (
     definition: definition,

@@ -361,7 +361,7 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     if (_presentationPaused) return;
     _presentationPaused = true;
     try {
-      thermion.ThermionFlutterPlugin.pauseFrameScheduler();
+      thermion.ThermionFlutterPlugin.instance.pauseFrameScheduler();
       await _viewer?.setRendering(false);
     } catch (_) {}
   }
@@ -371,7 +371,7 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     _presentationPaused = false;
     try {
       await _viewer?.setRendering(true);
-      thermion.ThermionFlutterPlugin.resumeFrameScheduler();
+      thermion.ThermionFlutterPlugin.instance.resumeFrameScheduler();
     } catch (_) {}
   }
 

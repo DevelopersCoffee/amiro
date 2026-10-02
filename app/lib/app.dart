@@ -6,6 +6,7 @@ import 'package:avatar_renderer/avatar_renderer.dart';
 import 'identity/identity_edit_screen.dart';
 import 'avatar/avatar_screen.dart';
 import 'avatar/avatar_providers.dart';
+import 'avatar/avatar_identity_sync.dart';
 import 'avatar/persistent_thermion_overlay.dart';
 import 'discovery/passport_screen.dart';
 import 'sharing/incoming_share_listener.dart';
@@ -61,16 +62,18 @@ class _RootTabsState extends ConsumerState<_RootTabs> {
       PassportScreen(),
     ];
     return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          IndexedStack(
-            index: _index,
-            sizing: StackFit.expand,
-            children: screens,
-          ),
-          PersistentThermionOverlay(activeTabIndex: _index),
-        ],
+      body: AvatarIdentitySyncListener(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            IndexedStack(
+              index: _index,
+              sizing: StackFit.expand,
+              children: screens,
+            ),
+            PersistentThermionOverlay(activeTabIndex: _index),
+          ],
+        ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,

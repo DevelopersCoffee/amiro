@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:avatar_renderer/avatar_renderer.dart';
+
+import '../identity/identity_providers.dart';
+import 'avatar_defaults.dart';
 import 'avatar_providers.dart';
 
 /// App-lifetime host for the singleton [ThermionWidget].
 ///
-/// Stays in the tree across tab changes ( [Offstage] when hidden) so Android
-/// never destroys the GL texture while Filament still animates skinned meshes.
-/// Only tab indices 1 (Avatar) and 2 (Store preview) show and accept input.
+/// The [ThermionWidget] child is created once and never [Offstage]d — hiding
+/// uses opacity/pointer only so Android keeps one valid SwapChain. Filament
+/// assets load/unload on the existing viewer when gender changes.
 class PersistentThermionOverlay extends ConsumerStatefulWidget {
   final int activeTabIndex;
 
@@ -60,20 +64,43 @@ class _PersistentThermionOverlayState
     _lastSyncedTab = tab;
 
     final renderer = ref.read(avatarRendererProvider);
-    if (_onThermionTab) {
+    final scene = ref.read(avatarSceneDefinitionProvider);
+    if (_onThermionTab && scene != null) {
       await renderer.resumePresentation();
     } else {
       await renderer.pausePresentation();
     }
   }
 
+  Future<void> _maybeResumeAfterSceneLoad() async {
+    if (!mounted || !_onThermionTab) return;
+    final scene = ref.read(avatarSceneDefinitionProvider);
+    if (scene == null) return;
+    await ref.read(avatarRendererProvider).resumePresentation();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final renderer = ref.watch(avatarRendererProvider);
+    ref.listen(avatarSceneDefinitionProvider, (previous, next) {
+      if (previous == next || next == null) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _maybeResumeAfterSceneLoad();
+      });
+    });
+
+    final scene = ref.watch(avatarSceneDefinitionProvider);
+    final identity = ref.watch(currentIdentityProvider).value;
+    final showScene = _onThermionTab &&
+        canRenderAvatarForIdentity(identity) &&
+        scene != null;
+
+    final renderer = ref.read(avatarRendererProvider);
     _thermionView ??= renderer.buildView();
 
     final mediaQuery = MediaQuery.of(context);
     final top = mediaQuery.padding.top + kToolbarHeight;
+
+    final host = _host(_thermionView!, visible: showScene);
 
     if (widget.activeTabIndex == _storeTabIndex) {
       return Positioned(
@@ -81,7 +108,7 @@ class _PersistentThermionOverlayState
         left: 0,
         right: 0,
         height: _storePreviewHeight,
-        child: _host(_thermionView!),
+        child: host,
       );
     }
 
@@ -90,15 +117,16 @@ class _PersistentThermionOverlayState
       left: 0,
       right: 0,
       bottom: _avatarEquipChromeBottom,
-      child: _host(_thermionView!),
+      child: host,
     );
   }
 
-  Widget _host(Widget thermionView) {
-    return Offstage(
-      offstage: !_onThermionTab,
-      child: IgnorePointer(
-        ignoring: !_onThermionTab,
+  Widget _host(Widget thermionView, {required bool visible}) {
+    return IgnorePointer(
+      ignoring: !visible,
+      child: Opacity(
+        opacity: visible ? 1 : 0,
+        alwaysIncludeSemantics: false,
         child: thermionView,
       ),
     );

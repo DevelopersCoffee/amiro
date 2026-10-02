@@ -23,7 +23,6 @@ class AvatarScreen extends ConsumerStatefulWidget {
 class _AvatarScreenState extends ConsumerState<AvatarScreen> {
   bool _didInit = false;
   bool _loading = true;
-  bool _bodyAssetPending = false;
   bool _glassesOn = false;
 
   // The reveal ceremony (avatar materializes before chrome appears) plays
@@ -45,7 +44,6 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
     if (!mounted) return;
     setState(() {
       _loading = false;
-      _bodyAssetPending = result.bodyAssetPending;
       _revealing = result.isFirstReveal && !result.bodyAssetPending;
       _glassesOn = result.definition?.glasses != null;
     });
@@ -57,6 +55,7 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
     await renderer.updateSlot('glasses', next ? 'glasses_realistic' : null);
     final updated = renderer.current;
     if (updated != null) {
+      ref.read(avatarSceneDefinitionProvider.notifier).set(updated);
       await persistAvatarDefinition(ref, updated);
     }
     if (!mounted) return;
@@ -65,8 +64,11 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final renderer = ref.watch(avatarRendererProvider);
-    final current = renderer.current;
+    final identity = ref.watch(currentIdentityProvider).value;
+    final bodyAssetPending = !canRenderAvatarForIdentity(identity);
+
+    final current = ref.watch(avatarSceneDefinitionProvider);
+    final renderer = ref.read(avatarRendererProvider);
     // Sums whatever's equipped against the store catalog's prices — not
     // gated on ownership, since equipping today (the debug toggle button)
     // bypasses the store's buy flow entirely (see TODOS.md #5/#6).
@@ -78,12 +80,10 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
         ? null
         : avatarRarityScore(current, cosmeticCatalog).highest;
 
-    final showChrome = !_loading && !_revealing && !_bodyAssetPending;
+    final showChrome = !_loading && !_revealing && !bodyAssetPending;
 
-    if (_bodyAssetPending) {
-      final gender = resolveAvatarGender(
-        ref.watch(currentIdentityProvider).value,
-      );
+    if (bodyAssetPending) {
+      final gender = resolveAvatarGender(identity);
       return Scaffold(
         appBar: AppBar(title: const Text('Your Avatar')),
         body: EmptyState(
