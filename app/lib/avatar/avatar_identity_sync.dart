@@ -27,7 +27,13 @@ class AvatarIdentitySyncListener extends ConsumerWidget {
           prevGender == nextGender) {
         return;
       }
-      unawaited(ensureAvatarLoaded(ref.container, forceReload: true));
+      if (!context.mounted) return;
+      unawaited(
+        ensureAvatarLoaded(
+          ProviderScope.containerOf(context),
+          forceReload: true,
+        ),
+      );
     });
     return child;
   }

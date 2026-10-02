@@ -40,7 +40,9 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
   }
 
   Future<void> _init() async {
-    final result = await ensureAvatarLoaded(ref.container);
+    final result = await ensureAvatarLoaded(
+      ProviderScope.containerOf(context),
+    );
     if (!mounted) return;
     setState(() {
       _loading = false;
@@ -56,7 +58,10 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
     final updated = renderer.current;
     if (updated != null) {
       ref.read(avatarSceneDefinitionProvider.notifier).set(updated);
-      await persistAvatarDefinition(ref.container, updated);
+      await persistAvatarDefinition(
+        ProviderScope.containerOf(context),
+        updated,
+      );
     }
     if (!mounted) return;
     setState(() => _glassesOn = next);
