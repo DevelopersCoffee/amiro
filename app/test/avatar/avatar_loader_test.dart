@@ -95,6 +95,32 @@ void main() {
     expect(restored.bodyAssetPending, isFalse);
     expect(renderer.current, isNotNull);
     expect(container.read(avatarSceneDefinitionProvider), isNotNull);
-    expect(renderer.calls, contains('resumePresentation'));
+  });
+
+  test('ensureAvatarLoaded forceReload unloads stale current before load', () async {
+    final container = ProviderContainer(
+      overrides: [
+        identityRepositoryProvider.overrideWithValue(InMemoryIdentityRepository()),
+        avatarRendererProvider.overrideWithValue(FakeAvatarRenderer()),
+      ],
+    );
+    addTearDown(container.dispose);
+    final renderer = container.read(avatarRendererProvider) as FakeAvatarRenderer;
+
+    await container.read(currentIdentityProvider.notifier).save(
+      Identity(
+        id: 'id-1',
+        displayName: 'Alex',
+        username: 'alex',
+        avatarGender: 'male',
+      ),
+    );
+    await ensureAvatarLoaded(container.read);
+    expect(renderer.current, isNotNull);
+
+    // Simulate stale current without meshes — forceReload must unload first.
+    await ensureAvatarLoaded(container.read, forceReload: true);
+    expect(renderer.calls.where((c) => c == 'unload').length, greaterThanOrEqualTo(1));
+    expect(renderer.calls.where((c) => c.startsWith('load:')).length, greaterThanOrEqualTo(2));
   });
 }

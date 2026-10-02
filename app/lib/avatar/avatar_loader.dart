@@ -35,7 +35,13 @@ void _publishSceneDefinition(WidgetRef ref, AvatarDefinition? definition) {
 
 /// Ensures the singleton [AvatarRenderer] has a loaded definition, loading
 /// the persisted (or default) one if nothing is loaded yet.
-Future<AvatarLoadResult> ensureAvatarLoaded(WidgetRef ref) async {
+///
+/// Pass [forceReload: true] after [Identity.avatarGender] changes so a prior
+/// unload/pause cycle cannot leave a stale [AvatarRenderer.current].
+Future<AvatarLoadResult> ensureAvatarLoaded(
+  WidgetRef ref, {
+  bool forceReload = false,
+}) async {
   final identity = await ref.read(currentIdentityProvider.future);
   final renderer = ref.read(avatarRendererProvider);
 
@@ -51,8 +57,12 @@ Future<AvatarLoadResult> ensureAvatarLoaded(WidgetRef ref) async {
     );
   }
 
+  if (forceReload && renderer.current != null) {
+    await renderer.unload();
+  }
+
   final loaded = renderer.current;
-  if (loaded != null) {
+  if (loaded != null && !forceReload) {
     _publishSceneDefinition(ref, loaded);
     return (
       definition: loaded,

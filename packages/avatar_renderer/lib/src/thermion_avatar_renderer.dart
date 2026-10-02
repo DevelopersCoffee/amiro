@@ -291,9 +291,6 @@ class ThermionAvatarRenderer implements AvatarRenderer {
 
   @override
   Future<void> load(AvatarDefinition definition) async {
-    // [unload] pauses via [ThermionViewDetachGate]; reload must turn presentation
-    // back on or the SwapChain stays on clear color while UI shows the avatar.
-    final resumeAfterLoad = _presentationPaused;
     for (final slot in AvatarDefinition.slots) {
       final assetId = _slotValue(definition, slot);
       if (assetId != null) {
@@ -301,9 +298,6 @@ class ThermionAvatarRenderer implements AvatarRenderer {
       }
     }
     _current = definition;
-    if (resumeAfterLoad) {
-      await resumePresentation();
-    }
   }
 
   @override
@@ -378,6 +372,13 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     try {
       await _viewer?.setRendering(true);
       thermion.ThermionFlutterPlugin.instance.resumeFrameScheduler();
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> requestPresentationFrame() async {
+    try {
+      await _viewer?.renderSingleFrame();
     } catch (_) {}
   }
 

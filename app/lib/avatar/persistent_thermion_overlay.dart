@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:avatar_core/avatar_core.dart';
+import 'package:avatar_renderer/avatar_renderer.dart';
 
 import 'package:identity_core/identity_core.dart';
 
@@ -27,7 +28,7 @@ class PersistentThermionOverlay extends ConsumerStatefulWidget {
 class _PersistentThermionOverlayState
     extends ConsumerState<PersistentThermionOverlay> {
   Widget? _thermionView;
-  bool? _lastShouldPresent;
+  bool _lastShouldPresent = false;
 
   static const _avatarTabIndex = 1;
   static const _storeTabIndex = 2;
@@ -68,20 +69,29 @@ class _PersistentThermionOverlayState
     });
   }
 
+  Future<void> _presentScene(AvatarRenderer renderer) async {
+    await renderer.resumePresentation();
+    await renderer.requestPresentationFrame();
+  }
+
   Future<void> _reconcilePresentation() async {
     if (!mounted) return;
     final scene = ref.read(avatarSceneDefinitionProvider);
     final identity = ref.read(currentIdentityProvider).value;
     final shouldPresent = _shouldPresentScene(scene: scene, identity: identity);
-    if (_lastShouldPresent == shouldPresent) return;
-    _lastShouldPresent = shouldPresent;
 
     final renderer = ref.read(avatarRendererProvider);
     if (shouldPresent) {
-      await renderer.resumePresentation();
-    } else {
-      await renderer.pausePresentation();
+      // Always resume when Opacity is 1 — do not skip via a latch; load() may
+      // have run while hidden and must not be the only resume attempt.
+      _lastShouldPresent = true;
+      await _presentScene(renderer);
+      return;
     }
+
+    if (!_lastShouldPresent) return;
+    _lastShouldPresent = false;
+    await renderer.pausePresentation();
   }
 
   @override

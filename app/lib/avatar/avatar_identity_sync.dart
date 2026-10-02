@@ -19,7 +19,7 @@ class AvatarIdentitySyncListener extends ConsumerWidget {
       final prevGender = previous?.value?.avatarGender;
       final nextGender = next.value?.avatarGender;
       if (prevGender != nextGender) {
-        unawaited(ensureAvatarLoaded(ref));
+        unawaited(ensureAvatarLoaded(ref, forceReload: true));
       }
     });
     return child;

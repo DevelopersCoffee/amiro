@@ -247,6 +247,8 @@ class _SpyAvatarRenderer implements AvatarRenderer {
   @override
   Future<void> resumePresentation() async {}
   @override
+  Future<void> requestPresentationFrame() async {}
+  @override
   Future<void> dispose() async {}
 }
 
@@ -272,6 +274,8 @@ class _FailingLoadAvatarRenderer implements AvatarRenderer {
   Future<void> pausePresentation() async {}
   @override
   Future<void> resumePresentation() async {}
+  @override
+  Future<void> requestPresentationFrame() async {}
   @override
   Future<void> dispose() async {
     disposeCallCount++;
