@@ -22,6 +22,19 @@ Future<void> pumpUntilFound(
   fail('pumpUntilFound timed out waiting for $finder');
 }
 
+Future<bool> _avatarLoadChainIdleNow(WidgetTester tester) async {
+  var idle = false;
+  await tester.runAsync(() async {
+    try {
+      await waitForAvatarLoadIdle().timeout(const Duration(milliseconds: 25));
+      idle = true;
+    } on TimeoutException {
+      idle = false;
+    }
+  });
+  return idle;
+}
+
 /// Waits for [_avatarLoadChain] while pumping — never await [waitForAvatarLoadIdle]
 /// alone (deadlocks without [tester.pump]).
 Future<void> pumpUntilAvatarLoadIdle(
@@ -29,19 +42,15 @@ Future<void> pumpUntilAvatarLoadIdle(
   Duration step = const Duration(milliseconds: 50),
   int maxPumps = 120,
 }) async {
-  var chain = waitForAvatarLoadIdle();
   for (var i = 0; i < maxPumps; i++) {
-    var done = false;
-    unawaited(chain.then((_) => done = true));
-    await tester.pump(step);
-    if (!done) continue;
-
-    final next = waitForAvatarLoadIdle();
-    if (identical(chain, next)) {
-      await tester.pump(const Duration(milliseconds: 100));
-      return;
+    if (await _avatarLoadChainIdleNow(tester)) {
+      await tester.pump(step);
+      if (await _avatarLoadChainIdleNow(tester)) {
+        await tester.pump(const Duration(milliseconds: 100));
+        return;
+      }
     }
-    chain = next;
+    await tester.pump(step);
   }
   fail('pumpUntilAvatarLoadIdle timed out waiting for avatar load chain');
 }
