@@ -11,7 +11,6 @@ import 'avatar_asset_resolver.dart';
 import 'avatar_body_pose.dart';
 import 'avatar_renderer_interface.dart';
 import 'avatar_viewer_presentation.dart';
-import 'thermion_view_detach_gate.dart';
 
 /// Thin seam over the Filament surface so slot-swap bookkeeping is unit
 /// testable without a live platform view.

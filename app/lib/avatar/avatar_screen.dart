@@ -73,7 +73,6 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
     final bodyAssetPending = !canRenderAvatarForIdentity(identity);
 
     final current = ref.watch(avatarSceneDefinitionProvider);
-    final renderer = ref.read(avatarRendererProvider);
     // Sums whatever's equipped against the store catalog's prices — not
     // gated on ownership, since equipping today (the debug toggle button)
     // bypasses the store's buy flow entirely (see TODOS.md #5/#6).
