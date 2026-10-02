@@ -5,11 +5,26 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:thermion_flutter/thermion_flutter.dart' as thermion;
 
 void main() {
-  group('shouldApplyRelaxedArmPose', () {
+  group('shouldApplySkinnedHumanoidProceduralMotion', () {
     test('applies to skinned superhero body', () {
       expect(
-        shouldApplyRelaxedArmPose(
+        shouldApplySkinnedHumanoidProceduralMotion(
           'packages/avatar_renderer/assets/avatars/body_superhero_male.glb',
+        ),
+        isTrue,
+      );
+    });
+
+    test('applies to skinned clothing that shares the body skeleton', () {
+      expect(
+        shouldApplySkinnedHumanoidProceduralMotion(
+          'packages/avatar_renderer/assets/cosmetics/top_peasant_shirt.glb',
+        ),
+        isTrue,
+      );
+      expect(
+        shouldApplySkinnedHumanoidProceduralMotion(
+          'packages/avatar_renderer/assets/cosmetics/shoes_peasant_boots.glb',
         ),
         isTrue,
       );
@@ -17,17 +32,17 @@ void main() {
 
     test('skips procedural placeholder body', () {
       expect(
-        shouldApplyRelaxedArmPose(
+        shouldApplySkinnedHumanoidProceduralMotion(
           'packages/avatar_renderer/assets/avatars/body_placeholder.glb',
         ),
         isFalse,
       );
     });
 
-    test('skips cosmetics', () {
+    test('skips rigid-parented cosmetics', () {
       expect(
-        shouldApplyRelaxedArmPose(
-          'packages/avatar_renderer/assets/cosmetics/top_peasant_shirt.glb',
+        shouldApplySkinnedHumanoidProceduralMotion(
+          'packages/avatar_renderer/assets/cosmetics/glasses_placeholder.glb',
         ),
         isFalse,
       );
@@ -35,7 +50,7 @@ void main() {
   });
 
   group('buildRelaxedArmPoseAnimation', () {
-    test('targets upper arm bones with a held bone-space twist', () {
+    test('uses device-verified −Z/+Z twist pairing for left/right arms', () {
       final animation = buildRelaxedArmPoseAnimation(
         armDownRadians: math.pi / 2,
       );
@@ -45,15 +60,52 @@ void main() {
       expect(animation.numFrames, 1);
 
       final frame = animation.frameData.single;
-      expect(frame.length, 2);
-
       final left = frame[0].rotation;
       final right = frame[1].rotation;
       expect(left, isNot(equals(right)));
 
-      // Opposite-signed Z twists for left vs right arm.
-      expect(left.z, greaterThan(0));
-      expect(right.z, lessThan(0));
+      // Left −π/2 vs right +π/2 about local Z (not the inverse that lifts arms up).
+      expect(left.z, lessThan(0));
+      expect(right.z, greaterThan(0));
+    });
+  });
+
+  group('buildSkinnedHumanoidPresentationAnimation', () {
+    test('includes arm hold on every idle frame', () {
+      final animation = buildSkinnedHumanoidPresentationAnimation(
+        numFrames: 60,
+      );
+
+      expect(animation.bones, skinnedHumanoidPresentationBones);
+      expect(animation.numFrames, 60);
+
+      final hold = buildRelaxedArmPoseAnimation().frameData.single;
+      for (final frame in animation.frameData) {
+        expect(frame[0].rotation, equals(hold[0].rotation));
+        expect(frame[1].rotation, equals(hold[1].rotation));
+      }
+    });
+
+    test('loop wrap has only a tiny discontinuity at frame 0', () {
+      final animation = buildSkinnedHumanoidPresentationAnimation(
+        numFrames: 120,
+      );
+      final first = animation.frameData.first;
+      final last = animation.frameData.last;
+
+      for (var i = relaxedArmPoseBones.length;
+          i < skinnedHumanoidPresentationBones.length;
+          i++) {
+        expect(first[i].rotation.x, closeTo(last[i].rotation.x, 0.02));
+      }
+    });
+  });
+
+  group('buildLivingStatueIdleAnimation', () {
+    test('targets spine and pelvis only', () {
+      final animation = buildLivingStatueIdleAnimation(numFrames: 60);
+      expect(animation.bones, livingStatueIdleBones);
+      expect(animation.frameData.first.length, livingStatueIdleBones.length);
     });
   });
 }
