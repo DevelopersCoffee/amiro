@@ -15,8 +15,10 @@ class FakeAvatarRenderer implements AvatarRenderer {
   Future<void> load(AvatarDefinition definition) async {
     calls.add('load:${definition.id}');
     _current = definition;
-    if (presentationPaused) {
-      await resumePresentation();
+    final wasPaused = presentationPaused;
+    await resumePresentation();
+    if (wasPaused) {
+      await requestPresentationFrame();
     }
   }
 

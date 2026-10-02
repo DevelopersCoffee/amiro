@@ -36,6 +36,13 @@ class _PersistentThermionOverlayState
   Widget? _thermionView;
   var _startedPresentation = false;
 
+  /// Set when a scene reload finishes while the viewport is hidden (e.g. male
+  /// restore from Identity). Cleared after one resume+frame when visible — no
+  /// tab-switch pause, and no per-tab frame poke during Av↔Id stress.
+  var _needsFrameWhenVisible = false;
+
+  Future<void> _refreshChain = Future<void>.value();
+
   static const _avatarTabIndex = 1;
   static const _storeTabIndex = 2;
   static const _storePreviewHeight = 220.0;
@@ -68,27 +75,62 @@ class _PersistentThermionOverlayState
     await ref.read(avatarRendererProvider).resumePresentation();
   }
 
-  Future<void> _pokeFrameIfVisible() async {
-    if (!mounted) return;
-    final scene = ref.read(avatarSceneDefinitionProvider);
-    final identity = ref.read(currentIdentityProvider).value;
-    if (!_shouldPresentScene(scene: scene, identity: identity)) return;
-    await ref.read(avatarRendererProvider).requestPresentationFrame();
+  Future<void> _enqueueRefresh(Future<void> Function() action) {
+    final next = _refreshChain.then((_) async {
+      if (!mounted) return;
+      await action();
+    });
+    _refreshChain = next.catchError((_) {});
+    return next;
+  }
+
+  Future<void> _refreshVisibleScene() async {
+    await _enqueueRefresh(() async {
+      final scene = ref.read(avatarSceneDefinitionProvider);
+      final identity = ref.read(currentIdentityProvider).value;
+      if (!_shouldPresentScene(scene: scene, identity: identity)) return;
+
+      _needsFrameWhenVisible = false;
+      final renderer = ref.read(avatarRendererProvider);
+      await renderer.resumePresentation();
+      await renderer.requestPresentationFrame();
+    });
+  }
+
+  void _scheduleRefreshIfVisible({required bool sceneReloadWhileHidden}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final scene = ref.read(avatarSceneDefinitionProvider);
+      final identity = ref.read(currentIdentityProvider).value;
+      if (_shouldPresentScene(scene: scene, identity: identity)) {
+        unawaited(_refreshVisibleScene());
+      } else if (sceneReloadWhileHidden) {
+        _needsFrameWhenVisible = true;
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     ref.listen(avatarSceneDefinitionProvider, (previous, next) {
-      if (previous == next || next == null) return;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        unawaited(_pokeFrameIfVisible());
-      });
+      if (previous == next) return;
+      if (next == null) {
+        _needsFrameWhenVisible = false;
+        return;
+      }
+      _scheduleRefreshIfVisible(sceneReloadWhileHidden: true);
     });
 
     final scene = ref.watch(avatarSceneDefinitionProvider);
     final identity = ref.watch(currentIdentityProvider).value;
     final showScene = _shouldPresentScene(scene: scene, identity: identity);
+
+    if (showScene && _needsFrameWhenVisible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        unawaited(_refreshVisibleScene());
+      });
+    }
 
     final renderer = ref.read(avatarRendererProvider);
     _thermionView ??= renderer.buildView();

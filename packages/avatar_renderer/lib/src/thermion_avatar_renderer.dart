@@ -301,8 +301,11 @@ class ThermionAvatarRenderer implements AvatarRenderer {
       }
     }
     _current = definition;
+    // Always resume after loading meshes: gate-pause can leave setRendering false
+    // even when [_presentationPaused] was cleared elsewhere.
+    await resumePresentation();
     if (resumeAfterLoad) {
-      await resumePresentation();
+      await requestPresentationFrame();
     }
   }
 
