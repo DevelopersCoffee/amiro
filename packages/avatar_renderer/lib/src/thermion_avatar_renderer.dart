@@ -320,9 +320,8 @@ class ThermionAvatarRenderer implements AvatarRenderer {
       }
     }
     _current = definition;
-    await resumePresentation();
     if (resumeAfterLoad) {
-      await requestPresentationFrame();
+      await resumePresentation();
     }
   }
 
