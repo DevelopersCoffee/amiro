@@ -5,15 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:avatar_core/avatar_core.dart';
 
 import '../identity/identity_providers.dart';
+import 'avatar_defaults.dart';
 import 'avatar_providers.dart';
 
-// `top`/`glasses` placeholder cosmetics were scaled for the tiny
-// placeholder body (see docs/product/avatar-asset-brief.md's known-gap
-// note) and render as oversized, badly-placed boxes against a real,
-// human-scale body — confirmed on-device. Dropped from the default until
-// real cosmetics sized/rigged to this body exist; `updateSlot` still
-// works for anyone equipping cosmetics, it's only the default that
-// changed.
+/// Male default — prefer [defaultAvatarDefinitionForGender] when identity is known.
 const defaultAvatarDefinition = AvatarDefinition(
   id: 'default',
   body: 'body_superhero_male',
@@ -27,7 +22,12 @@ const defaultAvatarDefinition = AvatarDefinition(
 /// user's first-ever avatar (no persisted definition existed yet) — the
 /// signal a screen uses to decide whether to play the first-launch reveal
 /// ceremony (see DESIGN.md's Motion section) or just show the avatar.
-typedef AvatarLoadResult = ({AvatarDefinition definition, bool isFirstReveal});
+typedef AvatarLoadResult = ({
+  AvatarDefinition? definition,
+  bool isFirstReveal,
+  /// True when [Identity.avatarGender] is set but the body glb is not shipped yet.
+  bool bodyAssetPending,
+});
 
 /// Ensures the singleton [AvatarRenderer] has a loaded definition, loading
 /// the persisted (or default) one if nothing is loaded yet.
@@ -43,19 +43,36 @@ typedef AvatarLoadResult = ({AvatarDefinition definition, bool isFirstReveal});
 Future<AvatarLoadResult> ensureAvatarLoaded(WidgetRef ref) async {
   final renderer = ref.read(avatarRendererProvider);
   final loaded = renderer.current;
-  if (loaded != null) return (definition: loaded, isFirstReveal: false);
+  if (loaded != null) {
+    return (
+      definition: loaded,
+      isFirstReveal: false,
+      bodyAssetPending: false,
+    );
+  }
 
   final identity = await ref.read(currentIdentityProvider.future);
+  if (!canRenderAvatarForIdentity(identity)) {
+    return (
+      definition: null,
+      isFirstReveal: false,
+      bodyAssetPending: true,
+    );
+  }
   final persisted = identity?.avatarDefinitionJson;
   final definition = persisted == null
-      ? defaultAvatarDefinition
+      ? defaultAvatarDefinitionForGender(resolveAvatarGender(identity))
       : AvatarDefinition.fromJson(
           jsonDecode(persisted) as Map<String, dynamic>,
         );
 
   await renderer.load(definition);
   await persistAvatarDefinition(ref, definition);
-  return (definition: definition, isFirstReveal: persisted == null);
+  return (
+    definition: definition,
+    isFirstReveal: persisted == null,
+    bodyAssetPending: false,
+  );
 }
 
 /// Stores [definition] on the current [Identity], closing the spec's

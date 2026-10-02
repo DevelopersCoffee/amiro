@@ -1,7 +1,11 @@
+import 'dart:convert';
+
+import 'package:avatar_core/avatar_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:identity_core/identity_core.dart';
 
+import '../avatar/avatar_defaults.dart';
 import '../theme/amiro_card.dart';
 import '../theme/amiro_theme.dart';
 import '../theme/section_label.dart';
@@ -27,6 +31,7 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
     'instagramHandle': false,
     'website': false,
   };
+  AvatarGender _avatarGender = AvatarGender.male;
   bool _hydrated = false;
 
   @override
@@ -45,11 +50,25 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
     _usernameController.text = identity.username;
     _bioController.text = identity.bio ?? '';
     _emailController.text = identity.email ?? '';
+    _avatarGender = resolveAvatarGender(identity);
     identity.privacy.forEach((key, flag) {
       if (_isPublic.containsKey(key)) {
         _isPublic[key] = flag.isPublic;
       }
     });
+  }
+
+  String? _avatarJsonWithGenderBody(Identity? existing) {
+    final raw = existing?.avatarDefinitionJson;
+    if (raw == null) return null;
+    final map = jsonDecode(raw) as Map<String, dynamic>;
+    final def = AvatarDefinition.fromJson(map);
+    final bodyId = defaultBodyAssetId(_avatarGender);
+    if (!isBodyAssetAvailable(bodyId)) {
+      return raw;
+    }
+    if (def.body == bodyId) return raw;
+    return jsonEncode(def.copyWithSlot('body', bodyId).toJson());
   }
 
   Future<void> _save() async {
@@ -60,9 +79,9 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
       username: _usernameController.text,
       bio: _bioController.text.isEmpty ? null : _bioController.text,
       email: _emailController.text.isEmpty ? null : _emailController.text,
-      // Carried over untouched: this screen edits identity fields only, and
-      // must not drop the avatar the user already rendered.
-      avatarDefinitionJson: existing?.avatarDefinitionJson,
+      avatarGender: _avatarGender.wireName,
+      avatarDefinitionJson: _avatarJsonWithGenderBody(existing) ??
+          existing?.avatarDefinitionJson,
       privacy: _isPublic.map((key, value) => MapEntry(key, PrivacyFlag(value))),
     );
     await ref.read(currentIdentityProvider.notifier).save(identity);
@@ -73,11 +92,59 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
     final identityAsync = ref.watch(currentIdentityProvider);
     _hydrateFromIdentity(identityAsync.value);
 
+    final femaleBodyPending = _avatarGender == AvatarGender.female &&
+        !isBodyAssetAvailable(defaultBodyAssetId(AvatarGender.female));
+
     return Scaffold(
       appBar: AppBar(title: const Text('Your Amiro')),
       body: ListView(
         padding: const EdgeInsets.all(AmiroSpacing.md),
         children: [
+          AmiroCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SectionLabel('AVATAR'),
+                const SizedBox(height: AmiroSpacing.sm),
+                Text(
+                  'Which avatar do you want to develop?',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AmiroSpacing.md),
+                SegmentedButton<AvatarGender>(
+                  key: const Key('avatarGenderSelector'),
+                  segments: const [
+                    ButtonSegment(
+                      value: AvatarGender.male,
+                      label: Text('Male'),
+                      icon: Icon(Icons.man_outlined),
+                    ),
+                    ButtonSegment(
+                      value: AvatarGender.female,
+                      label: Text('Female'),
+                      icon: Icon(Icons.woman_outlined),
+                    ),
+                  ],
+                  selected: {_avatarGender},
+                  onSelectionChanged: (selected) {
+                    setState(() => _avatarGender = selected.first);
+                  },
+                ),
+                if (femaleBodyPending) ...[
+                  const SizedBox(height: AmiroSpacing.sm),
+                  Text(
+                    'Female body assets are not shipped in this build yet. '
+                    'Your choice is saved; Avatar preview unlocks when '
+                    'body_superhero_female.glb lands.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AmiroColors.textMuted,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: AmiroSpacing.md),
           AmiroCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,14 +187,6 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
                     ),
                     GestureDetector(
                       key: const Key('emailPrivacyToggle'),
-                      // A plain `Switch.onChanged` reads `!widget.value` from
-                      // the widget's own build-time snapshot, so two taps
-                      // issued back to back without an intervening rebuild
-                      // (e.g. in a widget test with no `pump()` between taps)
-                      // both resolve against the same stale value and fail to
-                      // toggle back. Reading the live `_isPublic` map here
-                      // instead of the Switch's captured `value` keeps each
-                      // tap correct regardless of rebuild timing.
                       onTap: () => setState(
                         () =>
                             _isPublic['email'] = !(_isPublic['email'] ?? false),

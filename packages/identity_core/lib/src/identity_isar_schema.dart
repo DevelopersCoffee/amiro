@@ -15,6 +15,8 @@ class IdentityRecord {
   String? xHandle;
   String? instagramHandle;
   String? website;
+  /// `AvatarGender.wireName` (`male` / `female`), or null until the user chooses.
+  String? avatarGender;
   /// JSON-encoded `AvatarDefinition`, or null before the user's first render.
   String? avatarDefinitionJson;
 
