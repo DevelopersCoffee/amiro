@@ -29,21 +29,19 @@ Future<void> pumpUntilAvatarLoadIdle(
   Duration step = const Duration(milliseconds: 50),
   int maxPumps = 120,
 }) async {
+  var chain = waitForAvatarLoadIdle();
   for (var i = 0; i < maxPumps; i++) {
-    final chain = waitForAvatarLoadIdle();
-    try {
-      await chain.timeout(Duration.zero);
-    } on TimeoutException {
-      await tester.pump(step);
-      continue;
-    }
-
+    var done = false;
+    unawaited(chain.then((_) => done = true));
     await tester.pump(step);
-    final after = waitForAvatarLoadIdle();
-    if (identical(chain, after)) {
+    if (!done) continue;
+
+    final next = waitForAvatarLoadIdle();
+    if (identical(chain, next)) {
       await tester.pump(const Duration(milliseconds: 100));
       return;
     }
+    chain = next;
   }
   fail('pumpUntilAvatarLoadIdle timed out waiting for avatar load chain');
 }
