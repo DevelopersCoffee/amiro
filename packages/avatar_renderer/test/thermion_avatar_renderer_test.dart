@@ -73,7 +73,7 @@ void main() {
     expect(() => renderer.updateSlot('top', 'top_placeholder'), throwsStateError);
   });
 
-  test('load resumes presentation after a paused unload path', () async {
+  test('load resumes before attaching meshes after a paused unload path', () async {
     const definition = AvatarDefinition(
       id: 'avatar-1',
       body: 'body_placeholder',
@@ -83,7 +83,8 @@ void main() {
     await renderer.pausePresentation();
     await renderer.unload();
     await renderer.load(definition);
-    await renderer.resumePresentation();
+    expect(renderer.current, definition);
+    expect(surface.loadedPaths, isNotEmpty);
   });
 
   test('unload removes loaded models and clears current', () async {

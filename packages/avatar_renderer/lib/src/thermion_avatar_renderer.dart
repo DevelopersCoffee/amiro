@@ -100,6 +100,14 @@ class ThermionFilamentSurface implements FilamentSurface {
       await _viewer.destroyAsset(asset);
     }
   }
+
+  /// Destroys every tracked asset — used when [ThermionAvatarRenderer.current]
+  /// is already null but Filament may still hold handles after a partial unload.
+  Future<void> destroyAllModels() async {
+    for (final path in _loadedAssets.keys.toList()) {
+      await removeModel(path);
+    }
+  }
 }
 
 class ThermionAvatarRenderer implements AvatarRenderer {
@@ -291,9 +299,13 @@ class ThermionAvatarRenderer implements AvatarRenderer {
 
   @override
   Future<void> load(AvatarDefinition definition) async {
-    // [unload] pauses via [ThermionViewDetachGate]; reload must turn presentation
-    // back on. Tab switches intentionally do not pause/resume (SwapChain stress).
-    final resumeAfterLoad = _presentationPaused;
+    // [unload] pauses via [ThermionViewDetachGate]. loadGltf while the frame
+    // scheduler/rendering is off can leave an empty scene on device — resume
+    // before attaching meshes. Tab switches do not pause/resume (SwapChain stress).
+    final wasPaused = _presentationPaused;
+    if (wasPaused) {
+      await resumePresentation();
+    }
     for (final slot in AvatarDefinition.slots) {
       final assetId = _slotValue(definition, slot);
       if (assetId != null) {
@@ -301,23 +313,26 @@ class ThermionAvatarRenderer implements AvatarRenderer {
       }
     }
     _current = definition;
-    // Always resume after loading meshes: gate-pause can leave setRendering false
-    // even when [_presentationPaused] was cleared elsewhere.
-    await resumePresentation();
-    if (resumeAfterLoad) {
+    if (wasPaused) {
       await requestPresentationFrame();
     }
   }
 
   @override
   Future<void> unload() async {
-    final def = _current;
-    if (def == null) return;
     await ThermionViewDetachGate.runMutation(() async {
-      for (final slot in AvatarDefinition.slots) {
-        final assetId = _slotValue(def, slot);
-        if (assetId != null) {
-          await surface.removeModel(resolveAssetPath(slot, assetId));
+      final filament = surface;
+      if (filament is ThermionFilamentSurface) {
+        await filament.destroyAllModels();
+      } else {
+        final def = _current;
+        if (def != null) {
+          for (final slot in AvatarDefinition.slots) {
+            final assetId = _slotValue(def, slot);
+            if (assetId != null) {
+              await surface.removeModel(resolveAssetPath(slot, assetId));
+            }
+          }
         }
       }
       _current = null;

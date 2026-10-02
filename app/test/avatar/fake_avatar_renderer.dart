@@ -14,9 +14,11 @@ class FakeAvatarRenderer implements AvatarRenderer {
   @override
   Future<void> load(AvatarDefinition definition) async {
     calls.add('load:${definition.id}');
-    _current = definition;
     final wasPaused = presentationPaused;
-    await resumePresentation();
+    if (wasPaused) {
+      await resumePresentation();
+    }
+    _current = definition;
     if (wasPaused) {
       await requestPresentationFrame();
     }

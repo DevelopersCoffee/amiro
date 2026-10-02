@@ -97,6 +97,64 @@ void main() {
     expect(container.read(avatarSceneDefinitionProvider), isNotNull);
   });
 
+  test('resolveDefinitionForLoad aligns body slot after gender change', () {
+    const json =
+        '{"id":"saved","body":"body_superhero_male","hair":"hair_simple_parted"}';
+    final identity = Identity(
+      id: 'id-1',
+      displayName: 'Alex',
+      username: 'alex',
+      avatarGender: 'male',
+      avatarDefinitionJson: json,
+    );
+    final def = resolveDefinitionForLoad(identity, afterGenderChange: true);
+    expect(def.body, 'body_superhero_male');
+  });
+
+  test('forceReload purges and reloads after female gate when current is null', () async {
+    final container = ProviderContainer(
+      overrides: [
+        identityRepositoryProvider.overrideWithValue(InMemoryIdentityRepository()),
+        avatarRendererProvider.overrideWithValue(FakeAvatarRenderer()),
+      ],
+    );
+    addTearDown(container.dispose);
+    final renderer = container.read(avatarRendererProvider) as FakeAvatarRenderer;
+
+    await container.read(currentIdentityProvider.notifier).save(
+      Identity(
+        id: 'id-1',
+        displayName: 'Alex',
+        username: 'alex',
+        avatarGender: 'male',
+      ),
+    );
+    await ensureAvatarLoaded(container.read);
+    await container.read(currentIdentityProvider.notifier).save(
+      Identity(
+        id: 'id-1',
+        displayName: 'Alex',
+        username: 'alex',
+        avatarGender: 'female',
+      ),
+    );
+    await ensureAvatarLoaded(container.read);
+    expect(renderer.current, isNull);
+
+    await container.read(currentIdentityProvider.notifier).save(
+      Identity(
+        id: 'id-1',
+        displayName: 'Alex',
+        username: 'alex',
+        avatarGender: 'male',
+      ),
+    );
+    await ensureAvatarLoaded(container.read, forceReload: true);
+    expect(renderer.current, isNotNull);
+    expect(renderer.calls.where((c) => c == 'unload').length, greaterThanOrEqualTo(2));
+    expect(renderer.calls.where((c) => c.startsWith('load:')).length, greaterThanOrEqualTo(2));
+  });
+
   test('ensureAvatarLoaded forceReload unloads stale current before load', () async {
     final container = ProviderContainer(
       overrides: [
