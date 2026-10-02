@@ -31,7 +31,7 @@ void main() {
       ),
     );
 
-    final first = await ensureAvatarLoaded(container.read);
+    final first = await ensureAvatarLoaded(container);
     expect(first.bodyAssetPending, isFalse);
     expect(renderer.current, isNotNull);
 
@@ -44,7 +44,7 @@ void main() {
       ),
     );
 
-    final second = await ensureAvatarLoaded(container.read);
+    final second = await ensureAvatarLoaded(container);
     expect(second.bodyAssetPending, isTrue);
     expect(renderer.current, isNull);
     expect(renderer.calls, contains('unload'));
@@ -68,7 +68,7 @@ void main() {
         avatarGender: 'male',
       ),
     );
-    await ensureAvatarLoaded(container.read);
+    await ensureAvatarLoaded(container);
     expect(renderer.current, isNotNull);
 
     await container.read(currentIdentityProvider.notifier).save(
@@ -79,7 +79,7 @@ void main() {
         avatarGender: 'female',
       ),
     );
-    await ensureAvatarLoaded(container.read);
+    await ensureAvatarLoaded(container);
     expect(renderer.current, isNull);
     expect(container.read(avatarSceneDefinitionProvider), isNull);
 
@@ -91,7 +91,7 @@ void main() {
         avatarGender: 'male',
       ),
     );
-    final restored = await ensureAvatarLoaded(container.read);
+    final restored = await ensureAvatarLoaded(container);
     expect(restored.bodyAssetPending, isFalse);
     expect(renderer.current, isNotNull);
     expect(container.read(avatarSceneDefinitionProvider), isNotNull);
@@ -129,7 +129,7 @@ void main() {
         avatarGender: 'male',
       ),
     );
-    await ensureAvatarLoaded(container.read);
+    await ensureAvatarLoaded(container);
     await container.read(currentIdentityProvider.notifier).save(
       Identity(
         id: 'id-1',
@@ -138,7 +138,7 @@ void main() {
         avatarGender: 'female',
       ),
     );
-    await ensureAvatarLoaded(container.read);
+    await ensureAvatarLoaded(container);
     expect(renderer.current, isNull);
 
     await container.read(currentIdentityProvider.notifier).save(
@@ -173,7 +173,7 @@ void main() {
         avatarGender: 'male',
       ),
     );
-    await ensureAvatarLoaded(container.read);
+    await ensureAvatarLoaded(container);
     expect(renderer.current, isNotNull);
 
     // Simulate stale current without meshes — forceReload must unload first.

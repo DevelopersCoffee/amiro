@@ -31,7 +31,7 @@ typedef AvatarLoadResult = ({
   bool bodyAssetPending,
 });
 
-void _publishSceneDefinition(WidgetRef ref, AvatarDefinition? definition) {
+void _publishSceneDefinition(Ref ref, AvatarDefinition? definition) {
   ref.read(avatarSceneDefinitionProvider.notifier).set(definition);
 }
 
@@ -59,7 +59,7 @@ AvatarDefinition resolveDefinitionForLoad(
 }
 
 /// Serializes avatar load/unload so overlapping gender saves cannot interleave
-/// gate-pause, destroy, and loadGltf on the singleton viewer.
+/// destroy and loadGltf on the singleton viewer.
 Future<void> _avatarLoadChain = Future<void>.value();
 
 /// Awaits any in-flight [ensureAvatarLoaded] work (tests / diagnostics).
@@ -72,7 +72,7 @@ Future<void> waitForAvatarLoadIdle() => _avatarLoadChain;
 /// unload/pause cycle cannot leave a stale [AvatarRenderer.current] or orphan
 /// Filament assets when [current] is already null.
 Future<AvatarLoadResult> ensureAvatarLoaded(
-  WidgetRef ref, {
+  Ref ref, {
   bool forceReload = false,
 }) {
   final completer = Completer<AvatarLoadResult>();
@@ -89,7 +89,7 @@ Future<AvatarLoadResult> ensureAvatarLoaded(
 }
 
 Future<AvatarLoadResult> _ensureAvatarLoadedOnce(
-  WidgetRef ref, {
+  Ref ref, {
   required bool forceReload,
 }) async {
   final identity = await ref.read(currentIdentityProvider.future);
@@ -137,7 +137,7 @@ Future<AvatarLoadResult> _ensureAvatarLoadedOnce(
 /// "definition JSON -> render -> swap -> persist" pipeline. No-op when the
 /// user hasn't created an identity yet — there's nothing to attach it to.
 Future<void> persistAvatarDefinition(
-  WidgetRef ref,
+  Ref ref,
   AvatarDefinition definition,
 ) async {
   final identity = ref.read(currentIdentityProvider).value;
