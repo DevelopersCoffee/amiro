@@ -298,7 +298,8 @@ class ThermionAvatarRenderer implements AvatarRenderer {
       avatarStagePlinthColorR,
       avatarStagePlinthColorG,
       avatarStagePlinthColorB,
-      roughness: 0.94,
+      roughness: 0.86,
+      metallic: 0.05,
     );
     final lip = await viewer.createGeometry(
       thermion.GeometryUtils.cylinder(
@@ -316,8 +317,8 @@ class ThermionAvatarRenderer implements AvatarRenderer {
       avatarStageDiskColorR,
       avatarStageDiskColorG,
       avatarStageDiskColorB,
-      roughness: 0.88,
-      metallic: 0.04,
+      roughness: 0.72,
+      metallic: 0.08,
     );
     final disk = await viewer.createGeometry(
       thermion.GeometryUtils.plane(
@@ -335,9 +336,9 @@ class ThermionAvatarRenderer implements AvatarRenderer {
       avatarStageRingColorR,
       avatarStageRingColorG,
       avatarStageRingColorB,
-      roughness: 0.35,
-      metallic: 0.55,
-      emissiveScale: 0.22,
+      roughness: 0.28,
+      metallic: 0.72,
+      emissiveScale: 0.48,
     );
     final ring = await viewer.createGeometry(
       thermion.GeometryUtils.cylinder(

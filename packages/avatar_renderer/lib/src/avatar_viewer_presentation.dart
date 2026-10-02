@@ -30,8 +30,9 @@ const double avatarStageDiskDiameter = 1.35;
 /// Low cylindrical lip + accent ring around the disk.
 const double avatarStagePlinthRadius = 0.62;
 const double avatarStagePlinthHeight = 0.055;
-const double avatarStageRingRadius = 0.52;
-const double avatarStageRingHeight = 0.012;
+/// Outer brass band — sits at the plinth lip so it reads from the front camera.
+const double avatarStageRingRadius = 0.615;
+const double avatarStageRingHeight = 0.018;
 
 /// Plinth center Y so the top lip sits at y=0 (feet level).
 double get avatarStagePlinthCenterY => avatarStagePlinthHeight / 2;
@@ -40,22 +41,22 @@ double get avatarStagePlinthCenterY => avatarStagePlinthHeight / 2;
 double get avatarStageRingCenterY =>
     avatarStagePlinthHeight + avatarStageRingHeight / 2;
 
-/// Stage top — boutique stage olive (#48483F).
-const double avatarStageDiskColorR = 72 / 255;
-const double avatarStageDiskColorG = 72 / 255;
-const double avatarStageDiskColorB = 63 / 255;
+/// Stage top — lifted boutique olive (#6E6D63) for clear separation from floor.
+const double avatarStageDiskColorR = 110 / 255;
+const double avatarStageDiskColorG = 109 / 255;
+const double avatarStageDiskColorB = 99 / 255;
 
-/// Plinth edge — surface (#1D1C19).
-const double avatarStagePlinthColorR = 29 / 255;
-const double avatarStagePlinthColorG = 28 / 255;
-const double avatarStagePlinthColorB = 25 / 255;
+/// Plinth lip — mid charcoal olive (#45443C), visible against floor + disk.
+const double avatarStagePlinthColorR = 69 / 255;
+const double avatarStagePlinthColorG = 68 / 255;
+const double avatarStagePlinthColorB = 60 / 255;
 
-/// Floor beyond plinth — slightly darker than disk for depth.
-const double avatarStageFloorColorR = 22 / 255;
-const double avatarStageFloorColorG = 21 / 255;
-const double avatarStageFloorColorB = 18 / 255;
+/// Floor beyond plinth — deep ground (#111110).
+const double avatarStageFloorColorR = 17 / 255;
+const double avatarStageFloorColorG = 17 / 255;
+const double avatarStageFloorColorB = 16 / 255;
 
-/// Brass accent ring — restrained (#C49343), emissiveFactor not neon.
-const double avatarStageRingColorR = 196 / 255;
-const double avatarStageRingColorG = 147 / 255;
-const double avatarStageRingColorB = 67 / 255;
+/// Warm brass rim (#D4A855 base) — emissive scaled in renderer, not neon.
+const double avatarStageRingColorR = 212 / 255;
+const double avatarStageRingColorG = 168 / 255;
+const double avatarStageRingColorB = 85 / 255;
