@@ -95,5 +95,6 @@ void main() {
     expect(restored.bodyAssetPending, isFalse);
     expect(renderer.current, isNotNull);
     expect(container.read(avatarSceneDefinitionProvider), isNotNull);
+    expect(renderer.calls, contains('resumePresentation'));
   });
 }

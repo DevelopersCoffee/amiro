@@ -6,6 +6,7 @@ import 'package:avatar_renderer/avatar_renderer.dart';
 class FakeAvatarRenderer implements AvatarRenderer {
   AvatarDefinition? _current;
   final List<String> calls = [];
+  bool presentationPaused = false;
 
   @override
   AvatarDefinition? get current => _current;
@@ -14,6 +15,10 @@ class FakeAvatarRenderer implements AvatarRenderer {
   Future<void> load(AvatarDefinition definition) async {
     calls.add('load:${definition.id}');
     _current = definition;
+    if (presentationPaused) {
+      calls.add('resumePresentation');
+      presentationPaused = false;
+    }
   }
 
   @override
@@ -28,14 +33,21 @@ class FakeAvatarRenderer implements AvatarRenderer {
   @override
   Future<void> unload() async {
     calls.add('unload');
+    await pausePresentation();
     _current = null;
   }
 
   @override
-  Future<void> pausePresentation() async {}
+  Future<void> pausePresentation() async {
+    calls.add('pausePresentation');
+    presentationPaused = true;
+  }
 
   @override
-  Future<void> resumePresentation() async {}
+  Future<void> resumePresentation() async {
+    calls.add('resumePresentation');
+    presentationPaused = false;
+  }
 
   @override
   Future<void> dispose() async {}

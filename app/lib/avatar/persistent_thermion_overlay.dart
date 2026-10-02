@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:avatar_renderer/avatar_renderer.dart';
 
+import 'package:identity_core/identity_core.dart';
+
 import '../identity/identity_providers.dart';
 import 'avatar_defaults.dart';
 import 'avatar_providers.dart';
@@ -25,7 +27,7 @@ class PersistentThermionOverlay extends ConsumerStatefulWidget {
 class _PersistentThermionOverlayState
     extends ConsumerState<PersistentThermionOverlay> {
   Widget? _thermionView;
-  int? _lastSyncedTab;
+  bool? _lastShouldPresent;
 
   static const _avatarTabIndex = 1;
   static const _storeTabIndex = 2;
@@ -36,63 +38,64 @@ class _PersistentThermionOverlayState
       widget.activeTabIndex == _avatarTabIndex ||
       widget.activeTabIndex == _storeTabIndex;
 
+  bool _shouldPresentScene({
+    required AvatarDefinition? scene,
+    required Identity? identity,
+  }) {
+    return _onThermionTab &&
+        canRenderAvatarForIdentity(identity) &&
+        scene != null;
+  }
+
   @override
   void didUpdateWidget(covariant PersistentThermionOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.activeTabIndex != widget.activeTabIndex) {
-      _schedulePresentationSync();
+      _schedulePresentationReconcile();
     }
   }
 
   @override
   void initState() {
     super.initState();
-    _schedulePresentationSync();
+    _schedulePresentationReconcile();
   }
 
-  void _schedulePresentationSync() {
+  void _schedulePresentationReconcile() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _syncPresentation();
+      _reconcilePresentation();
     });
   }
 
-  Future<void> _syncPresentation() async {
+  Future<void> _reconcilePresentation() async {
     if (!mounted) return;
-    final tab = widget.activeTabIndex;
-    if (_lastSyncedTab == tab) return;
-    _lastSyncedTab = tab;
+    final scene = ref.read(avatarSceneDefinitionProvider);
+    final identity = ref.read(currentIdentityProvider).value;
+    final shouldPresent = _shouldPresentScene(scene: scene, identity: identity);
+    if (_lastShouldPresent == shouldPresent) return;
+    _lastShouldPresent = shouldPresent;
 
     final renderer = ref.read(avatarRendererProvider);
-    final scene = ref.read(avatarSceneDefinitionProvider);
-    if (_onThermionTab && scene != null) {
+    if (shouldPresent) {
       await renderer.resumePresentation();
     } else {
       await renderer.pausePresentation();
     }
   }
 
-  Future<void> _maybeResumeAfterSceneLoad() async {
-    if (!mounted || !_onThermionTab) return;
-    final scene = ref.read(avatarSceneDefinitionProvider);
-    if (scene == null) return;
-    await ref.read(avatarRendererProvider).resumePresentation();
-  }
-
   @override
   Widget build(BuildContext context) {
-    ref.listen(avatarSceneDefinitionProvider, (previous, next) {
-      if (previous == next || next == null) return;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _maybeResumeAfterSceneLoad();
-      });
+    ref.listen(avatarSceneDefinitionProvider, (_, __) {
+      _schedulePresentationReconcile();
+    });
+    ref.listen(currentIdentityProvider, (_, __) {
+      _schedulePresentationReconcile();
     });
 
     final scene = ref.watch(avatarSceneDefinitionProvider);
     final identity = ref.watch(currentIdentityProvider).value;
-    final showScene = _onThermionTab &&
-        canRenderAvatarForIdentity(identity) &&
-        scene != null;
+    final showScene = _shouldPresentScene(scene: scene, identity: identity);
 
     final renderer = ref.read(avatarRendererProvider);
     _thermionView ??= renderer.buildView();
