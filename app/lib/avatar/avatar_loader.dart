@@ -125,9 +125,6 @@ Future<AvatarLoadResult> _ensureAvatarLoadedOnce(
 
   await renderer.load(definition);
   _publishSceneDefinition(ref, definition);
-  if (forceReload) {
-    ref.read(genderReloadPresentFrameProvider.notifier).set(true);
-  }
   await persistAvatarDefinition(ref, definition);
   return (
     definition: definition,

@@ -310,9 +310,8 @@ class ThermionAvatarRenderer implements AvatarRenderer {
 
   @override
   Future<void> load(AvatarDefinition definition) async {
-    // [unload] pauses via [ThermionViewDetachGate]; reload must turn presentation
-    // back on. Tab switches intentionally do not pause/resume (SwapChain stress).
-    final resumeAfterLoad = _presentationPaused;
+    // Tab switches do not pause/resume (SwapChain stress). Gender reload uses
+    // continuous presentation — no renderSingleFrame (device SIGSEGV 0x20).
     for (final slot in AvatarDefinition.slots) {
       final assetId = _slotValue(definition, slot);
       if (assetId != null) {
@@ -320,9 +319,7 @@ class ThermionAvatarRenderer implements AvatarRenderer {
       }
     }
     _current = definition;
-    if (resumeAfterLoad) {
-      await resumePresentation();
-    }
+    await resumePresentation();
   }
 
   @override
@@ -331,23 +328,26 @@ class ThermionAvatarRenderer implements AvatarRenderer {
       _current = null;
       return;
     }
-    await ThermionViewDetachGate.runMutation(() async {
-      final filament = surface;
-      if (filament is ThermionFilamentSurface) {
-        await filament.destroyAllModels();
-      } else {
-        final def = _current;
-        if (def != null) {
-          for (final slot in AvatarDefinition.slots) {
-            final assetId = _slotValue(def, slot);
-            if (assetId != null) {
-              await surface.removeModel(resolveAssetPath(slot, assetId));
-            }
-          }
-        }
+    // Do not pause via [ThermionViewDetachGate]: gate-pause + resume/frame
+    // around gender reload crashes on Pixel; [updateSlot] already mutates live.
+    await _destroyLoadedMeshes();
+    _current = null;
+  }
+
+  Future<void> _destroyLoadedMeshes() async {
+    final filament = surface;
+    if (filament is ThermionFilamentSurface) {
+      await filament.destroyAllModels();
+      return;
+    }
+    final def = _current;
+    if (def == null) return;
+    for (final slot in AvatarDefinition.slots) {
+      final assetId = _slotValue(def, slot);
+      if (assetId != null) {
+        await surface.removeModel(resolveAssetPath(slot, assetId));
       }
-      _current = null;
-    });
+    }
   }
 
   @override

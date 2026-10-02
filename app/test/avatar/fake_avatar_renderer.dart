@@ -14,11 +14,8 @@ class FakeAvatarRenderer implements AvatarRenderer {
   @override
   Future<void> load(AvatarDefinition definition) async {
     calls.add('load:${definition.id}');
-    final resumeAfterLoad = presentationPaused;
     _current = definition;
-    if (resumeAfterLoad) {
-      await resumePresentation();
-    }
+    await resumePresentation();
   }
 
   @override
@@ -34,7 +31,6 @@ class FakeAvatarRenderer implements AvatarRenderer {
   Future<void> unload() async {
     if (_current == null) return;
     calls.add('unload');
-    await pausePresentation();
     _current = null;
   }
 

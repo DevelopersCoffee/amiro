@@ -28,21 +28,6 @@ final avatarSceneDefinitionProvider =
       AvatarSceneDefinitionNotifier.new,
     );
 
-/// Set after [ensureAvatarLoaded] completes a gender [forceReload] while the
-/// viewport is hidden. [PersistentThermionOverlay] may draw one deferred frame
-/// once the thermion tab is visible — not on cold first Avatar (stress path).
-class GenderReloadPresentFrameNotifier extends Notifier<bool> {
-  @override
-  bool build() => false;
-
-  void set(bool value) => state = value;
-}
-
-final genderReloadPresentFrameProvider =
-    NotifierProvider<GenderReloadPresentFrameNotifier, bool>(
-      GenderReloadPresentFrameNotifier.new,
-    );
-
 /// Factory for a fresh, screen-scoped [AvatarRenderer] instance — for
 /// anywhere that needs to render an avatar without touching the
 /// app-lifetime singleton behind [avatarRendererProvider]. The only
