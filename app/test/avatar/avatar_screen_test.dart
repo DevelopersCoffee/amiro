@@ -10,6 +10,7 @@ import 'package:identity_core/identity_core.dart';
 
 import 'package:amiro_app/avatar/avatar_providers.dart';
 import 'package:amiro_app/avatar/avatar_screen.dart';
+import 'package:amiro_app/avatar/avatar_viewport_placeholder.dart';
 import 'package:amiro_app/theme/amiro_theme.dart';
 import 'package:amiro_app/identity/identity_providers.dart';
 
@@ -92,16 +93,7 @@ void main() {
       await pumpThroughAvatarReveal(tester);
 
       expect(renderer.calls, contains('load:default'));
-      // MaterialApp's default route transition also builds a transient,
-      // transparent ColoredBox as part of its FadeTransition/SlideTransition
-      // chain, so match on the fake renderer's own grey ColoredBox rather than
-      // any ColoredBox in the tree.
-      expect(
-        find.byWidgetPredicate(
-          (widget) => widget is ColoredBox && widget.color == Colors.grey,
-        ),
-        findsOneWidget,
-      );
+      expect(find.byType(AvatarViewportPlaceholder), findsOneWidget);
     },
   );
 
@@ -224,23 +216,13 @@ void main() {
       await tester.pump();
 
       expect(find.text('Waking up your Amiro…'), findsOneWidget);
-      expect(
-        find.byWidgetPredicate(
-          (widget) => widget is ColoredBox && widget.color == Colors.grey,
-        ),
-        findsNothing,
-      );
+      expect(find.byType(AvatarViewportPlaceholder), findsNothing);
 
       gate.complete();
       await pumpThroughAvatarReveal(tester);
 
       expect(find.text('Waking up your Amiro…'), findsNothing);
-      expect(
-        find.byWidgetPredicate(
-          (widget) => widget is ColoredBox && widget.color == Colors.grey,
-        ),
-        findsOneWidget,
-      );
+      expect(find.byType(AvatarViewportPlaceholder), findsOneWidget);
     },
   );
 
