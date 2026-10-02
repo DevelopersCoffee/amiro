@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -29,6 +31,10 @@ class _PersistentThermionOverlayState
     extends ConsumerState<PersistentThermionOverlay> {
   Widget? _thermionView;
   bool _lastShouldPresent = false;
+
+  /// Serializes pause/resume/frame so rapid tab switches cannot overlap Filament
+  /// presentation calls (SwapChain must stay valid through endFrame).
+  Future<void> _presentationChain = Future<void>.value();
 
   static const _avatarTabIndex = 1;
   static const _storeTabIndex = 2;
@@ -65,39 +71,74 @@ class _PersistentThermionOverlayState
   void _schedulePresentationReconcile() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _reconcilePresentation();
+      unawaited(_reconcilePresentation());
     });
   }
 
-  Future<void> _presentScene(AvatarRenderer renderer) async {
+  Future<void> _enqueuePresentation(Future<void> Function() action) {
+    final next = _presentationChain.then((_) async {
+      if (!mounted) return;
+      await action();
+    });
+    _presentationChain = next.catchError((_) {});
+    return next;
+  }
+
+  Future<void> _resumeWithOptionalFrame(
+    AvatarRenderer renderer, {
+    required bool drawFrame,
+  }) async {
     await renderer.resumePresentation();
-    await renderer.requestPresentationFrame();
+    if (drawFrame) {
+      await renderer.requestPresentationFrame();
+    }
   }
 
   Future<void> _reconcilePresentation() async {
-    if (!mounted) return;
-    final scene = ref.read(avatarSceneDefinitionProvider);
-    final identity = ref.read(currentIdentityProvider).value;
-    final shouldPresent = _shouldPresentScene(scene: scene, identity: identity);
+    await _enqueuePresentation(() async {
+      final scene = ref.read(avatarSceneDefinitionProvider);
+      final identity = ref.read(currentIdentityProvider).value;
+      final shouldPresent =
+          _shouldPresentScene(scene: scene, identity: identity);
+      if (_lastShouldPresent == shouldPresent) return;
 
-    final renderer = ref.read(avatarRendererProvider);
-    if (shouldPresent) {
-      // Always resume when Opacity is 1 — do not skip via a latch; load() may
-      // have run while hidden and must not be the only resume attempt.
+      final wasPresenting = _lastShouldPresent;
+      _lastShouldPresent = shouldPresent;
+
+      final renderer = ref.read(avatarRendererProvider);
+      if (shouldPresent) {
+        await _resumeWithOptionalFrame(
+          renderer,
+          drawFrame: !wasPresenting,
+        );
+      } else {
+        await renderer.pausePresentation();
+      }
+    });
+  }
+
+  Future<void> _pokeAfterSceneReload() async {
+    await _enqueuePresentation(() async {
+      final scene = ref.read(avatarSceneDefinitionProvider);
+      final identity = ref.read(currentIdentityProvider).value;
+      if (!_shouldPresentScene(scene: scene, identity: identity)) return;
+
       _lastShouldPresent = true;
-      await _presentScene(renderer);
-      return;
-    }
-
-    if (!_lastShouldPresent) return;
-    _lastShouldPresent = false;
-    await renderer.pausePresentation();
+      await _resumeWithOptionalFrame(
+        ref.read(avatarRendererProvider),
+        drawFrame: true,
+      );
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(avatarSceneDefinitionProvider, (_, __) {
-      _schedulePresentationReconcile();
+    ref.listen(avatarSceneDefinitionProvider, (previous, next) {
+      if (previous == next || next == null) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        unawaited(_pokeAfterSceneReload());
+      });
     });
     ref.listen(currentIdentityProvider, (_, __) {
       _schedulePresentationReconcile();
