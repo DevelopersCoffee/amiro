@@ -22,7 +22,11 @@ class AvatarIdentitySyncListener extends ConsumerWidget {
       if (previous == null || !previous.hasValue || next.value == null) return;
       final prevGender = previous.value!.avatarGender;
       final nextGender = next.value!.avatarGender;
-      if (prevGender == nextGender) return;
+      if (prevGender == null ||
+          nextGender == null ||
+          prevGender == nextGender) {
+        return;
+      }
       unawaited(ensureAvatarLoaded(ref, forceReload: true));
     });
     return child;

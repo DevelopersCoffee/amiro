@@ -62,6 +62,9 @@ AvatarDefinition resolveDefinitionForLoad(
 /// gate-pause, destroy, and loadGltf on the singleton viewer.
 Future<void> _avatarLoadChain = Future<void>.value();
 
+/// Awaits any in-flight [ensureAvatarLoaded] work (tests / diagnostics).
+Future<void> waitForAvatarLoadIdle() => _avatarLoadChain;
+
 /// Ensures the singleton [AvatarRenderer] has a loaded definition, loading
 /// the persisted (or default) one if nothing is loaded yet.
 ///
@@ -102,7 +105,7 @@ Future<AvatarLoadResult> _ensureAvatarLoadedOnce(
     );
   }
 
-  if (forceReload) {
+  if (forceReload && renderer.current != null) {
     await renderer.unload();
   }
 
