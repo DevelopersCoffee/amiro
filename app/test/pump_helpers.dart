@@ -24,48 +24,38 @@ Future<void> pumpUntilFound(
 
 /// Waits for [_avatarLoadChain] while pumping — never await [waitForAvatarLoadIdle]
 /// alone (deadlocks without [tester.pump]).
-///
-/// Also avoids a false idle when the chain is still [Future.value] from
-/// [resetAvatarLoadChainForTest] before the widget schedules [ensureAvatarLoaded].
 Future<void> pumpUntilAvatarLoadIdle(
   WidgetTester tester, {
   Duration step = const Duration(milliseconds: 50),
   int maxPumps = 120,
 }) async {
   for (var settlePass = 0; settlePass < 8; settlePass++) {
-    var chain = waitForAvatarLoadIdle();
+    var tail = waitForAvatarLoadIdle();
     var idle = false;
-    unawaited(chain.then((_) => idle = true));
+    unawaited(tail.then((_) => idle = true));
 
-    var pumps = 0;
-    while (pumps < maxPumps) {
-      if (idle && pumps > 0) break;
-
-      if (idle && pumps == 0) {
-        await tester.pump(step);
-        pumps++;
-        final next = waitForAvatarLoadIdle();
-        if (identical(chain, next)) break;
-        chain = next;
-        idle = false;
-        unawaited(chain.then((_) => idle = true));
-        continue;
-      }
-
+    for (var i = 0; i < maxPumps; i++) {
+      if (idle && i > 0) break;
       await tester.pump(step);
-      pumps++;
+      if (idle) {
+        final now = waitForAvatarLoadIdle();
+        if (!identical(tail, now)) {
+          tail = now;
+          idle = false;
+          unawaited(tail.then((_) => idle = true));
+        }
+      }
     }
 
     if (!idle) {
       fail('pumpUntilAvatarLoadIdle timed out waiting for avatar load chain');
     }
 
-    await tester.pump(step);
-    final after = waitForAvatarLoadIdle();
-    if (identical(chain, after)) {
-      await tester.pump(const Duration(milliseconds: 100));
-      return;
-    }
+    final afterKick = waitForAvatarLoadIdle();
+    if (!identical(tail, afterKick)) continue;
+
+    await tester.pump(const Duration(milliseconds: 100));
+    return;
   }
   fail('pumpUntilAvatarLoadIdle: avatar load chain did not settle');
 }

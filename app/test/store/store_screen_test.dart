@@ -298,7 +298,7 @@ void main() {
     final before = collectionProgress(cosmeticCatalog, const {}).first;
     final buy = find.widgetWithText(FilledButton, 'Buy \$2.99');
     await tester.tap(buy);
-    await pumpAfterAvatarLoad(tester);
+    await pumpShort(tester, frames: 10);
 
     expect(find.text('${before.owned + 1} / ${before.total}'), findsOneWidget);
   });
