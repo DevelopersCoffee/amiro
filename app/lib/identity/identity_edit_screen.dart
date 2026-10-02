@@ -98,7 +98,14 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Your Amiro')),
       body: ListView(
-        padding: const EdgeInsets.all(AmiroSpacing.md),
+        padding: EdgeInsets.fromLTRB(
+          AmiroSpacing.md,
+          AmiroSpacing.md,
+          AmiroSpacing.md,
+          // Root [NavigationBar] + Save must stay reachable when the female
+          // “coming soon” note is visible.
+          AmiroSpacing.md + MediaQuery.paddingOf(context).bottom + 72,
+        ),
         children: [
           AmiroCard(
             child: Column(

@@ -239,6 +239,10 @@ class _SpyAvatarRenderer implements AvatarRenderer {
   @override
   Future<void> updateSlot(String slot, String? assetId) async {}
   @override
+  Future<void> unload() async {
+    _current = null;
+  }
+  @override
   Future<void> dispose() async {}
 }
 
@@ -258,6 +262,8 @@ class _FailingLoadAvatarRenderer implements AvatarRenderer {
   Widget buildView() => throw UnimplementedError();
   @override
   Future<void> updateSlot(String slot, String? assetId) async {}
+  @override
+  Future<void> unload() async {}
   @override
   Future<void> dispose() async {
     disposeCallCount++;

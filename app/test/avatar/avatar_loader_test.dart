@@ -1,0 +1,54 @@
+import 'package:avatar_core/avatar_core.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:identity_core/identity_core.dart';
+
+import 'package:amiro_app/avatar/avatar_loader.dart';
+import 'package:amiro_app/avatar/avatar_providers.dart';
+import 'package:amiro_app/identity/identity_providers.dart';
+
+import '../identity/in_memory_identity_repository.dart';
+import 'fake_avatar_renderer.dart';
+
+void main() {
+  test('ensureAvatarLoaded unloads male avatar when identity switches to female', () async {
+    final repo = InMemoryIdentityRepository();
+    final renderer = FakeAvatarRenderer();
+    final container = ProviderContainer(
+      overrides: [
+        identityRepositoryProvider.overrideWithValue(repo),
+        avatarRendererProvider.overrideWithValue(renderer),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await repo.save(
+      Identity(
+        id: 'id-1',
+        displayName: 'Alex',
+        username: 'alex',
+        avatarGender: 'male',
+      ),
+    );
+
+    final first = await ensureAvatarLoaded(container.read);
+    expect(first.bodyAssetPending, isFalse);
+    expect(renderer.current, isNotNull);
+
+    await repo.save(
+      Identity(
+        id: 'id-1',
+        displayName: 'Alex',
+        username: 'alex',
+        avatarGender: 'female',
+      ),
+    );
+    container.read(currentIdentityProvider.notifier).state =
+        AsyncData(await repo.getCurrent());
+
+    final second = await ensureAvatarLoaded(container.read);
+    expect(second.bodyAssetPending, isTrue);
+    expect(renderer.current, isNull);
+    expect(renderer.calls, contains('unload'));
+  });
+}

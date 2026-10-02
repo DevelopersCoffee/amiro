@@ -45,6 +45,9 @@ class _GatedLoadRenderer implements AvatarRenderer {
       _inner.updateSlot(slot, assetId);
 
   @override
+  Future<void> unload() => _inner.unload();
+
+  @override
   Future<void> dispose() => _inner.dispose();
 }
 

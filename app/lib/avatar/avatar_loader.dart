@@ -41,22 +41,26 @@ typedef AvatarLoadResult = ({
 /// already-loaded definition (and `isFirstReveal: false`, since there's
 /// nothing to reveal a second time).
 Future<AvatarLoadResult> ensureAvatarLoaded(WidgetRef ref) async {
+  final identity = await ref.read(currentIdentityProvider.future);
   final renderer = ref.read(avatarRendererProvider);
+
+  if (!canRenderAvatarForIdentity(identity)) {
+    if (renderer.current != null) {
+      await renderer.unload();
+    }
+    return (
+      definition: null,
+      isFirstReveal: false,
+      bodyAssetPending: true,
+    );
+  }
+
   final loaded = renderer.current;
   if (loaded != null) {
     return (
       definition: loaded,
       isFirstReveal: false,
       bodyAssetPending: false,
-    );
-  }
-
-  final identity = await ref.read(currentIdentityProvider.future);
-  if (!canRenderAvatarForIdentity(identity)) {
-    return (
-      definition: null,
-      isFirstReveal: false,
-      bodyAssetPending: true,
     );
   }
   final persisted = identity?.avatarDefinitionJson;

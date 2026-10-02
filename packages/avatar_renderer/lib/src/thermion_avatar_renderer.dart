@@ -298,6 +298,19 @@ class ThermionAvatarRenderer implements AvatarRenderer {
   }
 
   @override
+  Future<void> unload() async {
+    final def = _current;
+    if (def == null) return;
+    for (final slot in AvatarDefinition.slots) {
+      final assetId = _slotValue(def, slot);
+      if (assetId != null) {
+        await surface.removeModel(resolveAssetPath(slot, assetId));
+      }
+    }
+    _current = null;
+  }
+
+  @override
   Future<void> updateSlot(String slot, String? assetId) async {
     final loaded = _current;
     if (loaded == null) {
@@ -341,7 +354,7 @@ class ThermionAvatarRenderer implements AvatarRenderer {
 
   @override
   Future<void> dispose() async {
-    _current = null;
+    await unload();
   }
 
   String? _slotValue(AvatarDefinition def, String slot) {

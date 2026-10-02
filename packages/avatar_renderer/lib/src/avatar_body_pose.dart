@@ -46,11 +46,8 @@ Quaternion _boneLocalRotation(Vector3 axis, double radians) {
   return Quaternion.axisAngle(axis, radians);
 }
 
-Quaternion _multiplyBoneRotations(Quaternion a, Quaternion b) {
-  final out = Quaternion.copy(a);
-  out.multiply(b);
-  return out;
-}
+/// vector_math 2.2+ — use operator `*` (mutable [Quaternion.multiply] removed).
+Quaternion _combineBoneRotations(Quaternion a, Quaternion b) => a * b;
 
 /// Builds a single-frame skeletal hold that drops the upper arms from the glTF
 /// bind (T) pose. Rotations are in [Space.Bone] — deltas applied on top of
@@ -75,30 +72,20 @@ thermion.BoneAnimationData buildRelaxedArmPoseAnimation({
   );
 }
 
-/// Boutique idle arm hold: arms down (device-verified Z twist) with a slight
-/// outward / forward fashion stance — not limp vertical hang.
+/// Boutique idle arm hold: **only** the device-verified upper-arm Z twist.
+///
+/// Extra X/Y deltas on `upperarm_*` stacked a second limb on front camera
+/// (four-arm glitch on Pixel, PR #38 verify). Presence comes from torso idle;
+/// arms stay a single clean hang at left −π/2 / right +π/2.
 ({thermion.Transform left, thermion.Transform right}) confidentFashionArmPoseFrame({
   double armDownRadians = math.pi / 2,
 }) {
-  final leftDown = _boneLocalRotation(Vector3(0, 0, 1), -armDownRadians);
-  final rightDown = _boneLocalRotation(Vector3(0, 0, 1), armDownRadians);
-
-  // Small X/Y offsets after the down-twist: elbows slightly off the thighs,
-  // palms more toward the body — reads confident on the Avatar stage.
-  final leftStyle = _multiplyBoneRotations(
-    leftDown,
-    _boneLocalRotation(Vector3(1, 0, 0), 0.12) *
-        _boneLocalRotation(Vector3(0, 1, 0), -0.08),
-  );
-  final rightStyle = _multiplyBoneRotations(
-    rightDown,
-    _boneLocalRotation(Vector3(1, 0, 0), 0.10) *
-        _boneLocalRotation(Vector3(0, 1, 0), 0.10),
-  );
+  final left = _boneLocalRotation(Vector3(0, 0, 1), -armDownRadians);
+  final right = _boneLocalRotation(Vector3(0, 0, 1), armDownRadians);
 
   return (
-    left: (rotation: leftStyle, translation: Vector3.zero()),
-    right: (rotation: rightStyle, translation: Vector3.zero()),
+    left: (rotation: left, translation: Vector3.zero()),
+    right: (rotation: right, translation: Vector3.zero()),
   );
 }
 
@@ -120,10 +107,13 @@ thermion.SkeletonTransform confidentFashionTorsoFrame({
   final spine03 = _boneLocalRotation(Vector3(1, 0, 0), -0.035 + 0.010 * breath);
   final neck = _boneLocalRotation(Vector3(1, 0, 0), 0.028 - 0.003 * breath);
 
-  final pelvisRot =
-      _boneLocalRotation(Vector3(0, 1, 0), 0.055 + 0.005 * sway) *
-          _boneLocalRotation(Vector3(1, 0, 0), -0.018 + 0.003 * sway) *
-          _boneLocalRotation(Vector3(0, 0, 1), 0.012);
+  final pelvisRot = _combineBoneRotations(
+    _boneLocalRotation(Vector3(0, 1, 0), 0.055 + 0.005 * sway),
+    _combineBoneRotations(
+      _boneLocalRotation(Vector3(1, 0, 0), -0.018 + 0.003 * sway),
+      _boneLocalRotation(Vector3(0, 0, 1), 0.012),
+    ),
+  );
 
   final chestLift = Vector3(0, 0.002 + 0.0012 * breath, 0);
 

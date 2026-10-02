@@ -21,6 +21,10 @@ abstract class AvatarRenderer {
   /// re-renders. Throws [StateError] if called before [load].
   Future<void> updateSlot(String slot, String? assetId);
 
+  /// Removes all loaded slot meshes and clears [current] without tearing
+  /// down the viewer (e.g. female body pending after male was loaded).
+  Future<void> unload();
+
   /// Releases engine resources. Must be called when the view is
   /// removed from the tree.
   Future<void> dispose();

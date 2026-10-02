@@ -16,6 +16,9 @@ class IdentityRecord {
   String? instagramHandle;
   String? website;
   /// `AvatarGender.wireName` (`male` / `female`), or null until the user chooses.
+  ///
+  /// After editing this schema, regenerate `identity_isar_schema.g.dart` per
+  /// the note in `packages/identity_core/pubspec.yaml` (manual patch in this PR).
   String? avatarGender;
   /// JSON-encoded `AvatarDefinition`, or null before the user's first render.
   String? avatarDefinitionJson;
