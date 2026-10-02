@@ -22,7 +22,7 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    await repo.save(
+    await container.read(currentIdentityProvider.notifier).save(
       Identity(
         id: 'id-1',
         displayName: 'Alex',
@@ -35,7 +35,7 @@ void main() {
     expect(first.bodyAssetPending, isFalse);
     expect(renderer.current, isNotNull);
 
-    await repo.save(
+    await container.read(currentIdentityProvider.notifier).save(
       Identity(
         id: 'id-1',
         displayName: 'Alex',
@@ -43,8 +43,6 @@ void main() {
         avatarGender: 'female',
       ),
     );
-    container.read(currentIdentityProvider.notifier).state =
-        AsyncData(await repo.getCurrent());
 
     final second = await ensureAvatarLoaded(container.read);
     expect(second.bodyAssetPending, isTrue);

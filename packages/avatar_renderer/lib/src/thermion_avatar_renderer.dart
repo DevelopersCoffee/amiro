@@ -11,6 +11,7 @@ import 'avatar_asset_resolver.dart';
 import 'avatar_body_pose.dart';
 import 'avatar_renderer_interface.dart';
 import 'avatar_viewer_presentation.dart';
+import 'thermion_view_detach_gate.dart';
 
 /// Thin seam over the Filament surface so slot-swap bookkeeping is unit
 /// testable without a live platform view.
@@ -301,13 +302,15 @@ class ThermionAvatarRenderer implements AvatarRenderer {
   Future<void> unload() async {
     final def = _current;
     if (def == null) return;
-    for (final slot in AvatarDefinition.slots) {
-      final assetId = _slotValue(def, slot);
-      if (assetId != null) {
-        await surface.removeModel(resolveAssetPath(slot, assetId));
+    await ThermionViewDetachGate.runMutation(() async {
+      for (final slot in AvatarDefinition.slots) {
+        final assetId = _slotValue(def, slot);
+        if (assetId != null) {
+          await surface.removeModel(resolveAssetPath(slot, assetId));
+        }
       }
-    }
-    _current = null;
+      _current = null;
+    });
   }
 
   @override

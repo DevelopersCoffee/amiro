@@ -11,6 +11,7 @@ import 'avatar_defaults.dart';
 import 'avatar_loader.dart';
 import 'avatar_loading_indicator.dart';
 import 'avatar_providers.dart';
+import 'avatar_thermion_view.dart';
 
 class AvatarScreen extends ConsumerStatefulWidget {
   const AvatarScreen({super.key});
@@ -134,9 +135,9 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
                 : _revealing
                 ? _AvatarReveal(
                     onRevealed: () => setState(() => _revealing = false),
-                    child: renderer.buildView(),
+                    child: const AvatarThermionView(),
                   )
-                : renderer.buildView(),
+                : const AvatarThermionView(),
           ),
           Padding(
             padding: const EdgeInsets.all(AmiroSpacing.md),

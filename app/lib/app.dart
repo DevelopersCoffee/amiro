@@ -1,7 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:avatar_renderer/avatar_renderer.dart';
 
 import 'identity/identity_edit_screen.dart';
 import 'avatar/avatar_screen.dart';
+import 'avatar/avatar_thermion_attach.dart';
 import 'discovery/passport_screen.dart';
 import 'sharing/incoming_share_listener.dart';
 import 'sharing/share_screen.dart';
@@ -21,19 +28,52 @@ class AmiroApp extends StatelessWidget {
   }
 }
 
-class _RootTabs extends StatefulWidget {
+class _RootTabs extends ConsumerStatefulWidget {
   const _RootTabs();
 
   @override
-  State<_RootTabs> createState() => _RootTabsState();
+  ConsumerState<_RootTabs> createState() => _RootTabsState();
 }
 
-class _RootTabsState extends State<_RootTabs> {
+class _RootTabsState extends ConsumerState<_RootTabs> {
   int _index = 0;
+  var _tabSwitchEpoch = 0;
+
+  var _registeredThermionGate = false;
+
+  void _registerThermionGateOnce() {
+    if (_registeredThermionGate) return;
+    _registeredThermionGate = true;
+    ThermionViewDetachGate.beforeEngineMutation = () async {
+      await ref
+          .read(avatarThermionAttachedProvider.notifier)
+          .detachForEngineMutation();
+    };
+  }
+
+  Future<void> _onTabSelected(int nextIndex) async {
+    if (nextIndex == _index) return;
+    final epoch = ++_tabSwitchEpoch;
+    final previous = _index;
+    const thermionTabs = {1, 2};
+    if (thermionTabs.contains(previous) || thermionTabs.contains(nextIndex)) {
+      await ref
+          .read(avatarThermionAttachedProvider.notifier)
+          .detachForEngineMutation();
+    }
+    if (!mounted || epoch != _tabSwitchEpoch) return;
+    setState(() => _index = nextIndex);
+    if (thermionTabs.contains(nextIndex)) {
+      await SchedulerBinding.instance.endOfFrame;
+      if (!mounted || epoch != _tabSwitchEpoch) return;
+      ref.read(avatarThermionAttachedProvider.notifier).attach();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final screens = const [
+    _registerThermionGateOnce();
+    const screens = [
       IdentityEditScreen(),
       AvatarScreen(),
       StoreScreen(),
@@ -47,7 +87,7 @@ class _RootTabsState extends State<_RootTabs> {
       // equipped/price/primary-action, not a 4th "nav accent" use).
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        onDestinationSelected: (i) => unawaited(_onTabSelected(i)),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.person_outline),
