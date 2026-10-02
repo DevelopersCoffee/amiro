@@ -49,4 +49,49 @@ void main() {
     expect(renderer.current, isNull);
     expect(renderer.calls, contains('unload'));
   });
+
+  test('ensureAvatarLoaded reloads after female gate then male restore', () async {
+    final container = ProviderContainer(
+      overrides: [
+        identityRepositoryProvider.overrideWithValue(InMemoryIdentityRepository()),
+        avatarRendererProvider.overrideWithValue(FakeAvatarRenderer()),
+      ],
+    );
+    addTearDown(container.dispose);
+    final renderer = container.read(avatarRendererProvider) as FakeAvatarRenderer;
+
+    await container.read(currentIdentityProvider.notifier).save(
+      Identity(
+        id: 'id-1',
+        displayName: 'Alex',
+        username: 'alex',
+        avatarGender: 'male',
+      ),
+    );
+    await ensureAvatarLoaded(container.read);
+    expect(renderer.current, isNotNull);
+
+    await container.read(currentIdentityProvider.notifier).save(
+      Identity(
+        id: 'id-1',
+        displayName: 'Alex',
+        username: 'alex',
+        avatarGender: 'female',
+      ),
+    );
+    await ensureAvatarLoaded(container.read);
+    expect(renderer.current, isNull);
+
+    await container.read(currentIdentityProvider.notifier).save(
+      Identity(
+        id: 'id-1',
+        displayName: 'Alex',
+        username: 'alex',
+        avatarGender: 'male',
+      ),
+    );
+    final restored = await ensureAvatarLoaded(container.read);
+    expect(restored.bodyAssetPending, isFalse);
+    expect(renderer.current, isNotNull);
+  });
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../identity/identity_providers.dart';
+import 'avatar_defaults.dart';
 import 'avatar_providers.dart';
 
 /// App-lifetime host for the singleton [ThermionWidget].
@@ -70,6 +72,11 @@ class _PersistentThermionOverlayState
   @override
   Widget build(BuildContext context) {
     final renderer = ref.watch(avatarRendererProvider);
+    final identity = ref.watch(currentIdentityProvider).value;
+    final showScene = _onThermionTab &&
+        canRenderAvatarForIdentity(identity) &&
+        renderer.current != null;
+
     _thermionView ??= renderer.buildView();
 
     final mediaQuery = MediaQuery.of(context);
@@ -81,7 +88,7 @@ class _PersistentThermionOverlayState
         left: 0,
         right: 0,
         height: _storePreviewHeight,
-        child: _host(_thermionView!),
+        child: _host(_thermionView!, visible: showScene),
       );
     }
 
@@ -90,15 +97,15 @@ class _PersistentThermionOverlayState
       left: 0,
       right: 0,
       bottom: _avatarEquipChromeBottom,
-      child: _host(_thermionView!),
+      child: _host(_thermionView!, visible: showScene),
     );
   }
 
-  Widget _host(Widget thermionView) {
+  Widget _host(Widget thermionView, {required bool visible}) {
     return Offstage(
-      offstage: !_onThermionTab,
+      offstage: !visible,
       child: IgnorePointer(
-        ignoring: !_onThermionTab,
+        ignoring: !visible,
         child: thermionView,
       ),
     );

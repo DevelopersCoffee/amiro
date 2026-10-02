@@ -23,7 +23,6 @@ class AvatarScreen extends ConsumerStatefulWidget {
 class _AvatarScreenState extends ConsumerState<AvatarScreen> {
   bool _didInit = false;
   bool _loading = true;
-  bool _bodyAssetPending = false;
   bool _glassesOn = false;
 
   // The reveal ceremony (avatar materializes before chrome appears) plays
@@ -45,7 +44,6 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
     if (!mounted) return;
     setState(() {
       _loading = false;
-      _bodyAssetPending = result.bodyAssetPending;
       _revealing = result.isFirstReveal && !result.bodyAssetPending;
       _glassesOn = result.definition?.glasses != null;
     });
@@ -65,6 +63,9 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final identity = ref.watch(currentIdentityProvider).value;
+    final bodyAssetPending = !canRenderAvatarForIdentity(identity);
+
     final renderer = ref.watch(avatarRendererProvider);
     final current = renderer.current;
     // Sums whatever's equipped against the store catalog's prices — not
@@ -78,12 +79,10 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
         ? null
         : avatarRarityScore(current, cosmeticCatalog).highest;
 
-    final showChrome = !_loading && !_revealing && !_bodyAssetPending;
+    final showChrome = !_loading && !_revealing && !bodyAssetPending;
 
-    if (_bodyAssetPending) {
-      final gender = resolveAvatarGender(
-        ref.watch(currentIdentityProvider).value,
-      );
+    if (bodyAssetPending) {
+      final gender = resolveAvatarGender(identity);
       return Scaffold(
         appBar: AppBar(title: const Text('Your Avatar')),
         body: EmptyState(
