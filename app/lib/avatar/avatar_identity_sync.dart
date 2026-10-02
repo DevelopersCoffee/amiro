@@ -16,11 +16,14 @@ class AvatarIdentitySyncListener extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen(currentIdentityProvider, (previous, next) {
-      final prevGender = previous?.value?.avatarGender;
-      final nextGender = next.value?.avatarGender;
-      if (prevGender != nextGender) {
-        unawaited(ensureAvatarLoaded(ref, forceReload: true));
-      }
+      // First provider emission has no previous identity — do not forceReload
+      // or we call ThermionViewDetachGate pause/destroy before the viewer is
+      // ready (cold-start SIGSEGV on device).
+      if (previous == null || !previous.hasValue || next.value == null) return;
+      final prevGender = previous.value!.avatarGender;
+      final nextGender = next.value!.avatarGender;
+      if (prevGender == nextGender) return;
+      unawaited(ensureAvatarLoaded(ref, forceReload: true));
     });
     return child;
   }

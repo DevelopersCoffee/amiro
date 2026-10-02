@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:avatar_core/avatar_core.dart';
+import 'package:identity_core/identity_core.dart';
 
 import '../identity/identity_providers.dart';
 import 'avatar_defaults.dart';

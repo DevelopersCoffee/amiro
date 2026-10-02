@@ -151,7 +151,7 @@ void main() {
     );
     await ensureAvatarLoaded(container.read, forceReload: true);
     expect(renderer.current, isNotNull);
-    expect(renderer.calls.where((c) => c == 'unload').length, greaterThanOrEqualTo(2));
+    expect(renderer.calls.where((c) => c == 'unload').length, greaterThanOrEqualTo(1));
     expect(renderer.calls.where((c) => c.startsWith('load:')).length, greaterThanOrEqualTo(2));
   });
 

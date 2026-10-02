@@ -101,9 +101,12 @@ class ThermionFilamentSurface implements FilamentSurface {
     }
   }
 
+  bool get hasTrackedAssets => _loadedAssets.isNotEmpty;
+
   /// Destroys every tracked asset — used when [ThermionAvatarRenderer.current]
   /// is already null but Filament may still hold handles after a partial unload.
   Future<void> destroyAllModels() async {
+    if (!hasTrackedAssets) return;
     for (final path in _loadedAssets.keys.toList()) {
       await removeModel(path);
     }
@@ -297,15 +300,19 @@ class ThermionAvatarRenderer implements AvatarRenderer {
   @override
   AvatarDefinition? get current => _current;
 
+  bool _hasLoadedMeshes() {
+    final filament = surface;
+    if (filament is ThermionFilamentSurface) {
+      return _current != null || filament.hasTrackedAssets;
+    }
+    return _current != null;
+  }
+
   @override
   Future<void> load(AvatarDefinition definition) async {
-    // [unload] pauses via [ThermionViewDetachGate]. loadGltf while the frame
-    // scheduler/rendering is off can leave an empty scene on device — resume
-    // before attaching meshes. Tab switches do not pause/resume (SwapChain stress).
-    final wasPaused = _presentationPaused;
-    if (wasPaused) {
-      await resumePresentation();
-    }
+    // [unload] pauses via [ThermionViewDetachGate]; reload must turn presentation
+    // back on. Tab switches intentionally do not pause/resume (SwapChain stress).
+    final resumeAfterLoad = _presentationPaused;
     for (final slot in AvatarDefinition.slots) {
       final assetId = _slotValue(definition, slot);
       if (assetId != null) {
@@ -313,13 +320,18 @@ class ThermionAvatarRenderer implements AvatarRenderer {
       }
     }
     _current = definition;
-    if (wasPaused) {
+    await resumePresentation();
+    if (resumeAfterLoad) {
       await requestPresentationFrame();
     }
   }
 
   @override
   Future<void> unload() async {
+    if (!_hasLoadedMeshes()) {
+      _current = null;
+      return;
+    }
     await ThermionViewDetachGate.runMutation(() async {
       final filament = surface;
       if (filament is ThermionFilamentSurface) {
