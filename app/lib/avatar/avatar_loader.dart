@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:avatar_core/avatar_core.dart';
@@ -67,6 +68,11 @@ Future<void> _avatarLoadChain = Future<void>.value();
 
 /// Awaits any in-flight [ensureAvatarLoaded] work (tests / diagnostics).
 Future<void> waitForAvatarLoadIdle() => _avatarLoadChain;
+
+@visibleForTesting
+void resetAvatarLoadChainForTest() {
+  _avatarLoadChain = Future<void>.value();
+}
 
 /// Ensures the singleton [AvatarRenderer] has a loaded definition, loading
 /// the persisted (or default) one if nothing is loaded yet.

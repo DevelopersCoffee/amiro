@@ -10,6 +10,8 @@ import '../identity/in_memory_identity_repository.dart';
 import 'fake_avatar_renderer.dart';
 
 void main() {
+  setUp(resetAvatarLoadChainForTest);
+
   test('ensureAvatarLoaded unloads male avatar when identity switches to female', () async {
     final repo = InMemoryIdentityRepository();
     final renderer = FakeAvatarRenderer();

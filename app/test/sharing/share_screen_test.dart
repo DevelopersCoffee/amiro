@@ -16,8 +16,21 @@ import 'package:amiro_app/sharing/sharing_providers.dart'
 import 'package:amiro_app/store/store_providers.dart';
 import 'package:amiro_app/theme/amiro_theme.dart';
 
+import 'package:amiro_app/avatar/avatar_loader.dart';
+
 import '../avatar/fake_avatar_renderer.dart';
 import '../identity/in_memory_identity_repository.dart';
+import '../pump_helpers.dart';
+
+const _defaultAvatarJson =
+    '{"id":"default","body":"body_superhero_male","hair":"hair_simple_parted"}';
+
+Identity _shareIdentity({String? avatarDefinitionJson}) => Identity(
+  id: 'id-1',
+  displayName: 'Uday',
+  username: 'uday',
+  avatarDefinitionJson: avatarDefinitionJson ?? _defaultAvatarJson,
+);
 
 Widget _screen(
   NfcEmulator emulator,
@@ -45,11 +58,13 @@ Widget _screen(
 }
 
 void main() {
+  setUp(resetAvatarLoadChainForTest);
+
   testWidgets(
     'no identity yet shows an explained empty state, not a bare label',
     (tester) async {
       await tester.pumpWidget(_screen(NoopNfcEmulator(), null));
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       expect(find.text('Create your identity first'), findsOneWidget);
       expect(find.textContaining('wearable'), findsOneWidget);
@@ -64,22 +79,18 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(_screen(NoopNfcEmulator(), null));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     await tester.tap(find.widgetWithText(FilledButton, 'Create identity'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.byType(IdentityEditScreen), findsOneWidget);
   });
 
   testWidgets('shows a QR code for the current identity', (tester) async {
-    final identity = Identity(
-      id: 'id-1',
-      displayName: 'Uday',
-      username: 'uday',
-    );
-    await tester.pumpWidget(_screen(NoopNfcEmulator(), identity));
-    await tester.pumpAndSettle();
+    await tester.pumpWidget(_screen(NoopNfcEmulator(), _shareIdentity()));
+    await pumpUntilFound(tester, find.byKey(const Key('shareQrCode')));
 
     expect(find.byKey(const Key('shareQrCode')), findsOneWidget);
   });
@@ -90,13 +101,8 @@ void main() {
     tester.view.physicalSize = const Size(800, 2600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final identity = Identity(
-      id: 'id-1',
-      displayName: 'Uday',
-      username: 'uday',
-    );
-    await tester.pumpWidget(_screen(NoopNfcEmulator(), identity));
-    await tester.pumpAndSettle();
+    await tester.pumpWidget(_screen(NoopNfcEmulator(), _shareIdentity()));
+    await pumpUntilFound(tester, find.byKey(const Key('shareQrCode')));
 
     expect(find.text('Uday'), findsOneWidget);
     expect(find.text('Tap or scan to discover'), findsOneWidget);
@@ -109,11 +115,7 @@ void main() {
     tester.view.physicalSize = const Size(800, 2600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final identity = Identity(
-      id: 'id-1',
-      displayName: 'Uday',
-      username: 'uday',
-    );
+    final identity = _shareIdentity();
     final renderer = FakeAvatarRenderer();
     await renderer.load(
       const AvatarDefinition(
@@ -133,7 +135,7 @@ void main() {
         entitlements: entitlements,
       ),
     );
-    await tester.pumpAndSettle();
+    await pumpUntilFound(tester, find.byKey(const Key('shareQrCode')));
 
     expect(find.text('Riviera Optics'), findsOneWidget);
     expect(find.text('Rare'), findsOneWidget);
@@ -146,13 +148,10 @@ void main() {
     tester.view.physicalSize = const Size(800, 2600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final identity = Identity(
-      id: 'id-1',
-      displayName: 'Uday',
-      username: 'uday',
+    await tester.pumpWidget(
+      _screen(_FakeCanEmulate(), _shareIdentity()),
     );
-    await tester.pumpWidget(_screen(_FakeCanEmulate(), identity));
-    await tester.pumpAndSettle();
+    await pumpUntilFound(tester, find.byKey(const Key('nfcShareSection')));
 
     expect(find.byKey(const Key('nfcShareSection')), findsOneWidget);
   });
@@ -160,13 +159,8 @@ void main() {
   testWidgets('hides NFC section when the emulator cannot emulate', (
     tester,
   ) async {
-    final identity = Identity(
-      id: 'id-1',
-      displayName: 'Uday',
-      username: 'uday',
-    );
-    await tester.pumpWidget(_screen(NoopNfcEmulator(), identity));
-    await tester.pumpAndSettle();
+    await tester.pumpWidget(_screen(NoopNfcEmulator(), _shareIdentity()));
+    await pumpUntilFound(tester, find.byKey(const Key('shareQrCode')));
 
     expect(find.byKey(const Key('nfcShareSection')), findsNothing);
   });
@@ -192,18 +186,13 @@ void main() {
       // exactly the way `app.dart`'s `_RootTabs` does when switching tabs
       // (`screens[_index]` unmounts the off-screen tab): by replacing the
       // widget tree, not by calling internal methods directly.
-      final identity = Identity(
-        id: 'id-1',
-        displayName: 'Uday',
-        username: 'uday',
-      );
       final emulator = _FakeCanEmulate();
 
-      await tester.pumpWidget(_screen(emulator, identity));
-      await tester.pumpAndSettle();
+      await tester.pumpWidget(_screen(emulator, _shareIdentity()));
+      await pumpUntilFound(tester, find.text('Start NFC sharing'));
 
       await tester.tap(find.text('Start NFC sharing'));
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       expect(find.text('Stop NFC sharing'), findsOneWidget);
       expect(emulator.stopCallCount, 0);
@@ -212,7 +201,7 @@ void main() {
       // is what actually tears the widget down and calls its dispose(),
       // unlike testing the provider/notifier logic on its own.
       await tester.pumpWidget(const MaterialApp(home: SizedBox()));
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       // With the bug present, disposal throws `StateError` inside
       // dispose(), which flutter_test surfaces via takeException() — and
@@ -234,13 +223,10 @@ void main() {
     // removed `nfcEmulatingProvider` did. Starting a read while this
     // device is itself emulating a tag to send would still fight it for
     // the NFC radio on Android, so this is guarded locally instead.
-    final identity = Identity(
-      id: 'id-1',
-      displayName: 'Uday',
-      username: 'uday',
+    await tester.pumpWidget(
+      _screen(_FakeCanEmulate(), _shareIdentity()),
     );
-    await tester.pumpWidget(_screen(_FakeCanEmulate(), identity));
-    await tester.pumpAndSettle();
+    await pumpUntilFound(tester, find.text('Start NFC sharing'));
 
     IconButton receiveButton() =>
         tester.widget<IconButton>(find.byKey(const Key('receiveNfcButton')));
@@ -248,7 +234,7 @@ void main() {
     expect(receiveButton().onPressed, isNotNull);
 
     await tester.tap(find.text('Start NFC sharing'));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(receiveButton().onPressed, isNull);
   });
