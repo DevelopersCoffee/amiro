@@ -1,10 +1,14 @@
+import 'package:avatar_core/avatar_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:store/store.dart';
 
+import '../avatar/avatar_defaults.dart';
 import '../avatar/avatar_loader.dart';
 import '../avatar/avatar_providers.dart';
+import '../avatar/avatar_viewport_placeholder.dart';
+import '../identity/identity_providers.dart';
 import '../theme/amiro_card.dart';
 import '../theme/amiro_theme.dart';
 import 'rarity_label_style.dart';
@@ -14,12 +18,31 @@ import 'store_providers.dart';
 /// Unseriesed items first, then each numbered series in order, each series
 /// preceded by its [CollectionProgress] header. Returns [CollectionProgress]
 /// for headers and [CosmeticListing] for items.
-List<Object> _storeRows(List<CosmeticListing> catalog, Set<String> owned) {
-  final rows = <Object>[...catalog.where((c) => c.series == null)];
-  for (final progress in collectionProgress(catalog, owned)) {
+/// Hides slot items that do not apply to [gender] yet (see avatar_gender.dart).
+bool cosmeticListingVisibleForGender(
+  CosmeticListing listing,
+  AvatarGender gender,
+) {
+  if (gender == AvatarGender.female && listing.slot == 'facialHair') {
+    // TODO(catalog): female facial-hair variants when assets exist.
+    return false;
+  }
+  return true;
+}
+
+List<Object> _storeRows(
+  List<CosmeticListing> catalog,
+  Set<String> owned,
+  AvatarGender gender,
+) {
+  final visible = catalog
+      .where((c) => cosmeticListingVisibleForGender(c, gender))
+      .toList();
+  final rows = <Object>[...visible.where((c) => c.series == null)];
+  for (final progress in collectionProgress(visible, owned)) {
     rows.add(progress);
     rows.addAll(
-      catalog.where((c) => c.series?.number == progress.series.number),
+      visible.where((c) => c.series?.number == progress.series.number),
     );
   }
   return rows;
@@ -223,7 +246,10 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
   Widget build(BuildContext context) {
     final renderer = ref.watch(avatarRendererProvider);
     final owned = ref.watch(ownedCosmeticsProvider).value ?? const <String>{};
-    final rows = _storeRows(cosmeticCatalog, owned);
+    final gender = resolveAvatarGender(
+      ref.watch(currentIdentityProvider).value,
+    );
+    final rows = _storeRows(cosmeticCatalog, owned, gender);
 
     return Scaffold(
       appBar: AppBar(
@@ -237,7 +263,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
       ),
       body: Column(
         children: [
-          SizedBox(height: 220, child: renderer.buildView()),
+          const SizedBox(height: 220, child: AvatarViewportPlaceholder()),
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.all(AmiroSpacing.md),

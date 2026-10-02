@@ -59,6 +59,7 @@ class IsarIdentityRepository implements IdentityRepository {
       ..xHandle = identity.xHandle
       ..instagramHandle = identity.instagramHandle
       ..website = identity.website
+      ..avatarGender = identity.avatarGender
       ..avatarDefinitionJson = identity.avatarDefinitionJson
       ..privacyJson = jsonEncode(privacyMap);
   }
@@ -76,6 +77,7 @@ class IsarIdentityRepository implements IdentityRepository {
       xHandle: record.xHandle,
       instagramHandle: record.instagramHandle,
       website: record.website,
+      avatarGender: record.avatarGender,
       avatarDefinitionJson: record.avatarDefinitionJson,
       privacy: privacyMap,
     );

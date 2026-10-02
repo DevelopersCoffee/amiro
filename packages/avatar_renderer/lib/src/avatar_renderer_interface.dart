@@ -21,6 +21,17 @@ abstract class AvatarRenderer {
   /// re-renders. Throws [StateError] if called before [load].
   Future<void> updateSlot(String slot, String? assetId);
 
+  /// Removes all loaded slot meshes and clears [current] without tearing
+  /// down the viewer (e.g. female body pending after male was loaded).
+  Future<void> unload();
+
+  /// Stops Filament frame delivery while the [ThermionWidget] stays mounted
+  /// (tab hidden). No-op on fakes.
+  Future<void> pausePresentation();
+
+  /// Resumes rendering after [pausePresentation].
+  Future<void> resumePresentation();
+
   /// Releases engine resources. Must be called when the view is
   /// removed from the tree.
   Future<void> dispose();

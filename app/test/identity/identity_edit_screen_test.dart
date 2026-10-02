@@ -27,6 +27,28 @@ void main() {
     final saved = await repo.getCurrent();
     expect(saved!.displayName, 'Uday');
     expect(saved.username, 'uday');
+    expect(saved.avatarGender, 'male');
+  });
+
+  testWidgets('selecting female persists avatarGender', (tester) async {
+    final repo = InMemoryIdentityRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [identityRepositoryProvider.overrideWithValue(repo)],
+        child: const MaterialApp(home: IdentityEditScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Female'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('displayNameField')), 'Alex');
+    await tester.enterText(find.byKey(const Key('usernameField')), 'alex');
+    await tester.tap(find.byKey(const Key('saveButton')));
+    await tester.pumpAndSettle();
+
+    expect((await repo.getCurrent())!.avatarGender, 'female');
   });
 
   testWidgets('toggling a field private excludes it from publicFields', (
@@ -80,6 +102,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('AVATAR'), findsOneWidget);
     expect(find.text('PROFILE'), findsOneWidget);
     expect(find.text('CONTACT'), findsOneWidget);
     // Display name/username/bio sit under PROFILE, above CONTACT; email sits under CONTACT.

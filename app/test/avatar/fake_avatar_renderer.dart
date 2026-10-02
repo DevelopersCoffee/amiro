@@ -26,5 +26,17 @@ class FakeAvatarRenderer implements AvatarRenderer {
   }
 
   @override
+  Future<void> unload() async {
+    calls.add('unload');
+    _current = null;
+  }
+
+  @override
+  Future<void> pausePresentation() async {}
+
+  @override
+  Future<void> resumePresentation() async {}
+
+  @override
   Future<void> dispose() async {}
 }
