@@ -5,9 +5,12 @@ import 'package:thermion_flutter/thermion_flutter.dart' as thermion;
 
 import 'package:avatar_core/avatar_core.dart';
 
+import 'package:vector_math/vector_math_64.dart' show Matrix4, Vector3;
+
 import 'avatar_asset_resolver.dart';
 import 'avatar_body_pose.dart';
 import 'avatar_renderer_interface.dart';
+import 'avatar_viewer_presentation.dart';
 
 /// Thin seam over the Filament surface so slot-swap bookkeeping is unit
 /// testable without a live platform view.
@@ -72,9 +75,9 @@ class ThermionFilamentSurface implements FilamentSurface {
     // Body meshes are rigged but ship with no idle clip — Filament shows the
     // bind (T) pose until bones are driven. Best-effort: a pose failure must
     // never prevent the model from appearing.
-    if (shouldApplyRelaxedArmPose(assetPath)) {
+    if (shouldApplySkinnedHumanoidProceduralMotion(assetPath)) {
       try {
-        await applyRelaxedArmPose(asset);
+        await applySkinnedHumanoidProceduralMotion(asset);
       } catch (_) {}
     }
   }
@@ -111,17 +114,17 @@ class ThermionAvatarRenderer implements AvatarRenderer {
 
   ThermionAvatarRenderer({required this.surface});
 
-  static const double _orbitRadius = 1.25;
-  static const double _orbitHeight = 1.45;
+  static const double _orbitRadius = avatarOrbitRadius;
+  static const double _orbitFocusHeight = avatarOrbitFocusHeight;
+  static const double _orbitCameraHeight = avatarOrbitCameraHeight;
 
-  // Three-point rig as travel directions relative to the camera's initial
-  // (front) view: warm key from front-upper-left, cool fill from the right,
-  // white rim from behind. Re-aimed with the camera on every rotation so the
-  // avatar stays lit from every angle instead of going black from behind.
+  // Cinematic three-point rig: warm key, cool fill, strong rim from behind.
+  // Re-aimed with the camera on every rotation so full-body stays lit while
+  // orbiting (hero-showcase energy, not flat face-only lighting).
   static final _rig = <_LightSpec>[
-    _LightSpec(const thermion.LinearColor(1.0, 0.94, 0.86), 90000, -0.5, -0.45, -1),
-    _LightSpec(const thermion.LinearColor(0.75, 0.85, 1.0), 40000, 0.7, -0.2, -1),
-    _LightSpec(const thermion.LinearColor(1.0, 1.0, 1.0), 55000, 0.1, -0.3, 1),
+    _LightSpec(const thermion.LinearColor(1.0, 0.90, 0.78), 98000, -0.55, -0.32, -1),
+    _LightSpec(const thermion.LinearColor(0.62, 0.76, 1.0), 52000, 0.78, -0.22, -1),
+    _LightSpec(const thermion.LinearColor(0.82, 0.90, 1.0), 78000, 0.08, -0.12, 1),
   ];
 
   Future<void> _applyRig(thermion.ThermionViewer viewer, double yaw) async {
@@ -160,10 +163,10 @@ class ThermionAvatarRenderer implements AvatarRenderer {
         await camera.lookAt(
           thermion.Vector3(
             math.sin(applied) * _orbitRadius,
-            _orbitHeight,
+            _orbitCameraHeight,
             math.cos(applied) * _orbitRadius,
           ),
-          focus: thermion.Vector3(0, _orbitHeight, 0),
+          focus: thermion.Vector3(0, _orbitFocusHeight, 0),
         );
         await _applyRig(viewer, applied);
       } while (applied != _yaw);
@@ -202,18 +205,22 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     // model's front face. Angle it toward the camera's view direction
     // instead, confirmed necessary on-device: the default direction left
     // the (correctly loaded, correctly framed) mesh silhouette solid black.
-    // Framed for a real-world-scale standing humanoid (feet ~y=0, head
-    // ~y=1.8, per the Quaternius base character's glTF bounding box) —
-    // confirmed on-device that the placeholder-box framing above (looking
-    // at the origin from distance 3) put the camera inside a body this
-    // size, showing only the thighs. Center vertically on the torso and
-    // pull back far enough to fit the whole figure in frame.
+    // Dark stage + grounded plinth (best-effort — must not block the viewer).
+    try {
+      await viewer.setBackgroundColor(
+        avatarStageBackgroundR,
+        avatarStageBackgroundG,
+        avatarStageBackgroundB,
+        1.0,
+      );
+      await _installStagePlinth(viewer);
+    } catch (_) {}
+
+    // Full-body hero framing (feet ~y=0, head ~y=1.8 on Quaternius skeleton).
     final camera = await viewer.getActiveCamera();
-    // Head-and-shoulders framing (a full-body view left the face a few
-    // pixels wide with most of the screen empty).
     await camera.lookAt(
-      thermion.Vector3(0, _orbitHeight, _orbitRadius),
-      focus: thermion.Vector3(0, _orbitHeight, 0),
+      thermion.Vector3(0, _orbitCameraHeight, _orbitRadius),
+      focus: thermion.Vector3(0, _orbitFocusHeight, 0),
     );
 
     final renderer =
@@ -222,6 +229,31 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     renderer._camera = camera;
     await renderer._applyRig(viewer, 0);
     return renderer;
+  }
+
+  /// Simple cylindrical plinth so the avatar reads grounded, not floating.
+  static Future<void> _installStagePlinth(thermion.ThermionViewer viewer) async {
+    final material = await viewer.app.createUnlitMaterialInstance();
+    await material.setParameterFloat4(
+      'baseColorFactor',
+      avatarStagePlinthColorR,
+      avatarStagePlinthColorG,
+      avatarStagePlinthColorB,
+      1.0,
+    );
+    final geometry = thermion.GeometryUtils.cylinder(
+      radius: avatarStagePlinthRadius,
+      length: avatarStagePlinthHeight,
+    );
+    final plinth = await viewer.createGeometry(
+      geometry,
+      materialInstances: [material],
+    );
+    await plinth.setTransform(
+      Matrix4.translation(
+        Vector3(0, avatarStagePlinthCenterY, 0),
+      ),
+    );
   }
 
   @override
