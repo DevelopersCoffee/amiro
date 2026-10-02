@@ -71,7 +71,7 @@ void main() {
     await pumpAfterAvatarLoad(tester);
 
     await tester.tap(find.text('Classic Frame'));
-    await pumpAfterAvatarLoad(tester);
+    await pumpShort(tester, frames: 10);
 
     expect(renderer.calls, contains('updateSlot:glasses:glasses_placeholder'));
   });
@@ -107,7 +107,7 @@ void main() {
     );
 
     await tester.tap(find.widgetWithText(FilledButton, 'Buy \$2.99'));
-    await pumpAfterAvatarLoad(tester);
+    await pumpShort(tester, frames: 10);
 
     expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsNothing);
     expect(await entitlements.ownedCosmeticIds(), contains('riviera_optics'));
@@ -128,7 +128,7 @@ void main() {
       await pumpAfterAvatarLoad(tester);
 
       await tester.tap(find.widgetWithText(FilledButton, 'Buy \$2.99'));
-      await pumpAfterAvatarLoad(tester);
+      await pumpShort(tester, frames: 10);
 
       expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
       expect(find.byType(SnackBar), findsNothing);
@@ -151,7 +151,7 @@ void main() {
     await pumpAfterAvatarLoad(tester);
 
     await tester.tap(find.widgetWithText(FilledButton, 'Buy \$2.99'));
-    await pumpAfterAvatarLoad(tester);
+    await pumpUntilFound(tester, find.textContaining('Purchase failed'));
 
     expect(find.textContaining('Purchase failed'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
@@ -174,7 +174,7 @@ void main() {
       expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
 
       await tester.tap(find.text('Restore purchases'));
-      await pumpAfterAvatarLoad(tester);
+      await pumpUntilFound(tester, find.text('Purchases restored'));
 
       expect(entitlements.restoreCalls, 1);
       expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsNothing);
@@ -198,7 +198,7 @@ void main() {
     await pumpAfterAvatarLoad(tester);
 
     await tester.tap(find.text('Restore purchases'));
-    await pumpAfterAvatarLoad(tester);
+    await pumpUntilFound(tester, find.textContaining('Restore failed'));
 
     expect(find.textContaining('Restore failed'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
