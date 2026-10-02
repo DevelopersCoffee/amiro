@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:avatar_renderer/avatar_renderer.dart';
+import 'package:avatar_core/avatar_core.dart';
 
 import 'package:identity_core/identity_core.dart';
 
