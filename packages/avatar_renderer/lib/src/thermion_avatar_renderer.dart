@@ -205,7 +205,6 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     // model's front face. Angle it toward the camera's view direction
     // instead, confirmed necessary on-device: the default direction left
     // the (correctly loaded, correctly framed) mesh silhouette solid black.
-    // Dark stage + grounded plinth (best-effort — must not block the viewer).
     try {
       await viewer.setBackgroundColor(
         avatarStageBackgroundR,
@@ -213,6 +212,8 @@ class ThermionAvatarRenderer implements AvatarRenderer {
         avatarStageBackgroundB,
         1.0,
       );
+    } catch (_) {}
+    try {
       await _installStagePlinth(viewer);
     } catch (_) {}
 
@@ -231,28 +232,54 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     return renderer;
   }
 
-  /// Simple cylindrical plinth so the avatar reads grounded, not floating.
+  /// Ground disk + low lip so the avatar reads grounded, not floating in void.
   static Future<void> _installStagePlinth(thermion.ThermionViewer viewer) async {
-    final material = await viewer.app.createUnlitMaterialInstance();
-    await material.setParameterFloat4(
+    final diskMaterial = await viewer.app.createUbershaderMaterialInstance(
+      unlit: false,
+      hasVertexColors: false,
+    );
+    await diskMaterial.setParameterFloat4(
+      'baseColorFactor',
+      avatarStageDiskColorR,
+      avatarStageDiskColorG,
+      avatarStageDiskColorB,
+      1.0,
+    );
+    await diskMaterial.setParameterFloat('roughnessFactor', 0.92);
+    await diskMaterial.setParameterFloat('metallicFactor', 0.0);
+
+    final disk = await viewer.createGeometry(
+      thermion.GeometryUtils.plane(
+        width: avatarStageDiskDiameter,
+        height: avatarStageDiskDiameter,
+      ),
+      materialInstances: [diskMaterial],
+    );
+    await disk.setTransform(Matrix4.identity());
+
+    final lipMaterial = await viewer.app.createUbershaderMaterialInstance(
+      unlit: false,
+      hasVertexColors: false,
+    );
+    await lipMaterial.setParameterFloat4(
       'baseColorFactor',
       avatarStagePlinthColorR,
       avatarStagePlinthColorG,
       avatarStagePlinthColorB,
       1.0,
     );
-    final geometry = thermion.GeometryUtils.cylinder(
-      radius: avatarStagePlinthRadius,
-      length: avatarStagePlinthHeight,
-    );
-    final plinth = await viewer.createGeometry(
-      geometry,
-      materialInstances: [material],
-    );
-    await plinth.setTransform(
-      Matrix4.translation(
-        Vector3(0, avatarStagePlinthCenterY, 0),
+    await lipMaterial.setParameterFloat('roughnessFactor', 0.95);
+    await lipMaterial.setParameterFloat('metallicFactor', 0.0);
+
+    final lip = await viewer.createGeometry(
+      thermion.GeometryUtils.cylinder(
+        radius: avatarStagePlinthRadius,
+        length: avatarStagePlinthHeight,
       ),
+      materialInstances: [lipMaterial],
+    );
+    await lip.setTransform(
+      Matrix4.translation(Vector3(0, avatarStagePlinthCenterY, 0)),
     );
   }
 

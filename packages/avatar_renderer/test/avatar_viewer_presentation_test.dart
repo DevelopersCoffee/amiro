@@ -10,8 +10,9 @@ void main() {
       expect(avatarOrbitCameraHeight, greaterThanOrEqualTo(avatarOrbitFocusHeight));
     });
 
-    test('plinth top sits at ground level', () {
+    test('stage disk and plinth lip meet at ground level', () {
       expect(avatarStagePlinthCenterY, avatarStagePlinthHeight / 2);
+      expect(avatarStageDiskDiameter, greaterThan(1.2));
     });
   });
 }

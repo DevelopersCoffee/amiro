@@ -17,14 +17,22 @@ const double avatarStageBackgroundR = 22 / 255;
 const double avatarStageBackgroundG = 21 / 255;
 const double avatarStageBackgroundB = 16 / 255;
 
-/// Low plinth under the avatar (meters).
-const double avatarStagePlinthRadius = 0.52;
-const double avatarStagePlinthHeight = 0.035;
+/// Stage disk under the avatar (meters). Sized to read on a ~2.5m camera orbit.
+const double avatarStageDiskDiameter = 1.5;
 
-/// Plinth center Y so the top surface sits at y=0 (feet level).
+/// Low cylindrical lip around the disk (visible thickness from the front camera).
+const double avatarStagePlinthRadius = 0.58;
+const double avatarStagePlinthHeight = 0.07;
+
+/// Plinth center Y so the top lip sits at y=0 (feet level).
 double get avatarStagePlinthCenterY => avatarStagePlinthHeight / 2;
 
-/// Unlit plinth tint — DESIGN.md `surface` (#1F1D17), sRGB 0–1.
+/// Stage top — DESIGN.md `surface-border` (#322F26), lighter than ground bg.
+const double avatarStageDiskColorR = 50 / 255;
+const double avatarStageDiskColorG = 47 / 255;
+const double avatarStageDiskColorB = 38 / 255;
+
+/// Plinth edge — DESIGN.md `surface` (#1F1D17), still contrast vs ground.
 const double avatarStagePlinthColorR = 31 / 255;
 const double avatarStagePlinthColorG = 29 / 255;
 const double avatarStagePlinthColorB = 23 / 255;

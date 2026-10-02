@@ -36,16 +36,24 @@ const livingStatueIdleBones = [
   'pelvis',
 ];
 
+/// All bones driven by [buildSkinnedHumanoidPresentationAnimation] (arms + idle).
+const skinnedHumanoidPresentationBones = [
+  ...relaxedArmPoseBones,
+  ...livingStatueIdleBones,
+];
+
 /// Builds a single-frame skeletal hold that drops the upper arms from the glTF
 /// bind (T) pose. Rotations are in [Space.Bone] — deltas applied on top of
 /// each bone's rest local transform inside thermion's [addBoneAnimation].
+///
+/// Sign convention verified against `body_superhero_male.glb` on device (PR #35):
+/// **left −π/2**, **right +π/2** about bone-local +Z — the opposite pairing
+/// swings arms toward world +Y (overhead).
 thermion.BoneAnimationData buildRelaxedArmPoseAnimation({
   double armDownRadians = math.pi / 2,
 }) {
-  // Mixamo-style upper arms point sideways in bind pose; a +Z / −Z twist in
-  // bone space brings them down to a natural standing rest.
-  final left = Quaternion.axisAngle(Vector3(0, 0, 1), armDownRadians);
-  final right = Quaternion.axisAngle(Vector3(0, 0, 1), -armDownRadians);
+  final left = Quaternion.axisAngle(Vector3(0, 0, 1), -armDownRadians);
+  final right = Quaternion.axisAngle(Vector3(0, 0, 1), armDownRadians);
   final frame = [
     (rotation: left, translation: Vector3.zero()),
     (rotation: right, translation: Vector3.zero()),
@@ -58,44 +66,49 @@ thermion.BoneAnimationData buildRelaxedArmPoseAnimation({
   );
 }
 
-/// Procedural "living statue" loop: soft breath through the spine chain and a
-/// barely perceptible pelvis/neck sway. Amplitudes stay in the Apple product-shot
-/// range (almost still).
-thermion.BoneAnimationData buildLivingStatueIdleAnimation({
+/// Arm-space deltas reused in every frame of the presentation loop.
+({thermion.Transform left, thermion.Transform right}) relaxedArmPoseFrame({
+  double armDownRadians = math.pi / 2,
+}) {
+  final left = Quaternion.axisAngle(Vector3(0, 0, 1), -armDownRadians);
+  final right = Quaternion.axisAngle(Vector3(0, 0, 1), armDownRadians);
+  return (
+    left: (rotation: left, translation: Vector3.zero()),
+    right: (rotation: right, translation: Vector3.zero()),
+  );
+}
+
+/// One looping clip: relaxed arms held on **every** frame plus subtle breath/sway.
+///
+/// A single [addBoneAnimation] avoids Thermion cross-fading separate clips on
+/// the same instance and keeps skinned clothing instances in lockstep with the
+/// body when each mesh gets the same data.
+thermion.BoneAnimationData buildSkinnedHumanoidPresentationAnimation({
   int numFrames = 120,
-  double frameLengthInMs = 1000.0 / 60.0,
   double loopDurationSeconds = 5.5,
+  double armDownRadians = math.pi / 2,
 }) {
   assert(numFrames >= 2);
+  final arms = relaxedArmPoseFrame(armDownRadians: armDownRadians);
   final frames = <thermion.SkeletonTransform>[];
+
   for (var frameIndex = 0; frameIndex < numFrames; frameIndex++) {
     final t = frameIndex / numFrames;
     final phase = 2 * math.pi * t;
     final breath = math.sin(phase);
     final sway = math.sin(phase + math.pi / 3);
 
-    final spine01 = Quaternion.axisAngle(
-      Vector3(1, 0, 0),
-      0.004 * breath,
-    );
-    final spine02 = Quaternion.axisAngle(
-      Vector3(1, 0, 0),
-      0.007 * breath,
-    );
-    final spine03 = Quaternion.axisAngle(
-      Vector3(1, 0, 0),
-      0.010 * breath,
-    );
-    final neck = Quaternion.axisAngle(
-      Vector3(1, 0, 0),
-      -0.003 * breath,
-    );
+    final spine01 = Quaternion.axisAngle(Vector3(1, 0, 0), 0.004 * breath);
+    final spine02 = Quaternion.axisAngle(Vector3(1, 0, 0), 0.007 * breath);
+    final spine03 = Quaternion.axisAngle(Vector3(1, 0, 0), 0.010 * breath);
+    final neck = Quaternion.axisAngle(Vector3(1, 0, 0), -0.003 * breath);
     final pelvisRot = Quaternion.axisAngle(Vector3(0, 1, 0), 0.005 * sway) *
         Quaternion.axisAngle(Vector3(1, 0, 0), 0.003 * sway);
-
     final chestLift = Vector3(0, 0.0012 * breath, 0);
 
     frames.add([
+      arms.left,
+      arms.right,
       (rotation: spine01, translation: Vector3.zero()),
       (rotation: spine02, translation: chestLift),
       (rotation: spine03, translation: Vector3.zero()),
@@ -104,36 +117,55 @@ thermion.BoneAnimationData buildLivingStatueIdleAnimation({
     ]);
   }
 
-  // Stretch frame timing so one loop spans [loopDurationSeconds].
   final msPerFrame = (loopDurationSeconds * 1000) / numFrames;
 
   return thermion.BoneAnimationData(
-    livingStatueIdleBones,
+    skinnedHumanoidPresentationBones,
     frames,
     frameLengthInMs: msPerFrame,
     space: thermion.Space.Bone,
   );
 }
 
+/// Procedural "living statue" loop (idle bones only). Prefer
+/// [buildSkinnedHumanoidPresentationAnimation] at runtime.
+thermion.BoneAnimationData buildLivingStatueIdleAnimation({
+  int numFrames = 120,
+  double loopDurationSeconds = 5.5,
+}) {
+  final full = buildSkinnedHumanoidPresentationAnimation(
+    numFrames: numFrames,
+    loopDurationSeconds: loopDurationSeconds,
+  );
+  return thermion.BoneAnimationData(
+    livingStatueIdleBones,
+    full.frameData
+        .map(
+          (frame) => frame.sublist(relaxedArmPoseBones.length),
+        )
+        .toList(),
+    frameLengthInMs: full.frameLengthInMs,
+    space: thermion.Space.Bone,
+  );
+}
+
 /// Applies relaxed arms plus looping idle motion to a loaded skinned asset.
-///
-/// The shipped GLBs contain **zero** glTF animation clips; Filament renders the
-/// bind pose until bones are driven manually.
 Future<void> applySkinnedHumanoidProceduralMotion(
   thermion.ThermionAsset asset,
 ) async {
+  final boneNames = await asset.getBoneNames();
+  if (!boneNames.contains('upperarm_l') ||
+      !boneNames.contains('upperarm_r')) {
+    return;
+  }
+
   await asset.addAnimationComponent();
   await asset.addBoneAnimation(
-    buildRelaxedArmPoseAnimation(),
-    loop: true,
-  );
-  await asset.addBoneAnimation(
-    buildLivingStatueIdleAnimation(),
+    buildSkinnedHumanoidPresentationAnimation(),
     loop: true,
   );
 }
 
-/// Applies a looping relaxed arm pose to a loaded skinned body asset.
 @Deprecated('Use applySkinnedHumanoidProceduralMotion')
 Future<void> applyRelaxedArmPose(thermion.ThermionAsset asset) async {
   await applySkinnedHumanoidProceduralMotion(asset);
