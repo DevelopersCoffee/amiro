@@ -69,14 +69,11 @@ class ThermionFilamentSurface implements FilamentSurface {
       } catch (_) {}
     }
 
-    // Body meshes are rigged but ship with no idle clip — Filament shows the
-    // bind (T) pose until bones are driven. Best-effort: a pose failure must
-    // never prevent the model from appearing.
-    if (shouldApplyRelaxedArmPose(assetPath)) {
-      try {
-        await applyRelaxedArmPose(asset);
-      } catch (_) {}
-    }
+    // Rigged glTFs (body and skinned cosmetics) ship with no idle clip.
+    // Best-effort: a pose failure must never prevent the model from showing.
+    try {
+      await applyRelaxedArmPoseIfNeeded(asset, assetPath);
+    } catch (_) {}
   }
 
   static List<double>? _hairTint(String assetPath) {
