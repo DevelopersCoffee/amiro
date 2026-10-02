@@ -29,21 +29,27 @@ Future<void> pumpUntilAvatarLoadIdle(
   Duration step = const Duration(milliseconds: 50),
   int maxPumps = 120,
 }) async {
-  var idle = false;
-  unawaited(waitForAvatarLoadIdle().then((_) => idle = true));
   for (var i = 0; i < maxPumps; i++) {
-    if (idle) break;
+    final chain = waitForAvatarLoadIdle();
+    try {
+      await chain.timeout(Duration.zero);
+    } on TimeoutException {
+      await tester.pump(step);
+      continue;
+    }
+
     await tester.pump(step);
+    final after = waitForAvatarLoadIdle();
+    if (identical(chain, after)) {
+      await tester.pump(const Duration(milliseconds: 100));
+      return;
+    }
   }
-  if (!idle) {
-    fail('pumpUntilAvatarLoadIdle timed out waiting for avatar load chain');
-  }
-  await tester.pump(const Duration(milliseconds: 100));
+  fail('pumpUntilAvatarLoadIdle timed out waiting for avatar load chain');
 }
 
 /// After [pumpWidget], wait for in-flight [ensureAvatarLoaded] and a few frames.
 Future<void> pumpAfterAvatarLoad(WidgetTester tester) async {
-  await tester.pump();
   await tester.pump();
   await pumpUntilAvatarLoadIdle(tester);
 }
