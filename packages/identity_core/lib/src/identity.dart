@@ -13,6 +13,12 @@ class Identity {
   final String? instagramHandle;
   final String? website;
 
+  /// Which base body the user is developing (`AvatarGender.wireName`).
+  ///
+  /// `null` for identities created before this field existed — treat as male
+  /// when loading defaults until the user picks explicitly.
+  final String? avatarGender;
+
   /// The user's `AvatarDefinition`, stored as its JSON encoding.
   ///
   /// `identity_core` deliberately does not depend on `avatar_core`: the
@@ -33,6 +39,7 @@ class Identity {
     this.xHandle,
     this.instagramHandle,
     this.website,
+    this.avatarGender,
     this.avatarDefinitionJson,
     this.privacy = const {},
   });
@@ -46,6 +53,7 @@ class Identity {
     String? xHandle,
     String? instagramHandle,
     String? website,
+    String? avatarGender,
     String? avatarDefinitionJson,
     Map<String, PrivacyFlag>? privacy,
   }) {
@@ -59,6 +67,7 @@ class Identity {
       xHandle: xHandle ?? this.xHandle,
       instagramHandle: instagramHandle ?? this.instagramHandle,
       website: website ?? this.website,
+      avatarGender: avatarGender ?? this.avatarGender,
       avatarDefinitionJson: avatarDefinitionJson ?? this.avatarDefinitionJson,
       privacy: privacy ?? this.privacy,
     );
@@ -100,6 +109,7 @@ class Identity {
       'xHandle': xHandle,
       'instagramHandle': instagramHandle,
       'website': website,
+      'avatarGender': avatarGender,
       'avatarDefinitionJson': avatarDefinitionJson,
       'privacy': privacy.map((key, flag) => MapEntry(key, flag.toJson())),
     };
@@ -117,6 +127,7 @@ class Identity {
       xHandle: json['xHandle'] as String?,
       instagramHandle: json['instagramHandle'] as String?,
       website: json['website'] as String?,
+      avatarGender: json['avatarGender'] as String?,
       avatarDefinitionJson: json['avatarDefinitionJson'] as String?,
       privacy: privacyJson.map(
         (key, value) => MapEntry(key, PrivacyFlag.fromJson(value as bool)),

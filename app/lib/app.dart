@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:avatar_renderer/avatar_renderer.dart';
 
 import 'identity/identity_edit_screen.dart';
 import 'avatar/avatar_screen.dart';
+import 'avatar/avatar_providers.dart';
+import 'avatar/persistent_thermion_overlay.dart';
 import 'discovery/passport_screen.dart';
 import 'sharing/incoming_share_listener.dart';
 import 'sharing/share_screen.dart';
@@ -21,19 +26,34 @@ class AmiroApp extends StatelessWidget {
   }
 }
 
-class _RootTabs extends StatefulWidget {
+class _RootTabs extends ConsumerStatefulWidget {
   const _RootTabs();
 
   @override
-  State<_RootTabs> createState() => _RootTabsState();
+  ConsumerState<_RootTabs> createState() => _RootTabsState();
 }
 
-class _RootTabsState extends State<_RootTabs> {
+class _RootTabsState extends ConsumerState<_RootTabs> {
   int _index = 0;
+  var _registeredThermionGate = false;
+
+  void _registerThermionGateOnce() {
+    if (_registeredThermionGate) return;
+    _registeredThermionGate = true;
+    ThermionViewDetachGate.beforeEngineMutation = () async {
+      await ref.read(avatarRendererProvider).pausePresentation();
+    };
+  }
+
+  void _onTabSelected(int nextIndex) {
+    if (nextIndex == _index) return;
+    setState(() => _index = nextIndex);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final screens = const [
+    _registerThermionGateOnce();
+    const screens = [
       IdentityEditScreen(),
       AvatarScreen(),
       StoreScreen(),
@@ -41,13 +61,20 @@ class _RootTabsState extends State<_RootTabs> {
       PassportScreen(),
     ];
     return Scaffold(
-      body: screens[_index],
-      // Outline-vs-filled icon pairs make the active tab clear without
-      // depending on colour alone (DESIGN.md: brass is reserved for
-      // equipped/price/primary-action, not a 4th "nav accent" use).
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          IndexedStack(
+            index: _index,
+            sizing: StackFit.expand,
+            children: screens,
+          ),
+          PersistentThermionOverlay(activeTabIndex: _index),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        onDestinationSelected: _onTabSelected,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.person_outline),

@@ -7,6 +7,7 @@ import 'package:nfc/nfc.dart';
 
 import '../avatar/avatar_loader.dart';
 import '../avatar/avatar_providers.dart';
+import '../avatar/avatar_viewport_placeholder.dart';
 import '../identity/identity_edit_screen.dart';
 import '../identity/identity_providers.dart';
 import '../store/store_providers.dart';
@@ -161,7 +162,10 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
             children: [
               IdentityCard(
                 payload: payload,
-                avatar: renderer.buildView(),
+                avatar: const SizedBox(
+                  height: 200,
+                  child: AvatarViewportPlaceholder(),
+                ),
                 qrData: shareUri,
               ),
               if (emulator.canEmulate) ...[

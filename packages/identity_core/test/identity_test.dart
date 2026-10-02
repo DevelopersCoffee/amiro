@@ -32,6 +32,7 @@ void main() {
         username: 'uday',
         bio: 'Software Engineer',
         email: 'coffee.devloper@gmail.com',
+        avatarGender: 'female',
         privacy: const {
           'email': PrivacyFlag(false),
           'bio': PrivacyFlag(true),
@@ -44,6 +45,7 @@ void main() {
       expect(restored.displayName, identity.displayName);
       expect(restored.bio, identity.bio);
       expect(restored.email, identity.email);
+      expect(restored.avatarGender, 'female');
       expect(restored.privacy['email']!.isPublic, false);
       expect(restored.privacy['bio']!.isPublic, true);
     });
@@ -78,6 +80,7 @@ void main() {
         xHandle: '@uday',
         instagramHandle: '@uday.gram',
         website: 'https://uday.example',
+        avatarGender: 'female',
         privacy: const {
           'bio': PrivacyFlag(true),
           'email': PrivacyFlag(false),

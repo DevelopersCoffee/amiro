@@ -42,6 +42,13 @@ const skinnedHumanoidPresentationBones = [
   ...livingStatueIdleBones,
 ];
 
+Quaternion _boneLocalRotation(Vector3 axis, double radians) {
+  return Quaternion.axisAngle(axis, radians);
+}
+
+/// vector_math 2.2+ — use operator `*` (mutable [Quaternion.multiply] removed).
+Quaternion _combineBoneRotations(Quaternion a, Quaternion b) => a * b;
+
 /// Builds a single-frame skeletal hold that drops the upper arms from the glTF
 /// bind (T) pose. Rotations are in [Space.Bone] — deltas applied on top of
 /// each bone's rest local transform inside thermion's [addBoneAnimation].
@@ -52,33 +59,74 @@ const skinnedHumanoidPresentationBones = [
 thermion.BoneAnimationData buildRelaxedArmPoseAnimation({
   double armDownRadians = math.pi / 2,
 }) {
-  final left = Quaternion.axisAngle(Vector3(0, 0, 1), -armDownRadians);
-  final right = Quaternion.axisAngle(Vector3(0, 0, 1), armDownRadians);
-  final frame = [
-    (rotation: left, translation: Vector3.zero()),
-    (rotation: right, translation: Vector3.zero()),
-  ];
+  final frame = confidentFashionArmPoseFrame(
+    armDownRadians: armDownRadians,
+  );
   return thermion.BoneAnimationData(
     relaxedArmPoseBones,
-    [frame],
+    [
+      [frame.left, frame.right],
+    ],
     frameLengthInMs: 60000,
     space: thermion.Space.Bone,
   );
 }
 
-/// Arm-space deltas reused in every frame of the presentation loop.
-({thermion.Transform left, thermion.Transform right}) relaxedArmPoseFrame({
+/// Boutique idle arm hold: **only** the device-verified upper-arm Z twist.
+///
+/// Extra X/Y deltas on `upperarm_*` stacked a second limb on front camera
+/// (four-arm glitch on Pixel, PR #38 verify). Presence comes from torso idle;
+/// arms stay a single clean hang at left −π/2 / right +π/2.
+({thermion.Transform left, thermion.Transform right}) confidentFashionArmPoseFrame({
   double armDownRadians = math.pi / 2,
 }) {
-  final left = Quaternion.axisAngle(Vector3(0, 0, 1), -armDownRadians);
-  final right = Quaternion.axisAngle(Vector3(0, 0, 1), armDownRadians);
+  final left = _boneLocalRotation(Vector3(0, 0, 1), -armDownRadians);
+  final right = _boneLocalRotation(Vector3(0, 0, 1), armDownRadians);
+
   return (
     left: (rotation: left, translation: Vector3.zero()),
     right: (rotation: right, translation: Vector3.zero()),
   );
 }
 
-/// One looping clip: relaxed arms held on **every** frame plus subtle breath/sway.
+/// Arm-space deltas reused in every frame of the presentation loop.
+@Deprecated('Use confidentFashionArmPoseFrame')
+({thermion.Transform left, thermion.Transform right}) relaxedArmPoseFrame({
+  double armDownRadians = math.pi / 2,
+}) {
+  return confidentFashionArmPoseFrame(armDownRadians: armDownRadians);
+}
+
+/// Static contrapposto / open-chest offsets layered under breath and sway.
+thermion.SkeletonTransform confidentFashionTorsoFrame({
+  required double breath,
+  required double sway,
+}) {
+  final spine01 = _boneLocalRotation(Vector3(1, 0, 0), 0.012 + 0.004 * breath);
+  final spine02 = _boneLocalRotation(Vector3(1, 0, 0), -0.045 + 0.007 * breath);
+  final spine03 = _boneLocalRotation(Vector3(1, 0, 0), -0.035 + 0.010 * breath);
+  final neck = _boneLocalRotation(Vector3(1, 0, 0), 0.028 - 0.003 * breath);
+
+  final pelvisRot = _combineBoneRotations(
+    _boneLocalRotation(Vector3(0, 1, 0), 0.055 + 0.005 * sway),
+    _combineBoneRotations(
+      _boneLocalRotation(Vector3(1, 0, 0), -0.018 + 0.003 * sway),
+      _boneLocalRotation(Vector3(0, 0, 1), 0.012),
+    ),
+  );
+
+  final chestLift = Vector3(0, 0.002 + 0.0012 * breath, 0);
+
+  return [
+    (rotation: spine01, translation: Vector3.zero()),
+    (rotation: spine02, translation: chestLift),
+    (rotation: spine03, translation: Vector3.zero()),
+    (rotation: neck, translation: Vector3.zero()),
+    (rotation: pelvisRot, translation: Vector3.zero()),
+  ];
+}
+
+/// One looping clip: confident arm hold on **every** frame plus breath/sway.
 ///
 /// A single [addBoneAnimation] avoids Thermion cross-fading separate clips on
 /// the same instance and keeps skinned clothing instances in lockstep with the
@@ -89,7 +137,7 @@ thermion.BoneAnimationData buildSkinnedHumanoidPresentationAnimation({
   double armDownRadians = math.pi / 2,
 }) {
   assert(numFrames >= 2);
-  final arms = relaxedArmPoseFrame(armDownRadians: armDownRadians);
+  final arms = confidentFashionArmPoseFrame(armDownRadians: armDownRadians);
   final frames = <thermion.SkeletonTransform>[];
 
   for (var frameIndex = 0; frameIndex < numFrames; frameIndex++) {
@@ -98,22 +146,12 @@ thermion.BoneAnimationData buildSkinnedHumanoidPresentationAnimation({
     final breath = math.sin(phase);
     final sway = math.sin(phase + math.pi / 3);
 
-    final spine01 = Quaternion.axisAngle(Vector3(1, 0, 0), 0.004 * breath);
-    final spine02 = Quaternion.axisAngle(Vector3(1, 0, 0), 0.007 * breath);
-    final spine03 = Quaternion.axisAngle(Vector3(1, 0, 0), 0.010 * breath);
-    final neck = Quaternion.axisAngle(Vector3(1, 0, 0), -0.003 * breath);
-    final pelvisRot = Quaternion.axisAngle(Vector3(0, 1, 0), 0.005 * sway) *
-        Quaternion.axisAngle(Vector3(1, 0, 0), 0.003 * sway);
-    final chestLift = Vector3(0, 0.0012 * breath, 0);
+    final torso = confidentFashionTorsoFrame(breath: breath, sway: sway);
 
     frames.add([
       arms.left,
       arms.right,
-      (rotation: spine01, translation: Vector3.zero()),
-      (rotation: spine02, translation: chestLift),
-      (rotation: spine03, translation: Vector3.zero()),
-      (rotation: neck, translation: Vector3.zero()),
-      (rotation: pelvisRot, translation: Vector3.zero()),
+      ...torso,
     ]);
   }
 

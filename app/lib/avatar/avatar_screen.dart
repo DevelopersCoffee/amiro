@@ -3,11 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:store/store.dart';
 
+import '../identity/identity_providers.dart';
 import '../store/rarity_label_style.dart';
 import '../theme/amiro_theme.dart';
+import '../theme/empty_state.dart';
+import 'avatar_defaults.dart';
 import 'avatar_loader.dart';
 import 'avatar_loading_indicator.dart';
 import 'avatar_providers.dart';
+import 'avatar_viewport_placeholder.dart';
 
 class AvatarScreen extends ConsumerStatefulWidget {
   const AvatarScreen({super.key});
@@ -19,6 +23,7 @@ class AvatarScreen extends ConsumerStatefulWidget {
 class _AvatarScreenState extends ConsumerState<AvatarScreen> {
   bool _didInit = false;
   bool _loading = true;
+  bool _bodyAssetPending = false;
   bool _glassesOn = false;
 
   // The reveal ceremony (avatar materializes before chrome appears) plays
@@ -40,8 +45,9 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
     if (!mounted) return;
     setState(() {
       _loading = false;
-      _revealing = result.isFirstReveal;
-      _glassesOn = result.definition.glasses != null;
+      _bodyAssetPending = result.bodyAssetPending;
+      _revealing = result.isFirstReveal && !result.bodyAssetPending;
+      _glassesOn = result.definition?.glasses != null;
     });
   }
 
@@ -72,7 +78,24 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
         ? null
         : avatarRarityScore(current, cosmeticCatalog).highest;
 
-    final showChrome = !_loading && !_revealing;
+    final showChrome = !_loading && !_revealing && !_bodyAssetPending;
+
+    if (_bodyAssetPending) {
+      final gender = resolveAvatarGender(
+        ref.watch(currentIdentityProvider).value,
+      );
+      return Scaffold(
+        appBar: AppBar(title: const Text('Your Avatar')),
+        body: EmptyState(
+          title: 'Female avatar coming soon',
+          hint:
+              'You chose a ${gender.wireName} avatar on Identity. '
+              'The body mesh is not in this build yet — switch to male on '
+              'Identity to preview cosmetics, or check back after the next '
+              'asset drop.',
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -112,9 +135,9 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
                 : _revealing
                 ? _AvatarReveal(
                     onRevealed: () => setState(() => _revealing = false),
-                    child: renderer.buildView(),
+                    child: const AvatarViewportPlaceholder(),
                   )
-                : renderer.buildView(),
+                : const AvatarViewportPlaceholder(),
           ),
           Padding(
             padding: const EdgeInsets.all(AmiroSpacing.md),

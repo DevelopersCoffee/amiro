@@ -72,4 +72,20 @@ void main() {
   test('updateSlot before load throws StateError', () {
     expect(() => renderer.updateSlot('top', 'top_placeholder'), throwsStateError);
   });
+
+  test('unload removes loaded models and clears current', () async {
+    const definition = AvatarDefinition(
+      id: 'avatar-1',
+      body: 'body_placeholder',
+      top: 'top_placeholder',
+    );
+    await renderer.load(definition);
+    expect(renderer.current, isNotNull);
+    expect(surface.loadedPaths, isNotEmpty);
+
+    await renderer.unload();
+
+    expect(renderer.current, isNull);
+    expect(surface.loadedPaths, isEmpty);
+  });
 }

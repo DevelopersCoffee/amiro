@@ -48,6 +48,11 @@ const IdentityRecordSchema = CollectionSchema(
     ),
     r'website': PropertySchema(id: 9, name: r'website', type: IsarType.string),
     r'xHandle': PropertySchema(id: 10, name: r'xHandle', type: IsarType.string),
+    r'avatarGender': PropertySchema(
+      id: 11,
+      name: r'avatarGender',
+      type: IsarType.string,
+    ),
   },
 
   estimateSize: _identityRecordEstimateSize,
@@ -73,6 +78,12 @@ int _identityRecordEstimateSize(
   var bytesCount = offsets.last;
   {
     final value = object.avatarDefinitionJson;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.avatarGender;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
     }
@@ -137,6 +148,7 @@ void _identityRecordSerialize(
   writer.writeString(offsets[8], object.username);
   writer.writeString(offsets[9], object.website);
   writer.writeString(offsets[10], object.xHandle);
+  writer.writeString(offsets[11], object.avatarGender);
 }
 
 IdentityRecord _identityRecordDeserialize(
@@ -158,6 +170,7 @@ IdentityRecord _identityRecordDeserialize(
   object.username = reader.readString(offsets[8]);
   object.website = reader.readStringOrNull(offsets[9]);
   object.xHandle = reader.readStringOrNull(offsets[10]);
+  object.avatarGender = reader.readStringOrNull(offsets[11]);
   return object;
 }
 
@@ -169,6 +182,8 @@ P _identityRecordDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
+      return (reader.readStringOrNull(offset)) as P;
+    case 11:
       return (reader.readStringOrNull(offset)) as P;
     case 1:
       return (reader.readStringOrNull(offset)) as P;

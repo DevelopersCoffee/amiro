@@ -63,10 +63,7 @@ void main() {
       final left = frame[0].rotation;
       final right = frame[1].rotation;
       expect(left, isNot(equals(right)));
-
-      // Left −π/2 vs right +π/2 about local Z (not the inverse that lifts arms up).
-      expect(left.z, lessThan(0));
-      expect(right.z, greaterThan(0));
+      expect(left, equals(confidentFashionArmPoseFrame().left.rotation));
     });
   });
 
@@ -79,11 +76,17 @@ void main() {
       expect(animation.bones, skinnedHumanoidPresentationBones);
       expect(animation.numFrames, 60);
 
-      final hold = buildRelaxedArmPoseAnimation().frameData.single;
+      final hold = confidentFashionArmPoseFrame();
       for (final frame in animation.frameData) {
-        expect(frame[0].rotation, equals(hold[0].rotation));
-        expect(frame[1].rotation, equals(hold[1].rotation));
+        expect(frame[0].rotation, equals(hold.left.rotation));
+        expect(frame[1].rotation, equals(hold.right.rotation));
       }
+    });
+
+    test('confident arms keep device-verified Z twist sign', () {
+      final hold = confidentFashionArmPoseFrame(armDownRadians: math.pi / 2);
+      expect(hold.left.rotation.z, lessThan(0));
+      expect(hold.right.rotation.z, greaterThan(0));
     });
 
     test('loop wrap has only a tiny discontinuity at frame 0', () {
