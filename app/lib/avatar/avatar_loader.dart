@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:avatar_core/avatar_core.dart';
+import 'package:identity_core/identity_core.dart';
 
 import '../identity/identity_providers.dart';
 import 'avatar_defaults.dart';
@@ -29,25 +32,81 @@ typedef AvatarLoadResult = ({
   bool bodyAssetPending,
 });
 
+void _publishSceneDefinition(
+  ProviderContainer container,
+  AvatarDefinition? definition,
+) {
+  container.read(avatarSceneDefinitionProvider.notifier).set(definition);
+}
+
+/// Resolves which [AvatarDefinition] to load for [identity].
+///
+/// After a gender change ([afterGenderChange]), the persisted JSON body slot
+/// is aligned to [Identity.avatarGender] (same rules as Identity edit save).
+AvatarDefinition resolveDefinitionForLoad(
+  Identity? identity, {
+  required bool afterGenderChange,
+}) {
+  final gender = resolveAvatarGender(identity);
+  final persisted = identity?.avatarDefinitionJson;
+  if (persisted == null) {
+    return defaultAvatarDefinitionForGender(gender);
+  }
+  final def = AvatarDefinition.fromJson(
+    jsonDecode(persisted) as Map<String, dynamic>,
+  );
+  if (!afterGenderChange) return def;
+  final bodyId = defaultBodyAssetId(gender);
+  if (!isBodyAssetAvailable(bodyId)) return def;
+  if (def.body == bodyId) return def;
+  return def.copyWithSlot('body', bodyId);
+}
+
+/// Serializes avatar load/unload so overlapping gender saves cannot interleave
+/// destroy and loadGltf on the singleton viewer.
+Future<void> _avatarLoadChain = Future<void>.value();
+
+/// Awaits any in-flight [ensureAvatarLoaded] work (tests / diagnostics).
+Future<void> waitForAvatarLoadIdle() => _avatarLoadChain;
+
+@visibleForTesting
+void resetAvatarLoadChainForTest() {
+  _avatarLoadChain = Future<void>.value();
+}
+
 /// Ensures the singleton [AvatarRenderer] has a loaded definition, loading
 /// the persisted (or default) one if nothing is loaded yet.
 ///
-/// The renderer is an app-lifetime singleton, but a screen's State is
-/// recreated every time the user switches back to its tab. Reloading here
-/// would queue a duplicate set of Filament asset loads and reset the UI's
-/// idea of what is equipped, so any screen that needs the avatar visible or
-/// equippable (Avatar tab, Store tab) should call this rather than loading
-/// directly — a call after the first is a no-op that just returns the
-/// already-loaded definition (and `isFirstReveal: false`, since there's
-/// nothing to reveal a second time).
-Future<AvatarLoadResult> ensureAvatarLoaded(WidgetRef ref) async {
-  final identity = await ref.read(currentIdentityProvider.future);
-  final renderer = ref.read(avatarRendererProvider);
+/// Pass [forceReload: true] after [Identity.avatarGender] changes so a prior
+/// unload/pause cycle cannot leave a stale [AvatarRenderer.current] or orphan
+/// Filament assets when [current] is already null.
+Future<AvatarLoadResult> ensureAvatarLoaded(
+  ProviderContainer container, {
+  bool forceReload = false,
+}) {
+  final completer = Completer<AvatarLoadResult>();
+  _avatarLoadChain = _avatarLoadChain.then((_) async {
+    try {
+      completer.complete(
+        await _ensureAvatarLoadedOnce(container, forceReload: forceReload),
+      );
+    } catch (e, st) {
+      completer.completeError(e, st);
+    }
+  });
+  return completer.future;
+}
+
+Future<AvatarLoadResult> _ensureAvatarLoadedOnce(
+  ProviderContainer container, {
+  required bool forceReload,
+}) async {
+  final identity = await container.read(currentIdentityProvider.future);
+  final renderer = container.read(avatarRendererProvider);
 
   if (!canRenderAvatarForIdentity(identity)) {
-    if (renderer.current != null) {
-      await renderer.unload();
-    }
+    await renderer.unload();
+    _publishSceneDefinition(container, null);
     return (
       definition: null,
       isFirstReveal: false,
@@ -55,26 +114,30 @@ Future<AvatarLoadResult> ensureAvatarLoaded(WidgetRef ref) async {
     );
   }
 
+  if (forceReload) {
+    await renderer.unload();
+  }
+
   final loaded = renderer.current;
-  if (loaded != null) {
+  if (loaded != null && !forceReload) {
+    _publishSceneDefinition(container, loaded);
     return (
       definition: loaded,
       isFirstReveal: false,
       bodyAssetPending: false,
     );
   }
-  final persisted = identity?.avatarDefinitionJson;
-  final definition = persisted == null
-      ? defaultAvatarDefinitionForGender(resolveAvatarGender(identity))
-      : AvatarDefinition.fromJson(
-          jsonDecode(persisted) as Map<String, dynamic>,
-        );
+  final definition = resolveDefinitionForLoad(
+    identity,
+    afterGenderChange: forceReload,
+  );
 
   await renderer.load(definition);
-  await persistAvatarDefinition(ref, definition);
+  _publishSceneDefinition(container, definition);
+  await persistAvatarDefinition(container, definition);
   return (
     definition: definition,
-    isFirstReveal: persisted == null,
+    isFirstReveal: identity?.avatarDefinitionJson == null,
     bodyAssetPending: false,
   );
 }
@@ -83,12 +146,12 @@ Future<AvatarLoadResult> ensureAvatarLoaded(WidgetRef ref) async {
 /// "definition JSON -> render -> swap -> persist" pipeline. No-op when the
 /// user hasn't created an identity yet — there's nothing to attach it to.
 Future<void> persistAvatarDefinition(
-  WidgetRef ref,
+  ProviderContainer container,
   AvatarDefinition definition,
 ) async {
-  final identity = ref.read(currentIdentityProvider).value;
+  final identity = container.read(currentIdentityProvider).value;
   if (identity == null) return;
-  await ref
+  await container
       .read(currentIdentityProvider.notifier)
       .save(
         identity.copyWith(

@@ -200,7 +200,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
     super.didChangeDependencies();
     if (_didInit) return;
     _didInit = true;
-    ensureAvatarLoaded(ref);
+    ensureAvatarLoaded(ProviderScope.containerOf(context));
   }
 
   Future<void> _preview(CosmeticListing item) async {
@@ -208,7 +208,10 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
     await renderer.updateSlot(item.slot, item.assetId);
     final updated = renderer.current;
     if (updated != null) {
-      await persistAvatarDefinition(ref, updated);
+      await persistAvatarDefinition(
+        ProviderScope.containerOf(context),
+        updated,
+      );
     }
     if (mounted) setState(() {});
   }

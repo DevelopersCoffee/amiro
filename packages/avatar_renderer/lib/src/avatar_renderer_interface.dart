@@ -32,6 +32,10 @@ abstract class AvatarRenderer {
   /// Resumes rendering after [pausePresentation].
   Future<void> resumePresentation();
 
+  /// Draws one frame after [resumePresentation] when the viewport is visible.
+  /// No-op on fakes; Thermion uses [ThermionViewer.renderSingleFrame].
+  Future<void> requestPresentationFrame();
+
   /// Releases engine resources. Must be called when the view is
   /// removed from the tree.
   Future<void> dispose();

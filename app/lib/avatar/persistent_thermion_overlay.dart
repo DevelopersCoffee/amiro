@@ -1,13 +1,25 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:avatar_core/avatar_core.dart';
+
+import 'package:identity_core/identity_core.dart';
+
+import '../identity/identity_providers.dart';
+import 'avatar_defaults.dart';
 import 'avatar_providers.dart';
 
 /// App-lifetime host for the singleton [ThermionWidget].
 ///
-/// Stays in the tree across tab changes ( [Offstage] when hidden) so Android
-/// never destroys the GL texture while Filament still animates skinned meshes.
-/// Only tab indices 1 (Avatar) and 2 (Store preview) show and accept input.
+/// The [ThermionWidget] child is created once and never [Offstage]d — hiding
+/// uses opacity/pointer only so Android keeps one valid SwapChain.
+///
+/// Tab switches do **not** pause Filament presentation. This overlay never
+/// calls [AvatarRenderer.requestPresentationFrame] — device testing showed
+/// renderSingleFrame around gender reload or first-present crashes Filament
+/// (SIGSEGV 0x20). Gender reload relies on continuous presentation after load.
 class PersistentThermionOverlay extends ConsumerStatefulWidget {
   final int activeTabIndex;
 
@@ -21,7 +33,7 @@ class PersistentThermionOverlay extends ConsumerStatefulWidget {
 class _PersistentThermionOverlayState
     extends ConsumerState<PersistentThermionOverlay> {
   Widget? _thermionView;
-  int? _lastSyncedTab;
+  var _startedPresentation = false;
 
   static const _avatarTabIndex = 1;
   static const _storeTabIndex = 2;
@@ -32,48 +44,42 @@ class _PersistentThermionOverlayState
       widget.activeTabIndex == _avatarTabIndex ||
       widget.activeTabIndex == _storeTabIndex;
 
-  @override
-  void didUpdateWidget(covariant PersistentThermionOverlay oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.activeTabIndex != widget.activeTabIndex) {
-      _schedulePresentationSync();
-    }
+  bool _shouldPresentScene({
+    required AvatarDefinition? scene,
+    required Identity? identity,
+  }) {
+    return _onThermionTab &&
+        canRenderAvatarForIdentity(identity) &&
+        scene != null;
   }
 
   @override
   void initState() {
     super.initState();
-    _schedulePresentationSync();
-  }
-
-  void _schedulePresentationSync() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _syncPresentation();
+      unawaited(_startPresentationOnce());
     });
   }
 
-  Future<void> _syncPresentation() async {
-    if (!mounted) return;
-    final tab = widget.activeTabIndex;
-    if (_lastSyncedTab == tab) return;
-    _lastSyncedTab = tab;
-
-    final renderer = ref.read(avatarRendererProvider);
-    if (_onThermionTab) {
-      await renderer.resumePresentation();
-    } else {
-      await renderer.pausePresentation();
-    }
+  Future<void> _startPresentationOnce() async {
+    if (!mounted || _startedPresentation) return;
+    _startedPresentation = true;
+    await ref.read(avatarRendererProvider).resumePresentation();
   }
 
   @override
   Widget build(BuildContext context) {
-    final renderer = ref.watch(avatarRendererProvider);
+    final scene = ref.watch(avatarSceneDefinitionProvider);
+    final identity = ref.watch(currentIdentityProvider).value;
+    final showScene = _shouldPresentScene(scene: scene, identity: identity);
+
+    final renderer = ref.read(avatarRendererProvider);
     _thermionView ??= renderer.buildView();
 
     final mediaQuery = MediaQuery.of(context);
     final top = mediaQuery.padding.top + kToolbarHeight;
+
+    final host = _host(_thermionView!, visible: showScene);
 
     if (widget.activeTabIndex == _storeTabIndex) {
       return Positioned(
@@ -81,7 +87,7 @@ class _PersistentThermionOverlayState
         left: 0,
         right: 0,
         height: _storePreviewHeight,
-        child: _host(_thermionView!),
+        child: host,
       );
     }
 
@@ -90,15 +96,16 @@ class _PersistentThermionOverlayState
       left: 0,
       right: 0,
       bottom: _avatarEquipChromeBottom,
-      child: _host(_thermionView!),
+      child: host,
     );
   }
 
-  Widget _host(Widget thermionView) {
-    return Offstage(
-      offstage: !_onThermionTab,
-      child: IgnorePointer(
-        ignoring: !_onThermionTab,
+  Widget _host(Widget thermionView, {required bool visible}) {
+    return IgnorePointer(
+      ignoring: !visible,
+      child: Opacity(
+        opacity: visible ? 1 : 0,
+        alwaysIncludeSemantics: false,
         child: thermionView,
       ),
     );
