@@ -11,7 +11,6 @@ import 'avatar_asset_resolver.dart';
 import 'avatar_body_pose.dart';
 import 'avatar_renderer_interface.dart';
 import 'avatar_viewer_presentation.dart';
-import 'thermion_view_detach_gate.dart';
 
 /// Thin seam over the Filament surface so slot-swap bookkeeping is unit
 /// testable without a live platform view.
@@ -98,6 +97,17 @@ class ThermionFilamentSurface implements FilamentSurface {
     final asset = _loadedAssets.remove(assetPath);
     if (asset != null) {
       await _viewer.destroyAsset(asset);
+    }
+  }
+
+  bool get hasTrackedAssets => _loadedAssets.isNotEmpty;
+
+  /// Destroys every tracked asset — used when [ThermionAvatarRenderer.current]
+  /// is already null but Filament may still hold handles after a partial unload.
+  Future<void> destroyAllModels() async {
+    if (!hasTrackedAssets) return;
+    for (final path in _loadedAssets.keys.toList()) {
+      await removeModel(path);
     }
   }
 }
@@ -386,8 +396,18 @@ class ThermionAvatarRenderer implements AvatarRenderer {
   @override
   AvatarDefinition? get current => _current;
 
+  bool _hasLoadedMeshes() {
+    final filament = surface;
+    if (filament is ThermionFilamentSurface) {
+      return _current != null || filament.hasTrackedAssets;
+    }
+    return _current != null;
+  }
+
   @override
   Future<void> load(AvatarDefinition definition) async {
+    // Tab switches do not pause/resume (SwapChain stress). Gender reload uses
+    // continuous presentation — no renderSingleFrame (device SIGSEGV 0x20).
     for (final slot in AvatarDefinition.slots) {
       final assetId = _slotValue(definition, slot);
       if (assetId != null) {
@@ -395,21 +415,35 @@ class ThermionAvatarRenderer implements AvatarRenderer {
       }
     }
     _current = definition;
+    await resumePresentation();
   }
 
   @override
   Future<void> unload() async {
+    if (!_hasLoadedMeshes()) {
+      _current = null;
+      return;
+    }
+    // Do not pause via [ThermionViewDetachGate]: gate-pause + resume/frame
+    // around gender reload crashes on Pixel; [updateSlot] already mutates live.
+    await _destroyLoadedMeshes();
+    _current = null;
+  }
+
+  Future<void> _destroyLoadedMeshes() async {
+    final filament = surface;
+    if (filament is ThermionFilamentSurface) {
+      await filament.destroyAllModels();
+      return;
+    }
     final def = _current;
     if (def == null) return;
-    await ThermionViewDetachGate.runMutation(() async {
-      for (final slot in AvatarDefinition.slots) {
-        final assetId = _slotValue(def, slot);
-        if (assetId != null) {
-          await surface.removeModel(resolveAssetPath(slot, assetId));
-        }
+    for (final slot in AvatarDefinition.slots) {
+      final assetId = _slotValue(def, slot);
+      if (assetId != null) {
+        await surface.removeModel(resolveAssetPath(slot, assetId));
       }
-      _current = null;
-    });
+    }
   }
 
   @override
@@ -458,7 +492,7 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     if (_presentationPaused) return;
     _presentationPaused = true;
     try {
-      thermion.ThermionFlutterPlugin.pauseFrameScheduler();
+      thermion.ThermionFlutterPlugin.instance.pauseFrameScheduler();
       await _viewer?.setRendering(false);
     } catch (_) {}
   }
@@ -468,7 +502,14 @@ class ThermionAvatarRenderer implements AvatarRenderer {
     _presentationPaused = false;
     try {
       await _viewer?.setRendering(true);
-      thermion.ThermionFlutterPlugin.resumeFrameScheduler();
+      thermion.ThermionFlutterPlugin.instance.resumeFrameScheduler();
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> requestPresentationFrame() async {
+    try {
+      await _viewer?.renderSingleFrame();
     } catch (_) {}
   }
 

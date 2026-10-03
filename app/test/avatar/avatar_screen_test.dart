@@ -10,13 +10,17 @@ import 'package:identity_core/identity_core.dart';
 
 import 'package:amiro_app/avatar/avatar_providers.dart';
 import 'package:amiro_app/avatar/avatar_screen.dart';
+import 'package:amiro_app/avatar/avatar_viewport_placeholder.dart';
 import 'package:amiro_app/theme/amiro_theme.dart';
 import 'package:amiro_app/identity/identity_providers.dart';
 
 import 'package:avatar_core/avatar_core.dart';
 
+import 'package:amiro_app/avatar/avatar_loader.dart';
+
 import 'fake_avatar_renderer.dart';
 import '../identity/in_memory_identity_repository.dart';
+import '../pump_helpers.dart';
 
 /// Wraps [FakeAvatarRenderer] so [load] doesn't resolve until [gate]
 /// completes — lets a test observe UI while the load is still in flight.
@@ -54,6 +58,9 @@ class _GatedLoadRenderer implements AvatarRenderer {
   Future<void> resumePresentation() => _inner.resumePresentation();
 
   @override
+  Future<void> requestPresentationFrame() => _inner.requestPresentationFrame();
+
+  @override
   Future<void> dispose() => _inner.dispose();
 }
 
@@ -75,25 +82,18 @@ Widget _screen(AvatarRenderer renderer, IdentityRepository repository) {
 }
 
 void main() {
+  setUp(resetAvatarLoadChainForTest);
+
   testWidgets(
     'avatar screen loads the definition on start and renders a view',
     (tester) async {
       final renderer = FakeAvatarRenderer();
 
       await tester.pumpWidget(_screen(renderer, InMemoryIdentityRepository()));
-      await tester.pumpAndSettle();
+      await pumpThroughAvatarReveal(tester);
 
       expect(renderer.calls, contains('load:default'));
-      // MaterialApp's default route transition also builds a transient,
-      // transparent ColoredBox as part of its FadeTransition/SlideTransition
-      // chain, so match on the fake renderer's own grey ColoredBox rather than
-      // any ColoredBox in the tree.
-      expect(
-        find.byWidgetPredicate(
-          (widget) => widget is ColoredBox && widget.color == Colors.grey,
-        ),
-        findsOneWidget,
-      );
+      expect(find.byType(AvatarViewportPlaceholder), findsOneWidget);
     },
   );
 
@@ -101,10 +101,10 @@ void main() {
     final renderer = FakeAvatarRenderer();
 
     await tester.pumpWidget(_screen(renderer, InMemoryIdentityRepository()));
-    await tester.pumpAndSettle();
+    await pumpThroughAvatarReveal(tester);
 
     await tester.tap(find.byKey(const Key('toggleGlassesButton')));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(renderer.calls, contains('updateSlot:glasses:glasses_realistic'));
     expect(renderer.current!.glasses, 'glasses_realistic');
@@ -114,12 +114,12 @@ void main() {
     final renderer = FakeAvatarRenderer();
 
     await tester.pumpWidget(_screen(renderer, InMemoryIdentityRepository()));
-    await tester.pumpAndSettle();
+    await pumpThroughAvatarReveal(tester);
 
     await tester.tap(find.byKey(const Key('toggleGlassesButton')));
-    await tester.pumpAndSettle();
+    await tester.pump();
     await tester.tap(find.byKey(const Key('toggleGlassesButton')));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(renderer.current!.glasses, isNull);
   });
@@ -131,7 +131,7 @@ void main() {
       final repository = InMemoryIdentityRepository(_identity());
 
       await tester.pumpWidget(_screen(renderer, repository));
-      await tester.pumpAndSettle();
+      await pumpThroughAvatarReveal(tester);
 
       // Persisted after the initial load...
       final afterLoad =
@@ -142,7 +142,7 @@ void main() {
 
       // ...and again after a slot swap.
       await tester.tap(find.byKey(const Key('toggleGlassesButton')));
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       final afterSwap =
           jsonDecode(repository.stored!.avatarDefinitionJson!)
@@ -163,7 +163,7 @@ void main() {
     );
 
     await tester.pumpWidget(_screen(renderer, repository));
-    await tester.pumpAndSettle();
+    await pumpAfterAvatarLoad(tester);
 
     expect(renderer.calls, contains('load:saved'));
     expect(renderer.current!.glasses, 'glasses_placeholder');
@@ -177,14 +177,14 @@ void main() {
     final renderer = FakeAvatarRenderer();
 
     await tester.pumpWidget(_screen(renderer, InMemoryIdentityRepository()));
-    await tester.pumpAndSettle();
+    await pumpThroughAvatarReveal(tester);
 
     // Nothing priced equipped yet (default has no glasses).
     expect(find.text('\$0.00'), findsOneWidget);
 
     // Equips 'glasses_realistic', which the store catalog prices at \$2.99.
     await tester.tap(find.byKey(const Key('toggleGlassesButton')));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.text('\$2.99'), findsOneWidget);
   });
@@ -195,13 +195,13 @@ void main() {
     final renderer = FakeAvatarRenderer();
 
     await tester.pumpWidget(_screen(renderer, InMemoryIdentityRepository()));
-    await tester.pumpAndSettle();
+    await pumpThroughAvatarReveal(tester);
 
     expect(find.text('Rare'), findsNothing);
 
     // 'glasses_realistic' is Riviera Optics, a Rare listing.
     await tester.tap(find.byKey(const Key('toggleGlassesButton')));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.text('Rare'), findsOneWidget);
   });
@@ -216,23 +216,13 @@ void main() {
       await tester.pump();
 
       expect(find.text('Waking up your Amiro…'), findsOneWidget);
-      expect(
-        find.byWidgetPredicate(
-          (widget) => widget is ColoredBox && widget.color == Colors.grey,
-        ),
-        findsNothing,
-      );
+      expect(find.byType(AvatarViewportPlaceholder), findsNothing);
 
       gate.complete();
-      await tester.pumpAndSettle();
+      await pumpThroughAvatarReveal(tester);
 
       expect(find.text('Waking up your Amiro…'), findsNothing);
-      expect(
-        find.byWidgetPredicate(
-          (widget) => widget is ColoredBox && widget.color == Colors.grey,
-        ),
-        findsOneWidget,
-      );
+      expect(find.byType(AvatarViewportPlaceholder), findsOneWidget);
     },
   );
 
@@ -242,13 +232,13 @@ void main() {
       final renderer = FakeAvatarRenderer();
 
       await tester.pumpWidget(_screen(renderer, InMemoryIdentityRepository()));
-      await tester.pump(); // load resolves, reveal animation starts
+      await pumpUntilAvatarLoadIdle(tester);
 
       // Chrome (the equip control) hasn't appeared yet — the avatar itself is
       // still materializing.
       expect(find.byKey(const Key('toggleGlassesButton')), findsNothing);
 
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 600));
 
       expect(find.byKey(const Key('toggleGlassesButton')), findsOneWidget);
     },
@@ -265,7 +255,7 @@ void main() {
       );
 
       await tester.pumpWidget(_screen(renderer, repository));
-      await tester.pump(); // load resolves
+      await pumpAfterAvatarLoad(tester);
 
       // No ceremony to wait out — chrome is there right away.
       expect(find.byKey(const Key('toggleGlassesButton')), findsOneWidget);
@@ -277,7 +267,7 @@ void main() {
   ) async {
     final renderer = FakeAvatarRenderer();
     await tester.pumpWidget(_screen(renderer, InMemoryIdentityRepository()));
-    await tester.pumpAndSettle();
+    await pumpThroughAvatarReveal(tester);
 
     final padding = tester.widget<Padding>(
       find

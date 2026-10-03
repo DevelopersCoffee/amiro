@@ -12,8 +12,11 @@ import 'package:amiro_app/store/store_providers.dart';
 import 'package:amiro_app/store/store_screen.dart';
 import 'package:amiro_app/theme/amiro_theme.dart';
 
+import 'package:amiro_app/avatar/avatar_loader.dart';
+
 import '../avatar/fake_avatar_renderer.dart';
 import '../identity/in_memory_identity_repository.dart';
+import '../pump_helpers.dart';
 
 Widget _screen(AvatarRenderer renderer, {EntitlementStore? entitlementStore}) {
   return ProviderScope(
@@ -33,6 +36,8 @@ Widget _screen(AvatarRenderer renderer, {EntitlementStore? entitlementStore}) {
 }
 
 void main() {
+  setUp(resetAvatarLoadChainForTest);
+
   testWidgets('lists every catalog item with buy affordance or owned state', (
     tester,
   ) async {
@@ -42,7 +47,7 @@ void main() {
     addTearDown(tester.view.reset);
     final renderer = FakeAvatarRenderer();
     await tester.pumpWidget(_screen(renderer));
-    await tester.pumpAndSettle();
+    await pumpAfterAvatarLoad(tester);
 
     for (final item in cosmeticCatalog) {
       expect(find.text(item.name), findsOneWidget);
@@ -62,10 +67,10 @@ void main() {
   testWidgets('tapping a free item previews it on the avatar', (tester) async {
     final renderer = FakeAvatarRenderer();
     await tester.pumpWidget(_screen(renderer));
-    await tester.pumpAndSettle();
+    await pumpAfterAvatarLoad(tester);
 
     await tester.tap(find.text('Classic Frame'));
-    await tester.pumpAndSettle();
+    await pumpShort(tester, frames: 10);
 
     expect(renderer.calls, contains('updateSlot:glasses:glasses_placeholder'));
   });
@@ -78,7 +83,7 @@ void main() {
       addTearDown(tester.view.reset);
       final renderer = FakeAvatarRenderer();
       await tester.pumpWidget(_screen(renderer));
-      await tester.pumpAndSettle();
+      await pumpAfterAvatarLoad(tester);
 
       expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
     },
@@ -93,7 +98,7 @@ void main() {
     final renderer = FakeAvatarRenderer();
     final entitlements = InMemoryEntitlementStore();
     await tester.pumpWidget(_screen(renderer, entitlementStore: entitlements));
-    await tester.pumpAndSettle();
+    await pumpAfterAvatarLoad(tester);
 
     expect(
       await entitlements.ownedCosmeticIds(),
@@ -101,7 +106,7 @@ void main() {
     );
 
     await tester.tap(find.widgetWithText(FilledButton, 'Buy \$2.99'));
-    await tester.pumpAndSettle();
+    await pumpShort(tester, frames: 10);
 
     expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsNothing);
     expect(await entitlements.ownedCosmeticIds(), contains('riviera_optics'));
@@ -119,10 +124,10 @@ void main() {
       await tester.pumpWidget(
         _screen(renderer, entitlementStore: entitlements),
       );
-      await tester.pumpAndSettle();
+      await pumpAfterAvatarLoad(tester);
 
       await tester.tap(find.widgetWithText(FilledButton, 'Buy \$2.99'));
-      await tester.pumpAndSettle();
+      await pumpShort(tester, frames: 10);
 
       expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
       expect(find.byType(SnackBar), findsNothing);
@@ -142,10 +147,10 @@ void main() {
     final renderer = FakeAvatarRenderer();
     final entitlements = _FailingEntitlementStore();
     await tester.pumpWidget(_screen(renderer, entitlementStore: entitlements));
-    await tester.pumpAndSettle();
+    await pumpAfterAvatarLoad(tester);
 
     await tester.tap(find.widgetWithText(FilledButton, 'Buy \$2.99'));
-    await tester.pumpAndSettle();
+    await pumpUntilFound(tester, find.textContaining('Purchase failed'));
 
     expect(find.textContaining('Purchase failed'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
@@ -163,12 +168,12 @@ void main() {
       await tester.pumpWidget(
         _screen(FakeAvatarRenderer(), entitlementStore: entitlements),
       );
-      await tester.pumpAndSettle();
+      await pumpAfterAvatarLoad(tester);
       // Ownership only becomes visible to the app once restore runs.
       expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
 
       await tester.tap(find.text('Restore purchases'));
-      await tester.pumpAndSettle();
+      await pumpUntilFound(tester, find.text('Purchases restored'));
 
       expect(entitlements.restoreCalls, 1);
       expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsNothing);
@@ -189,10 +194,10 @@ void main() {
     await tester.pumpWidget(
       _screen(FakeAvatarRenderer(), entitlementStore: entitlements),
     );
-    await tester.pumpAndSettle();
+    await pumpAfterAvatarLoad(tester);
 
     await tester.tap(find.text('Restore purchases'));
-    await tester.pumpAndSettle();
+    await pumpUntilFound(tester, find.textContaining('Restore failed'));
 
     expect(find.textContaining('Restore failed'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
@@ -203,7 +208,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(_screen(FakeAvatarRenderer()));
-    await tester.pumpAndSettle();
+    await pumpAfterAvatarLoad(tester);
 
     final price = tester.widget<Text>(find.text('Buy \$2.99'));
     expect(
@@ -219,7 +224,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
       await tester.pumpWidget(_screen(FakeAvatarRenderer()));
-      await tester.pumpAndSettle();
+      await pumpAfterAvatarLoad(tester);
 
       for (final item in cosmeticCatalog) {
         expect(
@@ -242,7 +247,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
       await tester.pumpWidget(_screen(FakeAvatarRenderer()));
-      await tester.pumpAndSettle();
+      await pumpAfterAvatarLoad(tester);
 
       final series = cosmeticCatalog
           .firstWhere((c) => c.series != null)
@@ -266,7 +271,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
       await tester.pumpWidget(_screen(FakeAvatarRenderer()));
-      await tester.pumpAndSettle();
+      await pumpAfterAvatarLoad(tester);
 
       final progress = collectionProgress(cosmeticCatalog, const {}).first;
       expect(
@@ -287,12 +292,12 @@ void main() {
         entitlementStore: InMemoryEntitlementStore(),
       ),
     );
-    await tester.pumpAndSettle();
+    await pumpAfterAvatarLoad(tester);
 
     final before = collectionProgress(cosmeticCatalog, const {}).first;
     final buy = find.widgetWithText(FilledButton, 'Buy \$2.99');
     await tester.tap(buy);
-    await tester.pumpAndSettle();
+    await pumpShort(tester, frames: 10);
 
     expect(find.text('${before.owned + 1} / ${before.total}'), findsOneWidget);
   });
@@ -308,7 +313,7 @@ void main() {
     await tester.pumpWidget(
       _screen(FakeAvatarRenderer(), entitlementStore: entitlements),
     );
-    await tester.pumpAndSettle();
+    await pumpAfterAvatarLoad(tester);
 
     expect(find.text('Complete'), findsOneWidget);
     expect(find.textContaining(' / '), findsNothing);
@@ -330,7 +335,7 @@ void main() {
           ),
         );
         await tester.pumpWidget(_screen(renderer));
-        await tester.pumpAndSettle();
+        await pumpAfterAvatarLoad(tester);
 
         expect(find.text('EQUIPPED'), findsOneWidget);
         expect(
@@ -372,7 +377,7 @@ void main() {
           ),
         );
         await tester.pumpWidget(_screen(renderer));
-        await tester.pumpAndSettle();
+        await pumpAfterAvatarLoad(tester);
 
         expect(
           find.descendant(
@@ -399,7 +404,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.reset);
         await tester.pumpWidget(_screen(FakeAvatarRenderer()));
-        await tester.pumpAndSettle();
+        await pumpAfterAvatarLoad(tester);
 
         // Classic Frame's asset (glasses_placeholder) is never in the
         // default avatar, unlike the default outfit's free items — so it is
@@ -440,7 +445,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
       await tester.pumpWidget(_screen(FakeAvatarRenderer()));
-      await tester.pumpAndSettle();
+      await pumpAfterAvatarLoad(tester);
 
       expect(find.byType(InkWell), findsWidgets);
       expect(find.byType(ListTile), findsNothing);

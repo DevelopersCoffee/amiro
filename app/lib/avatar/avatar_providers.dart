@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:avatar_core/avatar_core.dart';
 import 'package:avatar_renderer/avatar_renderer.dart';
 
 /// Overridden in `main.dart` with a real [ThermionAvatarRenderer];
@@ -11,6 +12,21 @@ import 'package:avatar_renderer/avatar_renderer.dart';
 final avatarRendererProvider = Provider<AvatarRenderer>((ref) {
   throw UnimplementedError('avatarRendererProvider must be overridden');
 });
+
+/// Mirrors the singleton renderer's loaded scene for Riverpod rebuilds.
+/// Updated by [ensureAvatarLoaded] — do not read [AvatarRenderer.current]
+/// alone in widgets, because the provider instance never changes.
+class AvatarSceneDefinitionNotifier extends Notifier<AvatarDefinition?> {
+  @override
+  AvatarDefinition? build() => null;
+
+  void set(AvatarDefinition? definition) => state = definition;
+}
+
+final avatarSceneDefinitionProvider =
+    NotifierProvider<AvatarSceneDefinitionNotifier, AvatarDefinition?>(
+      AvatarSceneDefinitionNotifier.new,
+    );
 
 /// Factory for a fresh, screen-scoped [AvatarRenderer] instance — for
 /// anywhere that needs to render an avatar without touching the
