@@ -3,12 +3,13 @@ import 'package:google_fonts/google_fonts.dart';
 
 /// Tokens from DESIGN.md. Keep values in sync with its front matter.
 abstract final class AmiroColors {
-  static const ground = Color(0xFF161510);
-  static const surface = Color(0xFF1F1D17);
+  static const ground = Color(0xFF111110);
+  static const surface = Color(0xFF1D1C19);
+  static const stage = Color(0xFF48483F);
   static const surfaceBorder = Color(0xFF322F26);
   static const text = Color(0xFFEDE8DE);
   static const textMuted = Color(0xFF8C8474);
-  static const primary = Color(0xFFC08A3E);
+  static const primary = Color(0xFFC49343);
   static const onPrimary = Color(0xFF1D1509);
   static const error = Color(0xFFB4543B);
 }

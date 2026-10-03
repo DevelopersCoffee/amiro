@@ -21,6 +21,7 @@ dev_dependencies:
 
 flutter:
   assets:
+    - assets/stage/stage_backdrop.png
     - assets/avatars/body_placeholder.glb
     - assets/avatars/body_superhero_male.glb
     - assets/cosmetics/top_placeholder.glb

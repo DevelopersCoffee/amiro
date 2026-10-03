@@ -37,7 +37,7 @@ class _PersistentThermionOverlayState
 
   static const _avatarTabIndex = 1;
   static const _storeTabIndex = 2;
-  static const _storePreviewHeight = 220.0;
+  static const _storePreviewHeight = 280.0;
   static const _avatarEquipChromeBottom = 76.0;
 
   bool get _onThermionTab =>

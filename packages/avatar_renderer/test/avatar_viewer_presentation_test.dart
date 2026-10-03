@@ -12,7 +12,9 @@ void main() {
 
     test('stage disk and plinth lip meet at ground level', () {
       expect(avatarStagePlinthCenterY, avatarStagePlinthHeight / 2);
+      expect(avatarStageRingCenterY, greaterThan(avatarStagePlinthHeight));
       expect(avatarStageDiskDiameter, greaterThan(1.2));
+      expect(avatarStageFloorDiameter, greaterThan(avatarStageDiskDiameter));
     });
   });
 }
