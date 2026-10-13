@@ -8,6 +8,7 @@ import 'avatar/avatar_screen.dart';
 import 'avatar/avatar_providers.dart';
 import 'avatar/avatar_identity_sync.dart';
 import 'avatar/persistent_thermion_overlay.dart';
+import 'branding/dc_splash.dart';
 import 'discovery/passport_screen.dart';
 import 'sharing/incoming_share_listener.dart';
 import 'sharing/share_screen.dart';
@@ -22,8 +23,29 @@ class AmiroApp extends StatelessWidget {
     return MaterialApp(
       title: 'Amiro',
       theme: buildAmiroTheme(),
-      home: const IncomingShareListener(child: _RootTabs()),
+      home: const _SplashGate(),
     );
+  }
+}
+
+/// Shows the Developers Coffee sting first; the tabs (and the native avatar
+/// overlay) mount only after it ends so nothing native renders under it.
+class _SplashGate extends StatefulWidget {
+  const _SplashGate();
+
+  @override
+  State<_SplashGate> createState() => _SplashGateState();
+}
+
+class _SplashGateState extends State<_SplashGate> {
+  var _splashDone = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_splashDone) {
+      return const IncomingShareListener(child: _RootTabs());
+    }
+    return DcSplash(onDone: () => setState(() => _splashDone = true));
   }
 }
 
