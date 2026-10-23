@@ -145,4 +145,68 @@ void main() {
       expect((await repo.getCurrent())!.bio, 'Engineer');
     },
   );
+
+  testWidgets('typing a display name saves without tapping Save', (
+    tester,
+  ) async {
+    useTallTestViewport(tester);
+    final repo = InMemoryIdentityRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [identityRepositoryProvider.overrideWithValue(repo)],
+        child: const MaterialApp(home: IdentityEditScreen()),
+      ),
+    );
+    await tester.pump();
+
+    await tester.enterText(find.byKey(const Key('displayNameField')), 'Uday');
+    await tester.pump(const Duration(milliseconds: 700));
+
+    expect((await repo.getCurrent())!.displayName, 'Uday');
+    expect(find.text('Saved on this phone'), findsOneWidget);
+  });
+
+  testWidgets('a saved identity is filled in the next time the screen opens', (
+    tester,
+  ) async {
+    useTallTestViewport(tester);
+    final repo = InMemoryIdentityRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [identityRepositoryProvider.overrideWithValue(repo)],
+        child: const MaterialApp(home: IdentityEditScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.enterText(find.byKey(const Key('displayNameField')), 'Uday');
+    await tester.enterText(find.byKey(const Key('usernameField')), 'uday');
+    await tester.ensureVisible(find.byKey(const Key('saveButton')));
+    await tester.tap(find.byKey(const Key('saveButton')));
+    await tester.pump();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [identityRepositoryProvider.overrideWithValue(repo)],
+        child: const MaterialApp(home: IdentityEditScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('displayNameField')))
+          .controller!
+          .text,
+      'Uday',
+    );
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('usernameField')))
+          .controller!
+          .text,
+      'uday',
+    );
+  });
 }

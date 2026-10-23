@@ -57,6 +57,14 @@ class RevenueCatEntitlementStore implements EntitlementStore {
     await Purchases.restorePurchases();
   }
 
+  /// RevenueCat's id for this install. The same Google account on another
+  /// phone still restores purchases through [restore]; this id is only the
+  /// join key stored next to the profile in Supabase.
+  Future<String?> appUserId() async {
+    if (!await _ensureConfigured()) return null;
+    return Purchases.appUserID;
+  }
+
   @override
   Future<void> grant(String cosmeticId) async {
     if (!await _ensureConfigured()) {
