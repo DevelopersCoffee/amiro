@@ -97,18 +97,15 @@ PR4 decisions (`sharing`: `encodeEncounterUri` / `decodeEncounterUri`, `ContactC
 - Decision (2026-09-26): keep the discovery payload minimal and carry contact details on a separate `c` parameter of the same link, `amiro://encounter?d=<payload>[&c=<contact card>]`. Adding optional contact fields to the payload later stays open (additive under schema v1); nothing here prevents it.
 - `ContactCard` follows `Identity.publicFields()` strictly (`username` only if flagged public, unlike the legacy `amiro://share` codec which always sends it); fields capped at 256 characters.
 - Links over 2000 characters are refused on encode and decode. Encode throws rather than silently dropping the contact card. A malformed contact card on receive is dropped without rejecting the identity.
-- The legacy `amiro://share` link is untouched; the scanner should try encounter first, then legacy, until the app is migrated.
+- Receive paths try encounter first, then legacy `amiro://share` (see PR7 cutover below).
 
 PR5 decisions (`sharing`: `NdefRecordData`, NDEF text/URI decode + `amiroLinkTextFromNdef`, library only):
-- The boundary is plugin-independent bytes in, validated `EncounterQr` out. The `nfc` package should convert its platform records to `NdefRecordData` when wired.
-- **Existing `nfc` reader bugs the adapter fixes (not yet migrated):** `ManagerNfcReader` reads only the first record (an Android Application Record first would hide the card) and decodes text with `String.fromCharCodes` (Latin-1, and it ignores the UTF-16 flag). The adapter scans all records, decodes strict UTF-8/UTF-16, and skips URI records with abbreviation prefixes.
-- ~~`ingestNfcReads`~~ removed (2026-10-23): never wired in the app; receive screen handles one read per session.
-- Remaining before NFC works end to end: wire `ManagerNfcReader` into this adapter and have the emulator write the encounter link (`encodeNdefTextPayload`), both in the app-wiring PRs.
+- Plugin-independent bytes in; `ManagerNfcReader` converts platform records to `NdefRecordData` and reads the first `amiro://` link via `amiroLinkTextFromNdef` (all records, strict UTF-8/UTF-16). Android HCE builds matching NDEF text records in Kotlin (`AmiroHceService.buildNdefTextMessage`).
+- ~~`ingestNfcReads`~~ / ~~`decodeEncounterFromNdef`~~ removed (2026-10-23): never used in the app; tag text is resolved in `scan_result.dart` instead.
 
 PR6 decisions (Identity Card, `app/lib/sharing/`):
 - `IdentityCard` is purely presentational (no providers, no discovery): it draws an `AmiroSharingPayload` plus an avatar widget and a QR string, so what the card shows is exactly what the payload carries. `buildOwnEncounterPayload` composes that payload from identity, the live avatar and purchases; `progressFromCompletion` resolves series for display and skips series this app version doesn't know.
 - Card content follows DESIGN.md: serif name, up to 3 standout (above-Common) items with rarity labels (brass from Rare up), series progress in mono, real offset shadow, no glow. Common items are deliberately not listed.
-- **The QR/NFC link is still the legacy `amiro://share` link.** The card describes the identity with the encounter payload, but switching the emitted link to `amiro://encounter` waits for PR7, when the scanner, NFC receive and deep links learn to read it (otherwise a new build's QR would be unreadable by the current scanner). PR7 must also migrate the NFC emulator/reader onto `encodeNdefTextPayload` / `decodeEncounterFromNdef`.
 - `CosmeticSeries.id` (`series_1`) and `CosmeticRarity.wireName` / `fromWireName` are the wire spellings; an unknown rarity is ignored, never guessed.
 - Not eyeballed on a device yet.
 

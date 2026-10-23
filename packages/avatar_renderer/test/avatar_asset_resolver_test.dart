@@ -1,4 +1,4 @@
-import 'package:avatar_renderer/avatar_renderer.dart';
+import 'package:avatar_renderer/src/avatar_asset_resolver.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
