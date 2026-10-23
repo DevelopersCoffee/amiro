@@ -1,6 +1,6 @@
 import 'package:avatar_core/avatar_core.dart';
-import 'package:avatar_renderer/avatar_renderer.dart';
-import 'package:avatar_renderer/src/thermion_avatar_renderer.dart';
+import 'package:avatar_renderer/src/thermion_avatar_renderer.dart'
+    show FilamentSurface, ThermionAvatarRenderer;
 import 'package:flutter_test/flutter_test.dart';
 
 /// Fakes the Filament engine calls so this test doesn't require a live
