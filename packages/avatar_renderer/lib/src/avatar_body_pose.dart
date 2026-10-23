@@ -16,13 +16,6 @@ bool shouldApplySkinnedHumanoidProceduralMotion(String assetPath) {
       base.startsWith('shoes_');
 }
 
-/// Whether [assetPath] points at a skinned humanoid body that ships in bind
-/// (T) pose with no embedded idle animation.
-@Deprecated('Use shouldApplySkinnedHumanoidProceduralMotion')
-bool shouldApplyRelaxedArmPose(String assetPath) {
-  return shouldApplySkinnedHumanoidProceduralMotion(assetPath);
-}
-
 /// Bone names on the Quaternius Superhero / Mixamo-compatible skeleton shipped
 /// as [body_superhero_male.glb].
 const relaxedArmPoseBones = ['upperarm_l', 'upperarm_r'];
@@ -49,29 +42,6 @@ Quaternion _boneLocalRotation(Vector3 axis, double radians) {
 /// vector_math 2.2+ — use operator `*` (mutable [Quaternion.multiply] removed).
 Quaternion _combineBoneRotations(Quaternion a, Quaternion b) => a * b;
 
-/// Builds a single-frame skeletal hold that drops the upper arms from the glTF
-/// bind (T) pose. Rotations are in [Space.Bone] — deltas applied on top of
-/// each bone's rest local transform inside thermion's [addBoneAnimation].
-///
-/// Sign convention verified against `body_superhero_male.glb` on device (PR #35):
-/// **left −π/2**, **right +π/2** about bone-local +Z — the opposite pairing
-/// swings arms toward world +Y (overhead).
-thermion.BoneAnimationData buildRelaxedArmPoseAnimation({
-  double armDownRadians = math.pi / 2,
-}) {
-  final frame = confidentFashionArmPoseFrame(
-    armDownRadians: armDownRadians,
-  );
-  return thermion.BoneAnimationData(
-    relaxedArmPoseBones,
-    [
-      [frame.left, frame.right],
-    ],
-    frameLengthInMs: 60000,
-    space: thermion.Space.Bone,
-  );
-}
-
 /// Boutique idle arm hold: **only** the device-verified upper-arm Z twist.
 ///
 /// Extra X/Y deltas on `upperarm_*` stacked a second limb on front camera
@@ -87,14 +57,6 @@ thermion.BoneAnimationData buildRelaxedArmPoseAnimation({
     left: (rotation: left, translation: Vector3.zero()),
     right: (rotation: right, translation: Vector3.zero()),
   );
-}
-
-/// Arm-space deltas reused in every frame of the presentation loop.
-@Deprecated('Use confidentFashionArmPoseFrame')
-({thermion.Transform left, thermion.Transform right}) relaxedArmPoseFrame({
-  double armDownRadians = math.pi / 2,
-}) {
-  return confidentFashionArmPoseFrame(armDownRadians: armDownRadians);
 }
 
 /// Static contrapposto / open-chest offsets layered under breath and sway.
@@ -165,28 +127,6 @@ thermion.BoneAnimationData buildSkinnedHumanoidPresentationAnimation({
   );
 }
 
-/// Procedural "living statue" loop (idle bones only). Prefer
-/// [buildSkinnedHumanoidPresentationAnimation] at runtime.
-thermion.BoneAnimationData buildLivingStatueIdleAnimation({
-  int numFrames = 120,
-  double loopDurationSeconds = 5.5,
-}) {
-  final full = buildSkinnedHumanoidPresentationAnimation(
-    numFrames: numFrames,
-    loopDurationSeconds: loopDurationSeconds,
-  );
-  return thermion.BoneAnimationData(
-    livingStatueIdleBones,
-    full.frameData
-        .map(
-          (frame) => frame.sublist(relaxedArmPoseBones.length),
-        )
-        .toList(),
-    frameLengthInMs: full.frameLengthInMs,
-    space: thermion.Space.Bone,
-  );
-}
-
 /// Applies relaxed arms plus looping idle motion to a loaded skinned asset.
 Future<void> applySkinnedHumanoidProceduralMotion(
   thermion.ThermionAsset asset,
@@ -202,9 +142,4 @@ Future<void> applySkinnedHumanoidProceduralMotion(
     buildSkinnedHumanoidPresentationAnimation(),
     loop: true,
   );
-}
-
-@Deprecated('Use applySkinnedHumanoidProceduralMotion')
-Future<void> applyRelaxedArmPose(thermion.ThermionAsset asset) async {
-  await applySkinnedHumanoidProceduralMotion(asset);
 }

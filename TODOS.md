@@ -99,10 +99,10 @@ PR4 decisions (`sharing`: `encodeEncounterUri` / `decodeEncounterUri`, `ContactC
 - Links over 2000 characters are refused on encode and decode. Encode throws rather than silently dropping the contact card. A malformed contact card on receive is dropped without rejecting the identity.
 - The legacy `amiro://share` link is untouched; the scanner should try encounter first, then legacy, until the app is migrated.
 
-PR5 decisions (`sharing`: `NdefRecordData`, `decodeEncounterFromNdef`, `ingestNfcReads`, library only):
+PR5 decisions (`sharing`: `NdefRecordData`, NDEF text/URI decode + `amiroLinkTextFromNdef`, library only):
 - The boundary is plugin-independent bytes in, validated `EncounterQr` out. The `nfc` package should convert its platform records to `NdefRecordData` when wired.
 - **Existing `nfc` reader bugs the adapter fixes (not yet migrated):** `ManagerNfcReader` reads only the first record (an Android Application Record first would hide the card) and decodes text with `String.fromCharCodes` (Latin-1, and it ignores the UTF-16 flag). The adapter scans all records, decodes strict UTF-8/UTF-16, and skips URI records with abbreviation prefixes.
-- `ingestNfcReads`: reads become `NfcEncounterRead` or `NfcReadRejected`; a hardware dropout (stream error) becomes a rejection instead of an exception and the stream survives; identical reads within a 3 s window are reported once (continuous contact refreshes the window).
+- ~~`ingestNfcReads`~~ removed (2026-10-23): never wired in the app; receive screen handles one read per session.
 - Remaining before NFC works end to end: wire `ManagerNfcReader` into this adapter and have the emulator write the encounter link (`encodeNdefTextPayload`), both in the app-wiring PRs.
 
 PR6 decisions (Identity Card, `app/lib/sharing/`):
@@ -114,7 +114,7 @@ PR6 decisions (Identity Card, `app/lib/sharing/`):
 
 PR7-9 decisions (shipped together as one PR; taken autonomously while the owner was away, so worth a review):
 - **Cutover.** The Share screen now emits `amiro://encounter` for both QR and NFC. Every receive path (QR scan, NFC receive, deep link) resolves through one `resolveScannedText` -> `ScanResult`, so encounter links open the comparison screen and **legacy `amiro://share` links from older builds still open the profile** (no passport entry, since they carry no collection). Android's manifest gained the `encounter` host (iOS already covers the whole scheme).
-- **NFC.** `ManagerNfcReader` now uses the PR5 adapter (all records, strict UTF-8/UTF-16), fixing the first-record-only and Latin-1 bugs; `decodeNdefTextPayload` and its test were removed as superseded. `nfc` now depends on `sharing`. The native HCE tag (2 KB, UTF-8 text record) fits a 2000-char encounter link. **Not exercised on real hardware.** `ingestNfcReads` (dedupe/dropout) is not used by the app: the receive screen already handles one read per session and errors itself.
+- **NFC.** `ManagerNfcReader` now uses the PR5 adapter (all records, strict UTF-8/UTF-16), fixing the first-record-only and Latin-1 bugs; `decodeNdefTextPayload` and its test were removed as superseded. `nfc` now depends on `sharing`. The native HCE tag (2 KB, UTF-8 text record) fits a 2000-char encounter link. **Not exercised on real hardware.**
 - **Encounter screen** is two-phase: showing a card writes nothing; "Save to passport" / "Update passport" commits via `EncounterProcessor.save`. Backing out changes nothing, including a known person's count. Your own card is `SelfEncounter`. The screen waits for the identity to load first so a cold-start deep link can't miss the own-card check.
 - **Only their avatar is 3D** on the comparison screen; yours is a text summary. Two live Filament views side by side is unverified on a device.
 - **Contact fallback.** If the contact card is what pushes the link past the QR size limit, `buildOwnEncounterUri` drops it and shares the identity alone rather than failing to share (the library's `encodeEncounterUri` still throws; only the app chooses to fall back).

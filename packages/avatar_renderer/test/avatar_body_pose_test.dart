@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:avatar_renderer/src/avatar_body_pose.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:thermion_flutter/thermion_flutter.dart' as thermion;
 
 void main() {
   group('shouldApplySkinnedHumanoidProceduralMotion', () {
@@ -49,24 +48,6 @@ void main() {
     });
   });
 
-  group('buildRelaxedArmPoseAnimation', () {
-    test('uses device-verified −Z/+Z twist pairing for left/right arms', () {
-      final animation = buildRelaxedArmPoseAnimation(
-        armDownRadians: math.pi / 2,
-      );
-
-      expect(animation.bones, relaxedArmPoseBones);
-      expect(animation.space, thermion.Space.Bone);
-      expect(animation.numFrames, 1);
-
-      final frame = animation.frameData.single;
-      final left = frame[0].rotation;
-      final right = frame[1].rotation;
-      expect(left, isNot(equals(right)));
-      expect(left, equals(confidentFashionArmPoseFrame().left.rotation));
-    });
-  });
-
   group('buildSkinnedHumanoidPresentationAnimation', () {
     test('includes arm hold on every idle frame', () {
       final animation = buildSkinnedHumanoidPresentationAnimation(
@@ -87,6 +68,10 @@ void main() {
       final hold = confidentFashionArmPoseFrame(armDownRadians: math.pi / 2);
       expect(hold.left.rotation.z, lessThan(0));
       expect(hold.right.rotation.z, greaterThan(0));
+      expect(
+        hold.left.rotation,
+        isNot(equals(hold.right.rotation)),
+      );
     });
 
     test('loop wrap has only a tiny discontinuity at frame 0', () {
@@ -101,14 +86,6 @@ void main() {
           i++) {
         expect(first[i].rotation.x, closeTo(last[i].rotation.x, 0.02));
       }
-    });
-  });
-
-  group('buildLivingStatueIdleAnimation', () {
-    test('targets spine and pelvis only', () {
-      final animation = buildLivingStatueIdleAnimation(numFrames: 60);
-      expect(animation.bones, livingStatueIdleBones);
-      expect(animation.frameData.first.length, livingStatueIdleBones.length);
     });
   });
 }
