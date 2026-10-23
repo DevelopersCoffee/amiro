@@ -10,7 +10,10 @@ import 'package:nfc/nfc.dart';
 import 'package:discovery/discovery.dart';
 
 import 'app.dart';
+import 'crash/crash_reporter.dart';
 import 'identity/identity_providers.dart';
+import 'identity/supabase_profile_cloud.dart';
+import 'identity/supabase_public.dart';
 import 'avatar/avatar_providers.dart';
 import 'discovery/discovery_providers.dart';
 import 'sharing/sharing_providers.dart';
@@ -19,8 +22,27 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final supportDir = await getApplicationSupportDirectory();
+  final ingestUrl = const String.fromEnvironment('AMIRO_CRASH_INGEST_URL');
+  installCrashReporting(
+    CrashReporter(
+      appVersion: '1.0.4+10',
+      sinks: [
+        FileCrashSink(File('${supportDir.path}/crashes.jsonl')),
+        if (ingestUrl.isNotEmpty) HttpCrashSink(Uri.parse(ingestUrl)),
+      ],
+    ),
+  );
   final isar = await openIdentityIsar(directory: supportDir.path);
   final repository = IsarIdentityRepository(isar);
+  final profileCloud = SupabaseProfileCloud(
+    directory: supportDir,
+    projectUrl: Uri.parse(supabaseProjectUrl),
+    anonKey: supabaseAnonKey,
+  );
+  if (await repository.getCurrent() == null) {
+    final restored = await profileCloud.pull();
+    if (restored != null) await repository.save(restored);
+  }
 
   // Engine construction lives behind `avatar_renderer`'s own factory: per the
   // spec's global constraint, nothing outside `packages/avatar_renderer` may
@@ -34,6 +56,7 @@ void main() async {
     ProviderScope(
       overrides: [
         identityRepositoryProvider.overrideWithValue(repository),
+        profileCloudProvider.overrideWithValue(profileCloud),
         avatarRendererProvider.overrideWithValue(avatarRenderer),
         avatarRendererFactoryProvider.overrideWithValue(
           ThermionAvatarRenderer.create,

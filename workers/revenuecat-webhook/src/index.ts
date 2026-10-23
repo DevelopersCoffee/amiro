@@ -1,5 +1,6 @@
 export interface Env {
   WEBHOOK_PATH_TOKEN: string;
+  CRASH_PATH_TOKEN?: string;
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
 }
@@ -37,9 +38,64 @@ async function supabaseRequest(
   });
 }
 
+export async function handleCrash(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
+  if (request.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+  const token = url.pathname.replace(/^\/crash\//, '');
+  if (!env.CRASH_PATH_TOKEN || token !== env.CRASH_PATH_TOKEN) {
+    return new Response('Not found', { status: 404 });
+  }
+
+  let body: {
+    message?: string;
+    stack?: string;
+    source?: string;
+    appVersion?: string;
+    platform?: string;
+    at?: string;
+  };
+  try {
+    body = await request.json();
+  } catch {
+    return new Response('Invalid JSON', { status: 400 });
+  }
+  if (!body.message || !body.appVersion) {
+    return new Response('Missing crash fields', { status: 400 });
+  }
+
+  const insert = await supabaseRequest(env, 'crash_reports', {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify([
+      {
+        message: body.message.slice(0, 2000),
+        stack: (body.stack ?? '').slice(0, 8000),
+        source: body.source ?? 'unknown',
+        app_version: body.appVersion,
+        platform: body.platform ?? null,
+        occurred_at: body.at ?? new Date().toISOString(),
+      },
+    ]),
+  });
+  if (!insert.ok) {
+    return new Response(`Supabase crash insert failed: ${await insert.text()}`, {
+      status: 502,
+    });
+  }
+  return new Response('ok', { status: 200 });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname.startsWith('/crash/')) {
+      return handleCrash(request, env, url);
+    }
     const pathToken = url.pathname.replace(/^\/webhook\//, '');
 
     if (request.method !== 'POST') {
