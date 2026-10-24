@@ -121,6 +121,9 @@ Future<AvatarLoadResult> _ensureAvatarLoadedOnce(
   final loaded = renderer.current;
   if (loaded != null && !forceReload) {
     _publishSceneDefinition(container, loaded);
+    // Already on screen. Still attach it to the identity, or Share opens a
+    // blank editor for a look the avatar tab is already showing.
+    await persistAvatarDefinition(container, loaded);
     return (
       definition: loaded,
       isFirstReveal: false,
@@ -143,19 +146,34 @@ Future<AvatarLoadResult> _ensureAvatarLoadedOnce(
 }
 
 /// Stores [definition] on the current [Identity], closing the spec's
-/// "definition JSON -> render -> swap -> persist" pipeline. No-op when the
-/// user hasn't created an identity yet — there's nothing to attach it to.
+/// "definition JSON -> render -> swap -> persist" pipeline.
+///
+/// The first render creates the identity so the share card is the avatar
+/// the person is already looking at. Opening Identity then edits that
+/// record instead of a blank form.
 Future<void> persistAvatarDefinition(
   ProviderContainer container,
   AvatarDefinition definition,
 ) async {
+  final encoded = jsonEncode(definition.toJson());
   final identity = container.read(currentIdentityProvider).value;
-  if (identity == null) return;
-  await container
-      .read(currentIdentityProvider.notifier)
-      .save(
-        identity.copyWith(
-          avatarDefinitionJson: jsonEncode(definition.toJson()),
-        ),
-      );
+  if (identity == null) {
+    final bodyIsFemale =
+        definition.body == defaultBodyAssetId(AvatarGender.female);
+    await container.read(currentIdentityProvider.notifier).save(
+      Identity(
+        id: newIdentityId(),
+        displayName: '',
+        username: '',
+        avatarGender: (bodyIsFemale ? AvatarGender.female : AvatarGender.male)
+            .wireName,
+        avatarDefinitionJson: encoded,
+      ),
+    );
+    return;
+  }
+  if (identity.avatarDefinitionJson == encoded) return;
+  await container.read(currentIdentityProvider.notifier).save(
+    identity.copyWith(avatarDefinitionJson: encoded),
+  );
 }

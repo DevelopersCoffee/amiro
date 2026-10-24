@@ -22,8 +22,17 @@ class CurrentIdentityNotifier extends AsyncNotifier<Identity?> {
   }
 
   Future<void> save(Identity identity) async {
-    await ref.read(identityRepositoryProvider).save(identity);
+    final repo = ref.read(identityRepositoryProvider);
+    await repo.save(identity);
     state = AsyncData(identity);
+    // build() captures the row when it starts. If that future resolves
+    // after this write, Riverpod would put the stale null back. Re-read
+    // once that queued completion has run.
+    await Future<void>.value();
+    final latest = await repo.getCurrent();
+    if (latest != null) {
+      state = AsyncData(latest);
+    }
   }
 }
 

@@ -182,4 +182,22 @@ void main() {
     expect(renderer.calls.where((c) => c == 'unload').length, greaterThanOrEqualTo(1));
     expect(renderer.calls.where((c) => c.startsWith('load:')).length, greaterThanOrEqualTo(2));
   });
+
+  test('the first avatar load creates an identity for that look', () async {
+    final repo = InMemoryIdentityRepository();
+    final container = ProviderContainer(
+      overrides: [
+        identityRepositoryProvider.overrideWithValue(repo),
+        avatarRendererProvider.overrideWithValue(FakeAvatarRenderer()),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await ensureAvatarLoaded(container);
+
+    final saved = await repo.getCurrent();
+    expect(saved, isNotNull);
+    expect(saved!.avatarDefinitionJson, isNotNull);
+    expect(saved.avatarDefinitionJson, contains('body_superhero_male'));
+  });
 }

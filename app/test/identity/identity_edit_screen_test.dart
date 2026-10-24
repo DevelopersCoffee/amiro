@@ -167,6 +167,30 @@ void main() {
     expect(find.text('Saved on this phone'), findsOneWidget);
   });
 
+  testWidgets('Save shows a confirmation dialog', (tester) async {
+    useTallTestViewport(tester);
+    final repo = InMemoryIdentityRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [identityRepositoryProvider.overrideWithValue(repo)],
+        child: const MaterialApp(home: IdentityEditScreen()),
+      ),
+    );
+    await tester.pump();
+
+    await tester.enterText(find.byKey(const Key('displayNameField')), 'Uday');
+    await tester.ensureVisible(find.byKey(const Key('saveButton')));
+    await tester.tap(find.byKey(const Key('saveButton')));
+    await tester.pump();
+
+    expect(find.text('Saved'), findsOneWidget);
+    expect(find.text('Saved on this phone'), findsWidgets);
+    await tester.tap(find.byKey(const Key('savedDialogDone')));
+    await tester.pump();
+    expect(find.text('Saved'), findsNothing);
+  });
+
   testWidgets('a saved identity is filled in the next time the screen opens', (
     tester,
   ) async {

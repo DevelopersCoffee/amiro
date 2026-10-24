@@ -4,7 +4,7 @@ import fs from "fs";
 const KEY_FILE = "/Users/udaychauhan/workspace/amiro/.secrets/gcp-play-publisher-key.json";
 const PACKAGE_NAME = "com.developerscoffee.amiro_app";
 const AAB_PATH = "/Users/udaychauhan/workspace/amiro/app/build/app/outputs/bundle/release/app-release.aab";
-const TRACK = "internal";
+const TRACK = process.env.PLAY_TRACK || "internal";
 
 async function main() {
   const auth = new google.auth.GoogleAuth({

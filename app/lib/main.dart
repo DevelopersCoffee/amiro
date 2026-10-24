@@ -25,7 +25,7 @@ void main() async {
   final ingestUrl = const String.fromEnvironment('AMIRO_CRASH_INGEST_URL');
   installCrashReporting(
     CrashReporter(
-      appVersion: '1.0.4+10',
+      appVersion: '1.0.5+11',
       sinks: [
         FileCrashSink(File('${supportDir.path}/crashes.jsonl')),
         if (ingestUrl.isNotEmpty) HttpCrashSink(Uri.parse(ingestUrl)),

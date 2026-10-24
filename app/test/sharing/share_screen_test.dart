@@ -10,6 +10,7 @@ import 'package:store/store.dart';
 import 'package:amiro_app/avatar/avatar_providers.dart';
 import 'package:amiro_app/identity/identity_providers.dart';
 import 'package:amiro_app/identity/identity_edit_screen.dart';
+import 'package:amiro_app/sharing/identity_card.dart';
 import 'package:amiro_app/sharing/share_screen.dart';
 import 'package:amiro_app/sharing/sharing_providers.dart'
     show nfcEmulatorProvider;
@@ -61,32 +62,16 @@ void main() {
   setUp(resetAvatarLoadChainForTest);
 
   testWidgets(
-    'no identity yet shows an explained empty state, not a bare label',
+    'no saved name still shows the avatar card instead of a blank editor',
     (tester) async {
       await tester.pumpWidget(_screen(NoopNfcEmulator(), null));
-      await tester.pump();
-
-      expect(find.text('Create your identity first'), findsOneWidget);
-      expect(find.textContaining('wearable'), findsOneWidget);
-      expect(
-        find.widgetWithText(FilledButton, 'Create identity'),
-        findsOneWidget,
-      );
+      await pumpUntilFound(tester, find.byType(IdentityCard));
+      expect(find.text('Your Amiro'), findsOneWidget);
+      expect(find.byKey(const Key('cardNeedsName')), findsOneWidget);
+      expect(find.text('Create your identity first'), findsNothing);
+      expect(find.byType(IdentityEditScreen), findsNothing);
     },
   );
-
-  testWidgets('the empty state\'s action opens identity editing', (
-    tester,
-  ) async {
-    await tester.pumpWidget(_screen(NoopNfcEmulator(), null));
-    await tester.pump();
-
-    await tester.tap(find.widgetWithText(FilledButton, 'Create identity'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-
-    expect(find.byType(IdentityEditScreen), findsOneWidget);
-  });
 
   testWidgets('shows a QR code for the current identity', (tester) async {
     await tester.pumpWidget(_screen(NoopNfcEmulator(), _shareIdentity()));

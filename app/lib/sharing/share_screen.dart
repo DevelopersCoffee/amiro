@@ -1,14 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:avatar_core/avatar_core.dart';
+import 'package:avatar_renderer/avatar_renderer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:identity_core/identity_core.dart';
 
 import 'package:nfc/nfc.dart';
 
 import '../avatar/avatar_loader.dart';
 import '../avatar/avatar_providers.dart';
 import '../avatar/avatar_viewport_placeholder.dart';
-import '../identity/identity_edit_screen.dart';
 import '../identity/identity_providers.dart';
 import '../store/store_providers.dart';
 import '../theme/empty_state.dart';
@@ -34,6 +37,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
   late final NfcEmulator _emulator;
 
   bool _didInit = false;
+  bool _avatarReady = false;
 
   @override
   void initState() {
@@ -49,8 +53,36 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
     // The card needs the user's avatar loaded (same as the Avatar and Store
     // tabs); rebuild once it is so the card can replace the spinner.
     ensureAvatarLoaded(ProviderScope.containerOf(context)).then((_) {
-      if (mounted) setState(() {});
+      if (!mounted) return;
+      setState(() => _avatarReady = true);
+    }).catchError((Object _) {
+      if (!mounted) return;
+      setState(() => _avatarReady = true);
     });
+  }
+
+  /// The look on the card: the live scene, else the saved one, else the
+  /// default avatar. A missing name is not a reason to open a blank editor.
+  AvatarDefinition? _cardDefinition(
+    Identity? identity,
+    AvatarDefinition? scene,
+    AvatarRenderer renderer,
+  ) {
+    if (scene != null) return scene;
+    final live = renderer.current;
+    if (live != null) return live;
+    final raw = identity?.avatarDefinitionJson;
+    if (raw != null) {
+      try {
+        return AvatarDefinition.fromJson(
+          jsonDecode(raw) as Map<String, dynamic>,
+        );
+      } catch (_) {
+        return null;
+      }
+    }
+    if (identity == null) return defaultAvatarDefinition;
+    return null;
   }
 
   @override
@@ -95,6 +127,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
     final emulator = ref.watch(nfcEmulatorProvider);
     final owned = ref.watch(ownedCosmeticsProvider).value ?? const <String>{};
     final renderer = ref.watch(avatarRendererProvider);
+    final scene = ref.watch(avatarSceneDefinitionProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -130,30 +163,38 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
       ),
       body: identityAsync.when(
         data: (identity) {
-          if (identity == null) {
-            return EmptyState(
-              title: 'Create your identity first',
-              hint:
-                  'Your Amiro card — avatar, name and collection — needs a '
-                  'wearable identity to show off before it can be shared.',
-              actionLabel: 'Create identity',
-              onAction: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const IdentityEditScreen()),
-              ),
+          final definition = _cardDefinition(identity, scene, renderer);
+          if (definition == null) {
+            if (!_avatarReady) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            return const EmptyState(
+              title: 'Avatar not ready',
+              hint: 'This look cannot be put on a card yet.',
             );
           }
+          // No saved name still shows the avatar already on screen.
+          // Identity edits that same record once the avatar load stores it.
+          final shown = identity ??
+              const Identity(id: '', displayName: '', username: '');
           final payload = buildOwnEncounterPayload(
-            identity: identity,
-            definition: renderer.current,
+            identity: shown,
+            definition: definition,
             purchasedIds: owned,
           );
           if (payload == null) {
-            return const Center(child: CircularProgressIndicator());
+            if (!_avatarReady) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            return const EmptyState(
+              title: 'Avatar not ready',
+              hint: 'This look cannot be put on a card yet.',
+            );
           }
           // One link feeds both the QR code and the NFC tag.
           final shareUri = buildOwnEncounterUri(
-            identity: identity,
-            definition: renderer.current,
+            identity: shown,
+            definition: definition,
             purchasedIds: owned,
           );
 

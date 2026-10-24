@@ -151,8 +151,23 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
       setState(() => _status = 'Saved on this phone');
     }
     if (announce && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_status!)),
+      final message = _status!;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            backgroundColor: AmiroColors.surface,
+            title: const Text('Saved'),
+            content: Text(message),
+            actions: [
+              FilledButton(
+                key: const Key('savedDialogDone'),
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Done'),
+              ),
+            ],
+          );
+        },
       );
     }
   }

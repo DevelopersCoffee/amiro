@@ -51,7 +51,10 @@ class IdentityCard extends StatelessWidget {
           const SizedBox(height: 12),
           SizedBox(height: 220, child: avatar),
           const SizedBox(height: 16),
-          Text(payload.displayName, style: textTheme.headlineSmall),
+          Text(
+            payload.displayName.isEmpty ? 'Your Amiro' : payload.displayName,
+            style: textTheme.headlineSmall,
+          ),
           for (final (item, rarity) in standouts) ...[
             const SizedBox(height: 8),
             Row(
@@ -80,7 +83,15 @@ class IdentityCard extends StatelessWidget {
                 ),
               ),
             ),
-          ] else
+          ] else if (payload.displayName.isEmpty)
+            Text(
+              'Add your name on Identity to share this card.',
+              key: const Key('cardNeedsName'),
+              style: textTheme.labelMedium?.copyWith(
+                color: AmiroColors.textMuted,
+              ),
+            )
+          else
             Text(
               'This card is too large to share as a QR code.',
               key: const Key('cardTooLarge'),

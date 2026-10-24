@@ -59,7 +59,7 @@ class HttpCrashSink implements CrashSink {
 class CrashReporter {
   CrashReporter({
     required this.sinks,
-    this.appVersion = '1.0.4+10',
+    this.appVersion = '1.0.5+11',
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now;
 
