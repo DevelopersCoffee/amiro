@@ -36,6 +36,19 @@ async function main() {
   const versionCode = bundle.data.versionCode;
   console.log("Uploaded, versionCode:", versionCode);
 
+  const release = {
+    versionCodes: [String(versionCode)],
+    status: "completed",
+  };
+  if (process.env.PLAY_RELEASE_NAME) {
+    release.name = process.env.PLAY_RELEASE_NAME;
+  }
+  if (process.env.PLAY_RELEASE_NOTES) {
+    release.releaseNotes = [
+      { language: "en-US", text: process.env.PLAY_RELEASE_NOTES },
+    ];
+  }
+
   console.log(`Assigning to ${TRACK} track...`);
   await androidpublisher.edits.tracks.update({
     packageName: PACKAGE_NAME,
@@ -43,12 +56,7 @@ async function main() {
     track: TRACK,
     requestBody: {
       track: TRACK,
-      releases: [
-        {
-          versionCodes: [String(versionCode)],
-          status: "completed",
-        },
-      ],
+      releases: [release],
     },
   });
 

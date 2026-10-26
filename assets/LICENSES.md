@@ -12,18 +12,24 @@ borrowed in the meantime and what its terms are.
 - **License:** CC0 1.0 Universal (public domain) — free to use in
   personal, educational, and commercial projects, no attribution
   required.
-- **What we use:** `Superhero_Male_FullBody` base model, converted from
-  the pack's `.gltf` + `.bin` + textures into a single binary-embedded
-  `.glb` via `gltf-pipeline -b` (npm). Two textures referenced by the
-  source `.gltf` under mismatched filenames (`T_Hair_1_Normal_png.png`,
-  `T_Eye_Normal_png.png` vs. the actual `..._Normal.png` files on disk —
-  a Godot-export artifact in the pack itself) were copied to the
-  expected names before conversion so nothing is silently missing.
+- **What we use:** `Superhero_Male_FullBody` and
+  `Superhero_Female_FullBody`, each converted from the pack's `.gltf` +
+  `.bin` + textures into a single binary-embedded `.glb` via
+  `gltf-pipeline -b` (npm). Textures referenced under mismatched
+  filenames (`T_Hair_1_Normal_png.png` on the male mesh,
+  `T_Eye_Normal_png.png` on both — the files on disk are
+  `..._Normal.png`, a Godot-export artifact in the pack) were copied to
+  the expected names before conversion so nothing is silently missing.
   (An earlier attempt via `pygltflib` produced a `.glb` with 2 of 7
   textures embedded as empty data — `pygltflib`'s own image-to-buffer
   embedding is unsupported per its source; `gltf-pipeline` embeds all
   textures correctly.)
 - **Shipped as:** `packages/avatar_renderer/assets/avatars/body_superhero_male.glb`
+  and `body_superhero_female.glb`. Both skeletons use the same Mixamo-style
+  bone names (`upperarm_l` / `upperarm_r`, spine, neck, pelvis), so the
+  procedural arm pose applies to either body. The village outfit is still
+  the male peasant fit. Female defaults use `hair_buns`, which sits on
+  the female head; the other shipped cuts sit on the male head.
 - **Not yet addressed:** file size (~15MB) is far above the asset
   brief's mobile budget (§3.2) — fine for on-device testing, needs
   texture compression/downscaling before any release build.
@@ -64,8 +70,12 @@ borrowed in the meantime and what its terms are.
   no attribution required.
 - **What we use:** the "Origin at 0" glTF hairstyles that share the male
   body's coordinates — `Hair_SimpleParted`, `Hair_Buzzed`, `Hair_Long`,
-  `Hair_Beard`. (`Hair_Buns` and `Hair_BuzzedFemale` use a different
-  origin/units for the female body and are not shipped.)
+  `Hair_Beard`. `Hair_Buns` is taken from the "Rigged to Head Bone"
+  export, whose positions match the female Superhero head (the
+  "Origin at 0" buns file is centimeter-scale and offset). The skin
+  and bone weights were dropped so it loads as a static mesh, same as
+  the other hair. `Hair_BuzzedFemale` is the same female-head placement
+  and is not shipped.
 - **Processing:** the pack's hair textures are un-tinted grey; textures
   downscaled to 512x512 (each file ~0.6-0.8 MB instead of ~6 MB) and
   embedded with `gltf-pipeline -b`. Hair, brow and beard color is applied
@@ -74,7 +84,7 @@ borrowed in the meantime and what its terms are.
   body's own built-in eyebrow mesh is tinted the same way.
 - **Shipped as:** `packages/avatar_renderer/assets/cosmetics/`
   `hair_simple_parted.glb`, `hair_buzzed.glb`, `hair_long.glb`,
-  `beard_full.glb`.
+  `hair_buns.glb`, `beard_full.glb`.
 - **Not used:** the separate "Modular Character Outfits - Fantasy" pack
   (280 MB of armor/robes; wrong style for a casual avatar).
 

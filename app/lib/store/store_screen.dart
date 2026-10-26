@@ -23,7 +23,15 @@ bool cosmeticListingVisibleForGender(
   AvatarGender gender,
 ) {
   if (gender == AvatarGender.female && listing.slot == 'facialHair') {
-    // TODO(catalog): female facial-hair variants when assets exist.
+    // Beard mesh is fitted to the male jaw.
+    return false;
+  }
+  if (gender == AvatarGender.female &&
+      maleFittedHairAssetIds.contains(listing.assetId)) {
+    return false;
+  }
+  if (gender == AvatarGender.male &&
+      femaleFittedHairAssetIds.contains(listing.assetId)) {
     return false;
   }
   return true;

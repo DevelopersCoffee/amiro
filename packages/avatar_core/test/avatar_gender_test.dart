@@ -13,7 +13,7 @@ void main() {
       expect(defaultBodyAssetId(AvatarGender.male), 'body_superhero_male');
       expect(isBodyAssetAvailable('body_superhero_male'), isTrue);
       expect(defaultBodyAssetId(AvatarGender.female), 'body_superhero_female');
-      expect(isBodyAssetAvailable('body_superhero_female'), isFalse);
+      expect(isBodyAssetAvailable('body_superhero_female'), isTrue);
     });
   });
 }

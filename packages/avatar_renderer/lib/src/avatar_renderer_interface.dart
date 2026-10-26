@@ -22,7 +22,7 @@ abstract class AvatarRenderer {
   Future<void> updateSlot(String slot, String? assetId);
 
   /// Removes all loaded slot meshes and clears [current] without tearing
-  /// down the viewer (e.g. female body pending after male was loaded).
+  /// down the viewer.
   Future<void> unload();
 
   /// Stops Filament frame delivery while the [ThermionWidget] stays mounted

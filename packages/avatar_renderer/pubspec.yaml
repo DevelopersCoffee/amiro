@@ -24,12 +24,14 @@ flutter:
     - assets/stage/stage_backdrop.png
     - assets/avatars/body_placeholder.glb
     - assets/avatars/body_superhero_male.glb
+    - assets/avatars/body_superhero_female.glb
     - assets/cosmetics/top_placeholder.glb
     - assets/cosmetics/glasses_placeholder.glb
     - assets/cosmetics/glasses_realistic.glb
     - assets/cosmetics/hair_simple_parted.glb
     - assets/cosmetics/hair_buzzed.glb
     - assets/cosmetics/hair_long.glb
+    - assets/cosmetics/hair_buns.glb
     - assets/cosmetics/beard_full.glb
     - assets/cosmetics/top_peasant_shirt.glb
     - assets/cosmetics/bottom_peasant_trousers.glb

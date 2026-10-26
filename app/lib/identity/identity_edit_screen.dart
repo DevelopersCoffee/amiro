@@ -107,12 +107,9 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
     if (raw == null) return null;
     final map = jsonDecode(raw) as Map<String, dynamic>;
     final def = AvatarDefinition.fromJson(map);
-    final bodyId = defaultBodyAssetId(_avatarGender);
-    if (!isBodyAssetAvailable(bodyId)) {
-      return raw;
-    }
-    if (def.body == bodyId) return raw;
-    return jsonEncode(def.copyWithSlot('body', bodyId).toJson());
+    final aligned = alignAvatarToGender(def, _avatarGender);
+    if (aligned == def) return raw;
+    return jsonEncode(aligned.toJson());
   }
 
   Future<void> _save({bool announce = false}) {
@@ -198,10 +195,6 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
     _hydrateFromIdentity(identityAsync.value);
     final cloud = ref.watch(profileCloudProvider);
 
-    final femaleBodyPending =
-        _avatarGender == AvatarGender.female &&
-        !isBodyAssetAvailable(defaultBodyAssetId(AvatarGender.female));
-
     return Scaffold(
       appBar: AppBar(title: const Text('Your Amiro')),
       body: ListView(
@@ -243,17 +236,6 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
                     _onEdited();
                   },
                 ),
-                if (femaleBodyPending) ...[
-                  const SizedBox(height: AmiroSpacing.sm),
-                  Text(
-                    'Female body assets are not shipped in this build yet. '
-                    'Your choice is saved; Avatar preview unlocks when '
-                    'body_superhero_female.glb lands.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AmiroColors.textMuted,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),

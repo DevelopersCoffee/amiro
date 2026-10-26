@@ -17,7 +17,7 @@ bool shouldApplySkinnedHumanoidProceduralMotion(String assetPath) {
 }
 
 /// Bone names on the Quaternius Superhero / Mixamo-compatible skeleton shipped
-/// as [body_superhero_male.glb].
+/// as `body_superhero_male.glb` and `body_superhero_female.glb`.
 const relaxedArmPoseBones = ['upperarm_l', 'upperarm_r'];
 
 /// Subtle idle motion targets on the same Quaternius skeleton (verified in GLB).

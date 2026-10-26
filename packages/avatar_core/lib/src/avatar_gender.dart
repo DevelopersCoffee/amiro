@@ -17,8 +17,8 @@ enum AvatarGender {
   }
 }
 
-/// Default body asset id for [gender]. Female mesh is not shipped yet — callers
-/// must use [isBodyAssetAvailable] before loading.
+/// Default body asset id for [gender]. Callers still check
+/// [isBodyAssetAvailable] before loading a body that this package does not ship.
 String defaultBodyAssetId(AvatarGender gender) {
   switch (gender) {
     case AvatarGender.male:
@@ -34,8 +34,7 @@ bool isBodyAssetAvailable(String bodyAssetId) {
     case 'body_superhero_male':
       return true;
     case 'body_superhero_female':
-      // TODO(asset): ship body_superhero_female.glb and list it in avatar_renderer pubspec.
-      return false;
+      return true;
     default:
       return false;
   }

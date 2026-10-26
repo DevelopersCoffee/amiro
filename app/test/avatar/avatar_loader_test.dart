@@ -12,7 +12,7 @@ import 'fake_avatar_renderer.dart';
 void main() {
   setUp(resetAvatarLoadChainForTest);
 
-  test('ensureAvatarLoaded unloads male avatar when identity switches to female', () async {
+  test('ensureAvatarLoaded forceReload swaps in the female body', () async {
     final repo = InMemoryIdentityRepository();
     final renderer = FakeAvatarRenderer();
     final container = ProviderContainer(
@@ -45,13 +45,13 @@ void main() {
       ),
     );
 
-    final second = await ensureAvatarLoaded(container);
-    expect(second.bodyAssetPending, isTrue);
-    expect(renderer.current, isNull);
+    final second = await ensureAvatarLoaded(container, forceReload: true);
+    expect(second.bodyAssetPending, isFalse);
+    expect(renderer.current?.body, 'body_superhero_female');
     expect(renderer.calls, contains('unload'));
   });
 
-  test('ensureAvatarLoaded reloads after female gate then male restore', () async {
+  test('ensureAvatarLoaded reloads male body after a female load', () async {
     final container = ProviderContainer(
       overrides: [
         identityRepositoryProvider.overrideWithValue(InMemoryIdentityRepository()),
@@ -80,9 +80,10 @@ void main() {
         avatarGender: 'female',
       ),
     );
-    await ensureAvatarLoaded(container);
-    expect(renderer.current, isNull);
-    expect(container.read(avatarSceneDefinitionProvider), isNull);
+    final female = await ensureAvatarLoaded(container, forceReload: true);
+    expect(female.bodyAssetPending, isFalse);
+    expect(renderer.current?.body, 'body_superhero_female');
+    expect(container.read(avatarSceneDefinitionProvider)?.body, 'body_superhero_female');
 
     await container.read(currentIdentityProvider.notifier).save(
       Identity(
@@ -92,15 +93,15 @@ void main() {
         avatarGender: 'male',
       ),
     );
-    final restored = await ensureAvatarLoaded(container);
+    final restored = await ensureAvatarLoaded(container, forceReload: true);
     expect(restored.bodyAssetPending, isFalse);
-    expect(renderer.current, isNotNull);
-    expect(container.read(avatarSceneDefinitionProvider), isNotNull);
+    expect(renderer.current?.body, 'body_superhero_male');
+    expect(container.read(avatarSceneDefinitionProvider)?.body, 'body_superhero_male');
   });
 
   test('resolveDefinitionForLoad aligns body slot after gender change', () {
     const json =
-        '{"id":"saved","body":"body_superhero_male","hair":"hair_simple_parted"}';
+        '{"id":"saved","body":"body_superhero_male","hair":"hair_simple_parted","facialHair":"beard_full"}';
     final identity = Identity(
       id: 'id-1',
       displayName: 'Alex',
@@ -110,9 +111,29 @@ void main() {
     );
     final def = resolveDefinitionForLoad(identity, afterGenderChange: true);
     expect(def.body, 'body_superhero_male');
+    expect(def.facialHair, 'beard_full');
+
+    final female = resolveDefinitionForLoad(
+      identity.copyWith(avatarGender: 'female'),
+      afterGenderChange: true,
+    );
+    expect(female.body, 'body_superhero_female');
+    expect(female.hair, 'hair_buns');
+    expect(female.facialHair, isNull);
+
+    final paid = resolveDefinitionForLoad(
+      identity.copyWith(
+        avatarGender: 'female',
+        avatarDefinitionJson:
+            '{"id":"saved","body":"body_superhero_male","hair":"hair_long"}',
+      ),
+      afterGenderChange: true,
+    );
+    expect(paid.hair, 'hair_long');
+    expect(paid.body, 'body_superhero_female');
   });
 
-  test('forceReload purges and reloads after female gate when current is null', () async {
+  test('forceReload from a loaded female body still reloads male', () async {
     final container = ProviderContainer(
       overrides: [
         identityRepositoryProvider.overrideWithValue(InMemoryIdentityRepository()),
@@ -139,8 +160,9 @@ void main() {
         avatarGender: 'female',
       ),
     );
-    await ensureAvatarLoaded(container);
-    expect(renderer.current, isNull);
+    final female = await ensureAvatarLoaded(container, forceReload: true);
+    expect(female.bodyAssetPending, isFalse);
+    expect(renderer.current?.body, 'body_superhero_female');
 
     await container.read(currentIdentityProvider.notifier).save(
       Identity(

@@ -91,11 +91,10 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
       return Scaffold(
         appBar: AppBar(title: const Text('Your Avatar')),
         body: EmptyState(
-          title: 'Female avatar coming soon',
+          title: 'This body is not in this build',
           hint:
-              'You chose a ${gender.wireName} avatar on Identity. '
-              'The body mesh is not in this build yet — switch to male on '
-              'Identity to preview cosmetics, or check back after the next '
+              'The ${gender.wireName} body mesh is not shipped yet. '
+              'Switch avatar on Identity, or check back after the next '
               'asset drop.',
         ),
       );

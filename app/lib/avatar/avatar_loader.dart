@@ -56,10 +56,7 @@ AvatarDefinition resolveDefinitionForLoad(
     jsonDecode(persisted) as Map<String, dynamic>,
   );
   if (!afterGenderChange) return def;
-  final bodyId = defaultBodyAssetId(gender);
-  if (!isBodyAssetAvailable(bodyId)) return def;
-  if (def.body == bodyId) return def;
-  return def.copyWithSlot('body', bodyId);
+  return alignAvatarToGender(def, gender);
 }
 
 /// Serializes avatar load/unload so overlapping gender saves cannot interleave

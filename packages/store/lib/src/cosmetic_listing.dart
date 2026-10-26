@@ -109,6 +109,13 @@ const List<CosmeticListing> cosmeticCatalog = [
     priceCents: 0,
   ),
   CosmeticListing(
+    id: 'twin_buns',
+    slot: 'hair',
+    name: 'Twin Buns',
+    assetId: 'hair_buns',
+    priceCents: 0,
+  ),
+  CosmeticListing(
     id: 'long_flow',
     slot: 'hair',
     name: 'Long Flow',

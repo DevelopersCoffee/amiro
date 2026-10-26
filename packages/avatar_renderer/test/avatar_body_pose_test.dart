@@ -12,6 +12,12 @@ void main() {
         ),
         isTrue,
       );
+      expect(
+        shouldApplySkinnedHumanoidProceduralMotion(
+          'packages/avatar_renderer/assets/avatars/body_superhero_female.glb',
+        ),
+        isTrue,
+      );
     });
 
     test('applies to skinned clothing that shares the body skeleton', () {
