@@ -78,3 +78,21 @@ void useTallTestViewport(WidgetTester tester) {
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 }
+
+/// Tall enough that the store [ListView.separated] builds every [storeRowCount]
+/// row (avatar stage + app bar + one card height estimate per row).
+void useStoreListViewport(WidgetTester tester, {required int storeRowCount}) {
+  const avatarStage = 280.0;
+  const appBar = kToolbarHeight;
+  const listPadding = 16.0;
+  const separator = 8.0;
+  const cardHeight = 120.0;
+  final listHeight =
+      listPadding * 2 +
+      storeRowCount * cardHeight +
+      (storeRowCount > 0 ? (storeRowCount - 1) * separator : 0);
+  final height = avatarStage + appBar + listHeight + 64;
+  tester.view.physicalSize = Size(800, height);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+}

@@ -14,10 +14,8 @@ import 'rarity_label_style.dart';
 import 'series_progress_row.dart';
 import 'store_providers.dart';
 
-/// Unseriesed items first, then each numbered series in order, each series
-/// preceded by its [CollectionProgress] header. Returns [CollectionProgress]
-/// for headers and [CosmeticListing] for items.
-/// Hides slot items that do not apply to [gender] yet (see avatar_gender.dart).
+/// Whether [listing] appears in the store for [gender] (hair/beard fit rules in
+/// [maleFittedHairAssetIds] / [femaleFittedHairAssetIds]).
 bool cosmeticListingVisibleForGender(
   CosmeticListing listing,
   AvatarGender gender,
@@ -37,7 +35,12 @@ bool cosmeticListingVisibleForGender(
   return true;
 }
 
-List<Object> _storeRows(
+/// Unseriesed items first, then each numbered series in order, each series
+/// preceded by its [CollectionProgress] header. Returns [CollectionProgress]
+/// for headers and [CosmeticListing] for items.
+///
+/// Used by [StoreScreen] and widget tests so expectations track visibility rules.
+List<Object> storeDisplayRows(
   List<CosmeticListing> catalog,
   Set<String> owned,
   AvatarGender gender,
@@ -322,7 +325,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
     final gender = resolveAvatarGender(
       ref.watch(currentIdentityProvider).value,
     );
-    final rows = _storeRows(cosmeticCatalog, owned, gender);
+    final rows = storeDisplayRows(cosmeticCatalog, owned, gender);
 
     return Scaffold(
       appBar: AppBar(
