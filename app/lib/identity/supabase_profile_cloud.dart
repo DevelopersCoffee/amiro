@@ -98,6 +98,48 @@ class SupabaseProfileCloud implements ProfileCloud {
   }
 
   @override
+  Future<bool> revokeBackup({String? identityId}) async {
+    if (!supportsRestore) return true;
+    try {
+      final session = await _ensureSession();
+      final id = identityId ?? await _primaryIdentityId(session);
+      if (id == null) return true;
+      final response = await _send(
+        method: 'DELETE',
+        uri: _rest('profiles').replace(
+          queryParameters: {'identity_id': 'eq.$id'},
+        ),
+        headers: _userHeaders(session),
+      );
+      if (response.status >= 200 && response.status < 300) {
+        return true;
+      }
+      if (response.status == 404) return true;
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<String?> _primaryIdentityId(_Session session) async {
+    final response = await _send(
+      method: 'GET',
+      uri: _rest('profiles').replace(
+        queryParameters: {'select': 'identity_id', 'limit': '1'},
+      ),
+      headers: _userHeaders(session),
+    );
+    if (response.status < 200 || response.status >= 300) return null;
+    final decoded = jsonDecode(response.body);
+    if (decoded is! List || decoded.isEmpty) return null;
+    final row = decoded.first;
+    if (row is Map && row['identity_id'] is String) {
+      return row['identity_id'] as String;
+    }
+    return null;
+  }
+
+  @override
   Future<Identity?> claim(String code) async {
     final trimmed = code.trim();
     if (!supportsRestore || trimmed.length < 16) return null;
@@ -210,7 +252,9 @@ class SupabaseProfileCloud implements ProfileCloud {
   };
 
   Future<_Session> _ensureSession() async {
-    await secrets.migrateFromLegacyPlaintext();
+    if (await secrets.hasLegacyPlaintextFiles()) {
+      await secrets.migrateFromLegacyPlaintext();
+    }
     final existing = await _readSession();
     final freshUntil = DateTime.now().add(const Duration(minutes: 1));
     if (existing != null && existing.expiresAt.isAfter(freshUntil)) {

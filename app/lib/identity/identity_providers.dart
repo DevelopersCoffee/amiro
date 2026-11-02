@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:identity_core/identity_core.dart';
 
+import 'dart:io';
+
 import 'cloud_backup_preferences.dart';
 import 'profile_cloud.dart';
 
@@ -12,7 +14,9 @@ final profileCloudProvider = Provider<ProfileCloud>((ref) {
 
 /// Overridden in `main.dart`. Default: backup off.
 final cloudBackupPreferencesProvider = Provider<CloudBackupPreferences>((ref) {
-  throw UnimplementedError('cloudBackupPreferencesProvider must be overridden');
+  return CloudBackupPreferences.inDirectory(
+    Directory.systemTemp.createTempSync('amiro_cloud_backup_default'),
+  );
 });
 
 final cloudBackupEnabledProvider = FutureProvider<bool>((ref) {

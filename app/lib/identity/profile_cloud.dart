@@ -16,8 +16,12 @@ abstract class ProfileCloud {
   Future<Identity?> pull();
 
   /// Attaches this install to the profile that was issued [code].
-  /// Null when the code matches nothing.
+  /// Null when the code matches nothing. User-initiated; does not enable backup.
   Future<Identity?> claim(String code);
+
+  /// Removes this device's cloud backup row (profile payload, recovery code,
+  /// RevenueCat id on the server). Returns whether the server accepted delete.
+  Future<bool> revokeBackup({String? identityId});
 }
 
 class NoopProfileCloud implements ProfileCloud {
@@ -37,6 +41,9 @@ class NoopProfileCloud implements ProfileCloud {
 
   @override
   Future<Identity?> claim(String code) async => null;
+
+  @override
+  Future<bool> revokeBackup({String? identityId}) async => true;
 }
 
 /// Fields written to Supabase when the user opts in to cloud backup.

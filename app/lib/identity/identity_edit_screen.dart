@@ -56,10 +56,14 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
       controller.addListener(_onEdited);
     }
     if (ref.read(profileCloudProvider).supportsRestore) {
-      ref.read(profileCloudProvider).recoveryCode().then((code) {
-        if (!mounted || code == null || code.isEmpty) return;
-        setState(() => _recoveryCode = code);
-      });
+      ref
+          .read(profileCloudProvider)
+          .recoveryCode()
+          .catchError((Object _) => null)
+          .then((code) {
+            if (!mounted || code == null || code.isEmpty) return;
+            setState(() => _recoveryCode = code);
+          });
       ref.read(cloudBackupPreferencesProvider).isEnabled().then((enabled) {
         if (!mounted) return;
         setState(() {
@@ -145,7 +149,10 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
     );
     await ref.read(currentIdentityProvider.notifier).save(identity);
     var remote = false;
-    if (_cloudBackupEnabled) {
+    final backupOn =
+        _cloudBackupEnabled ||
+        await ref.read(cloudBackupPreferencesProvider).isEnabled();
+    if (backupOn) {
       remote = await ref.read(profileCloudProvider).push(identity);
     }
     if (!mounted) return;
@@ -182,6 +189,46 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
   }
 
   Future<void> _setCloudBackup(bool enabled) async {
+    if (!enabled && _cloudBackupEnabled) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            backgroundColor: AmiroColors.surface,
+            title: const Text('Remove cloud backup?'),
+            content: const Text(
+              'Turning this off deletes your profile copy from our backup '
+              'service, including public contact fields and the recovery code '
+              'stored there. Your profile stays on this phone.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Keep backup'),
+              ),
+              FilledButton(
+                key: const Key('cloudBackupRevokeConfirm'),
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Delete cloud copy'),
+              ),
+            ],
+          );
+        },
+      );
+      if (confirmed != true || !mounted) return;
+      final removed =
+          await ref.read(profileCloudProvider).revokeBackup(
+                identityId: ref.read(currentIdentityProvider).value?.id,
+              );
+      if (!mounted) return;
+      if (!removed) {
+        setState(
+          () => _status =
+              'Could not remove the cloud copy. Check your connection and try again.',
+        );
+        return;
+      }
+    }
     if (enabled && !_cloudBackupEnabled) {
       final accepted = await showDialog<bool>(
         context: context,
@@ -193,7 +240,7 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
               'When enabled, Amiro copies your profile and avatar to our '
               'encrypted backup service so you can restore on another phone. '
               'Private contact fields stay on this device unless you mark '
-              'them public. You can turn this off anytime.',
+              'them public. Turning backup off deletes that server copy.',
             ),
             actions: [
               TextButton(
@@ -353,7 +400,7 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
           const SizedBox(height: AmiroSpacing.lg),
           FilledButton(
             key: const Key('saveButton'),
-            onPressed: () => _save(announce: true),
+            onPressed: () async => _save(announce: true),
             child: const Text('Save'),
           ),
           if (_status != null) ...[
@@ -376,7 +423,8 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
                   const SizedBox(height: AmiroSpacing.sm),
                   Text(
                     'Off by default. Turn on to copy your profile to our '
-                    'backup service for restore on another phone.',
+                    'backup service for restore on another phone. Turning it '
+                    'off deletes the server copy.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   Material(
