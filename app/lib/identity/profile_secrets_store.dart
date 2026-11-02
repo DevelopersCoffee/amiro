@@ -21,27 +21,39 @@ class ProfileSecretsStore {
   File get _legacyCodeFile =>
       File('${legacyDirectory.path}/profile_recovery_code.txt');
 
+  Future<bool> hasLegacyPlaintextFiles() async {
+    if (await _legacySessionFile.exists()) return true;
+    if (await _legacyCodeFile.exists()) return true;
+    return false;
+  }
+
   Future<void> migrateFromLegacyPlaintext() async {
-    if (await _secure.read(_sessionKey) == null &&
-        await _legacySessionFile.exists()) {
-      final raw = await _legacySessionFile.readAsString();
-      if (raw.trim().isNotEmpty) {
-        await _secure.write(_sessionKey, raw);
-        await _legacySessionFile.delete();
+    if (!await hasLegacyPlaintextFiles()) return;
+
+    if (await _legacySessionFile.exists()) {
+      if (await _secure.read(_sessionKey) == null) {
+        final raw = await _legacySessionFile.readAsString();
+        if (raw.trim().isNotEmpty) {
+          await _secure.write(_sessionKey, raw);
+          await _legacySessionFile.delete();
+        }
       }
     }
-    if (await _secure.read(_recoveryCodeKey) == null &&
-        await _legacyCodeFile.exists()) {
-      final code = (await _legacyCodeFile.readAsString()).trim();
-      if (code.isNotEmpty) {
-        await _secure.write(_recoveryCodeKey, code);
-        await _legacyCodeFile.delete();
+    if (await _legacyCodeFile.exists()) {
+      if (await _secure.read(_recoveryCodeKey) == null) {
+        final code = (await _legacyCodeFile.readAsString()).trim();
+        if (code.isNotEmpty) {
+          await _secure.write(_recoveryCodeKey, code);
+          await _legacyCodeFile.delete();
+        }
       }
     }
   }
 
   Future<String?> readSessionJson() async {
-    await migrateFromLegacyPlaintext();
+    if (await _legacySessionFile.exists()) {
+      await migrateFromLegacyPlaintext();
+    }
     return _secure.read(_sessionKey);
   }
 
@@ -53,7 +65,9 @@ class ProfileSecretsStore {
   }
 
   Future<String?> readRecoveryCode() async {
-    await migrateFromLegacyPlaintext();
+    if (await _legacyCodeFile.exists()) {
+      await migrateFromLegacyPlaintext();
+    }
     return _secure.read(_recoveryCodeKey);
   }
 
@@ -73,4 +87,15 @@ Map<String, dynamic>? sessionJsonFromStored(String? raw) {
     if (decoded is Map) return Map<String, dynamic>.from(decoded);
   } catch (_) {}
   return null;
+}
+
+/// Runs legacy migration with a timeout; failures are ignored so startup continues.
+Future<void> runProfileSecretsMigrationSafely(
+  ProfileSecretsStore store, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  if (!await store.hasLegacyPlaintextFiles()) return;
+  try {
+    await store.migrateFromLegacyPlaintext().timeout(timeout);
+  } catch (_) {}
 }

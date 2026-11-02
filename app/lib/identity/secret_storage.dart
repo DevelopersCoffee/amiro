@@ -8,7 +8,13 @@ abstract class SecretStorage {
 
 class FlutterSecretStorage implements SecretStorage {
   FlutterSecretStorage([FlutterSecureStorage? storage])
-    : _storage = storage ?? const FlutterSecureStorage();
+    : _storage =
+          storage ??
+          const FlutterSecureStorage(
+            iOptions: IOSOptions(
+              accessibility: KeychainAccessibility.first_unlock_this_device,
+            ),
+          );
 
   final FlutterSecureStorage _storage;
 

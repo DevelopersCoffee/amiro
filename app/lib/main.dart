@@ -42,7 +42,7 @@ void main() async {
   final repository = IsarIdentityRepository(isar);
   final backupPreferences = CloudBackupPreferences.inDirectory(supportDir);
   final profileSecrets = ProfileSecretsStore(legacyDirectory: supportDir);
-  await profileSecrets.migrateFromLegacyPlaintext();
+  await runProfileSecretsMigrationSafely(profileSecrets);
   final profileCloud = SupabaseProfileCloud(
     directory: supportDir,
     projectUrl: Uri.parse(supabaseProjectUrl),
