@@ -37,7 +37,9 @@ bool cosmeticListingVisibleForGender(
   return true;
 }
 
-List<Object> _storeRows(
+/// Store list rows: unseriesed items, then each series block (header + items).
+/// Used by [StoreScreen] and widget tests so expectations track visibility rules.
+List<Object> storeDisplayRows(
   List<CosmeticListing> catalog,
   Set<String> owned,
   AvatarGender gender,
@@ -322,7 +324,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
     final gender = resolveAvatarGender(
       ref.watch(currentIdentityProvider).value,
     );
-    final rows = _storeRows(cosmeticCatalog, owned, gender);
+    final rows = storeDisplayRows(cosmeticCatalog, owned, gender);
 
     return Scaffold(
       appBar: AppBar(

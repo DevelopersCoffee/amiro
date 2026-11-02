@@ -18,6 +18,12 @@ import '../avatar/fake_avatar_renderer.dart';
 import '../identity/in_memory_identity_repository.dart';
 import '../pump_helpers.dart';
 
+/// Matches [_screen]'s default identity (null → male in [resolveAvatarGender]).
+AvatarGender _storeTestGender() => AvatarGender.male;
+
+List<Object> _storeTestRows({Set<String> owned = const {}}) =>
+    storeDisplayRows(cosmeticCatalog, owned, _storeTestGender());
+
 Widget _screen(AvatarRenderer renderer, {EntitlementStore? entitlementStore}) {
   return ProviderScope(
     overrides: [
@@ -41,19 +47,18 @@ void main() {
   testWidgets('lists every catalog item with buy affordance or owned state', (
     tester,
   ) async {
-    // Tall enough that the lazily-built list renders every catalog row.
-    tester.view.physicalSize = const Size(800, 3600);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
+    final rows = _storeTestRows();
+    useStoreListViewport(tester, storeRowCount: rows.length);
     final renderer = FakeAvatarRenderer();
     await tester.pumpWidget(_screen(renderer));
     await pumpAfterAvatarLoad(tester);
 
-    for (final item in cosmeticCatalog) {
+    final visibleItems = rows.whereType<CosmeticListing>();
+    for (final item in visibleItems) {
       expect(find.text(item.name), findsOneWidget);
     }
     expect(find.text('FREE'), findsNothing);
-    for (final item in cosmeticCatalog.where((c) => !c.isFree)) {
+    for (final item in visibleItems.where((c) => !c.isFree)) {
       expect(
         find.widgetWithText(
           FilledButton,
@@ -220,20 +225,20 @@ void main() {
   testWidgets(
     'shows each item rarity and groups series items under a numbered header',
     (tester) async {
-      tester.view.physicalSize = const Size(800, 2600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
+      final rows = _storeTestRows();
+      useStoreListViewport(tester, storeRowCount: rows.length);
       await tester.pumpWidget(_screen(FakeAvatarRenderer()));
       await pumpAfterAvatarLoad(tester);
 
-      for (final item in cosmeticCatalog) {
+      for (final item in rows.whereType<CosmeticListing>()) {
         expect(
           find.textContaining(item.rarity.label),
           findsWidgets,
           reason: item.id,
         );
       }
-      final series = cosmeticCatalog
+      final series = rows
+          .whereType<CosmeticListing>()
           .firstWhere((c) => c.series != null)
           .series!;
       expect(find.text(series.label), findsOneWidget);
@@ -243,17 +248,17 @@ void main() {
   testWidgets(
     'series items render after unseriesed items, under their header',
     (tester) async {
-      tester.view.physicalSize = const Size(800, 2600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
+      final rows = _storeTestRows();
+      useStoreListViewport(tester, storeRowCount: rows.length);
       await tester.pumpWidget(_screen(FakeAvatarRenderer()));
       await pumpAfterAvatarLoad(tester);
 
-      final series = cosmeticCatalog
+      final series = rows
+          .whereType<CosmeticListing>()
           .firstWhere((c) => c.series != null)
           .series!;
       final headerY = tester.getTopLeft(find.text(series.label)).dy;
-      for (final item in cosmeticCatalog) {
+      for (final item in rows.whereType<CosmeticListing>()) {
         final y = tester.getTopLeft(find.text(item.name)).dy;
         if (item.series == null) {
           expect(y, lessThan(headerY), reason: item.id);
@@ -441,9 +446,8 @@ void main() {
     testWidgets('each catalog row is a tappable boutique card, not a list tile', (
       tester,
     ) async {
-      tester.view.physicalSize = const Size(800, 3600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
+      final rows = _storeTestRows();
+      useStoreListViewport(tester, storeRowCount: rows.length);
       await tester.pumpWidget(_screen(FakeAvatarRenderer()));
       await pumpAfterAvatarLoad(tester);
 
