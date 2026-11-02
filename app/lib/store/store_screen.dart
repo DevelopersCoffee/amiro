@@ -259,7 +259,10 @@ class _CosmeticCard extends StatelessWidget {
 }
 
 class StoreScreen extends ConsumerStatefulWidget {
-  const StoreScreen({super.key});
+  const StoreScreen({super.key, this.isActive = false});
+
+  /// When true, this tab is selected and RevenueCat may be configured.
+  final bool isActive;
 
   @override
   ConsumerState<StoreScreen> createState() => _StoreScreenState();
@@ -267,6 +270,7 @@ class StoreScreen extends ConsumerStatefulWidget {
 
 class _StoreScreenState extends ConsumerState<StoreScreen> {
   bool _didInit = false;
+  bool _entitlementsRequested = false;
 
   @override
   void didChangeDependencies() {
@@ -274,6 +278,26 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
     if (_didInit) return;
     _didInit = true;
     ensureAvatarLoaded(ProviderScope.containerOf(context));
+    if (widget.isActive) {
+      _scheduleEntitlementsLoad();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant StoreScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      _scheduleEntitlementsLoad();
+    }
+  }
+
+  void _scheduleEntitlementsLoad() {
+    if (_entitlementsRequested || !widget.isActive) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _entitlementsRequested || !widget.isActive) return;
+      _entitlementsRequested = true;
+      ref.read(ownedCosmeticsProvider.notifier).ensureLoaded();
+    });
   }
 
   Future<void> _preview(CosmeticListing item) async {

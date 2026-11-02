@@ -15,6 +15,9 @@ class RevenueCatEntitlementStore implements EntitlementStore {
   final bool _isAndroid;
   bool _configured = false;
 
+  /// True after [Purchases.configure] succeeded on this instance.
+  bool get isConfigured => _configured;
+
   /// [isAndroid] defaults to the real platform; tests pass it explicitly.
   RevenueCatEntitlementStore({bool? isAndroid})
     : _isAndroid = isAndroid ?? Platform.isAndroid;

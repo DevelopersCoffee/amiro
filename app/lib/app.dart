@@ -76,12 +76,12 @@ class _RootTabsState extends ConsumerState<_RootTabs> {
   @override
   Widget build(BuildContext context) {
     _registerThermionGateOnce();
-    const screens = [
-      IdentityEditScreen(),
-      AvatarScreen(),
-      StoreScreen(),
-      ShareScreen(),
-      PassportScreen(),
+    final screens = [
+      const IdentityEditScreen(),
+      const AvatarScreen(),
+      StoreScreen(isActive: _index == 2),
+      const ShareScreen(),
+      const PassportScreen(),
     ];
     return Scaffold(
       body: AvatarIdentitySyncListener(
