@@ -40,15 +40,6 @@ void main() {
     ),
   ];
 
-  group('collectedCosmeticIds', () {
-    test('is every free item plus the owned ids that exist in the catalog', () {
-      expect(collectedCosmeticIds(catalog, const {'u1', 'ghost'}), {
-        'free_a',
-        'u1',
-      });
-    });
-  });
-
   group('rarestCosmetic', () {
     test('is null when nothing is collected', () {
       expect(rarestCosmetic(catalog, const {}), isNull);

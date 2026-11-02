@@ -82,7 +82,7 @@ class _AvatarScreenState extends ConsumerState<AvatarScreen> {
 
     final highestRarity = current == null
         ? null
-        : avatarRarityScore(current, cosmeticCatalog).highest;
+        : avatarRarityScore(current, cosmeticCatalog);
 
     final showChrome = !_loading && !_revealing && !bodyAssetPending;
 
