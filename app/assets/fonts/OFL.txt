@@ -1,0 +1,7 @@
+Bundled font files in this directory are licensed under the SIL Open Font License 1.1.
+
+- InstrumentSans.ttf — Instrument Sans (Google Fonts)
+- InstrumentSerif-Regular.ttf — Instrument Serif (Google Fonts)
+- JetBrainsMono.ttf — JetBrains Mono (JetBrains)
+
+Full license texts: https://openfontlicense.org

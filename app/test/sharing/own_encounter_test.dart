@@ -62,6 +62,24 @@ void main() {
       },
     );
 
+    test('defaults include equipped cosmetics and omit collection progress', () {
+      expect(EncounterShareOptions.defaults.includeEquippedCosmetics, isTrue);
+      expect(EncounterShareOptions.defaults.includeCollectionProgress, isFalse);
+    });
+
+    test('omits equipped cosmetics when share option is off', () {
+      final payload = buildOwnEncounterPayload(
+        identity: identity,
+        definition: definition,
+        purchasedIds: const {},
+        shareOptions: const EncounterShareOptions(
+          includeEquippedCosmetics: false,
+        ),
+      )!;
+
+      expect(payload.equippedCosmetics, isEmpty);
+    });
+
     test('omits collection progress by default', () {
       final payload = buildOwnEncounterPayload(
         identity: identity,

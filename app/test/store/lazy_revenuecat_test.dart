@@ -63,6 +63,20 @@ void main() {
     expect(calls.where((c) => c.method == 'setupPurchases'), isEmpty);
   });
 
+  test('StoreScreen with isActive false never calls setupPurchases', () async {
+    final container = ProviderContainer(
+      overrides: [
+        entitlementStoreProvider.overrideWithValue(
+          RevenueCatEntitlementStore(isAndroid: true),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(ownedCosmeticsProvider.future);
+    expect(calls.where((c) => c.method == 'setupPurchases'), isEmpty);
+  });
+
   test('ensureLoaded configures RevenueCat and fetches entitlements', () async {
     final container = ProviderContainer(
       overrides: [
