@@ -5,25 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Amiro Privacy Policy</title>
 <style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  body { font-family: -system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
          max-width: 720px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #1a1a1a; }
   h1 { font-size: 1.8em; }
   h2 { font-size: 1.25em; margin-top: 1.8em; border-bottom: 1px solid #ddd; padding-bottom: 0.3em; }
   .updated { color: #666; font-size: 0.9em; }
-  code { background: #f2f2f2; padding: 1px 5px; border-radius: 3px; }
 </style>
 </head>
 <body>
 
 <h1>Amiro Privacy Policy</h1>
-<p class="updated"><strong>Last updated:</strong> 2026-09-29</p>
+<p class="updated"><strong>Last updated:</strong> 2026-11-03</p>
 
 <p>This policy describes what Amiro ("the App") does with your information.
-Amiro is built to keep your identity, avatar, and profile data on your own
-device — there is no Amiro account system, and no analytics or advertising
-SDK in the App. The only server-side processing Amiro does is limited to
-verifying real-money Store purchases (see "Purchases" below); nothing about
-your identity, avatar, or who you've shared with ever leaves your device.</p>
+Amiro is local-first: your identity, avatar, and passport (people you've
+met) live on your device by default. There is no email-and-password Amiro
+account, and no analytics or advertising SDK in the App. The App does use
+the network for (1) optional profile backup/restore and (2) verifying
+real-money Store purchases — see those sections below. Sharing with another
+person (QR/NFC) still goes directly device-to-device and does not pass
+through our servers.</p>
 
 <h2>Who this covers</h2>
 <p>Amiro is published by Developer's Coffee. This policy applies to the Amiro
@@ -39,11 +40,28 @@ a link you added to your own profile).</p>
   <li>Mobile number, email address</li>
   <li>Social handles (X/Twitter, Instagram) and a personal website URL</li>
 </ul>
-<p>All of this is stored <strong>only on your device</strong>, in a local
-database. It is never sent to Developer's Coffee or to any third party by
-the App itself.</p>
-<p>Your avatar (body, hair, outfit, and other cosmetic choices) is also
-stored only on your device.</p>
+<p>This is stored <strong>on your device</strong> in a local database. Your avatar (body,
+hair, outfit, and other cosmetic choices) is stored the same way.</p>
+
+<h3>Optional profile backup (Supabase)</h3>
+<p>To help you recover your identity after reinstalling or moving to a new
+phone, the App can back up your profile to a
+<a href="https://supabase.com/privacy" target="_blank" rel="noopener">Supabase</a>
+database we operate:</p>
+<ul>
+  <li>On first launch (and when your identity changes), the App may create an
+  anonymous Supabase session and upload a copy of your identity fields and
+  avatar definition JSON. Row access is protected by Supabase row-level
+  security; the App uses Supabase's public ("anon") key, not a root
+  password.</li>
+  <li>The App gives you a <strong>recovery code</strong> (stored on your device) you can use
+  on another install to pull that profile back.</li>
+  <li>The backup may also store RevenueCat's anonymous purchase user id next to
+  your profile so purchases and identity can be reconciled after restore —
+  not your name, email, or phone from the profile form.</li>
+  <li>Your passport / encounter history stays <strong>local only</strong> (not uploaded).</li>
+</ul>
+<p>If backup fails (no network), the App keeps working from local storage only.</p>
 
 <h3>Sharing with another person</h3>
 <p>Amiro's core feature is sharing your profile with someone else, by:</p>
@@ -53,9 +71,9 @@ stored only on your device.</p>
 </ul>
 <p>Before you share, you choose which fields are public. Only the fields you
 mark public are included in what you show or send — anything you leave
-private never leaves your device. The other person's phone reads that
-information directly from the QR code or NFC tap; it does not pass
-through any server Developer's Coffee operates, because none exists.</p>
+private is not included in the QR/NFC payload. The other person's phone
+reads that information directly from the QR code or NFC tap; it does not
+pass through Developer's Coffee servers.</p>
 <p>If you scan someone else's QR code or receive their NFC tap, whatever
 public profile information they chose to share is stored on <strong>your</strong>
 device, the same way your own profile is. You control that data (including
@@ -76,7 +94,7 @@ deleting it) on your device.</p>
 Google Play Billing. Purchases are processed by
 <a href="https://www.revenuecat.com/privacy" target="_blank" rel="noopener">RevenueCat</a>,
 which we use to verify a purchase actually happened before unlocking the
-item — this is the one part of Amiro that talks to a server.</p>
+item.</p>
 <p>What that involves:</p>
 <ul>
   <li>The App SDK sends RevenueCat a random per-install identifier (not your
@@ -88,54 +106,46 @@ item — this is the one part of Amiro that talks to a server.</p>
   product bought, and the timestamp — in a Supabase database, so we can
   look up and restore your purchases if needed (for example, after
   reinstalling). This record never includes your name, email, phone
-  number, or any other profile field, because the App never sends them.</li>
+  number, or any other profile field from the identity form.</li>
   <li>None of this is used for advertising, and we don't sell or share it
   with anyone beyond RevenueCat and Google Play, who process it to
   complete the purchase.</li>
 </ul>
-<p>If you don't use the Store's paid items, none of this applies to you —
-free cosmetics unlock without any network request.</p>
+<p>If you don't use the Store's paid items, none of the purchase network
+traffic applies to you — free cosmetics unlock without a purchase request.</p>
 
 <h2>What the App does not do</h2>
 <ul>
-  <li>No account creation, no sign-in, no password.</li>
-  <li>No analytics, crash reporting, or advertising SDKs.</li>
-  <li>No network requests from the App to Developer's Coffee or anyone else,
-  except the purchase verification described above, and only when you buy
-  a paid Store item.</li>
+  <li>No traditional account (no email sign-up, no password login).</li>
+  <li>No analytics or advertising SDKs.</li>
+  <li>No selling of your data.</li>
   <li>No location data is collected.</li>
-  <li>No data is sold or shared with third parties, other than what's
-  described under "Purchases" above.</li>
+  <li>Sharing and passport data are not uploaded to our servers (only the
+  optional profile backup and purchase audit paths described above use
+  the network).</li>
 </ul>
 
 <h2>Your control over your data</h2>
-<p>Because everything lives on your device:</p>
 <ul>
-  <li>Editing or clearing a field in your identity removes it immediately.</li>
-  <li>Uninstalling the App removes all Amiro data stored by it, subject to
-  your device's own OS behavior (for example, an OS-level backup you
-  created yourself, which is outside the App's control).</li>
-  <li>There is no Amiro account to delete, because there is no Amiro account.</li>
-  <li>If you've made a paid purchase, we also keep a purchase record (the
-  random per-install identifier, product, and timestamp — see "Purchases")
-  in RevenueCat and our Supabase database. Email
-  <a href="mailto:coffee.devloper@gmail.com">coffee.devloper@gmail.com</a>
-  to request deletion of that record; it isn't removed automatically by
-  uninstalling, since it exists to protect your purchase across
-  reinstalls.</li>
+  <li>Editing or clearing a field in your identity removes it on your device
+  immediately; the next successful backup sync updates the cloud copy.</li>
+  <li>Uninstalling the App removes local Amiro data, subject to your device's
+  own OS behavior (for example, an OS-level backup you created yourself).</li>
+  <li>There is no password-based Amiro account to delete. To remove a cloud
+  profile backup or purchase audit row, email
+  <a href="mailto:coffee.devloper@gmail.com">coffee.devloper@gmail.com</a> —
+  these are not always removed automatically on uninstall because they exist
+  to support restore.</li>
 </ul>
 
 <h2>Children's privacy</h2>
 <p>Amiro is not directed at children and we do not knowingly collect
-information from children. Since all data stays on-device and nothing is
-transmitted to us, we have no way to collect such information in the
-first place.</p>
+information from children. We do not ask for age. Profile backup and
+purchases are initiated by whoever uses the App on the device.</p>
 
 <h2>Changes to this policy</h2>
-<p>If Amiro's data practices change (for example, if a future version adds
-optional cloud backup), this policy will be updated first, and that
-version will describe the change clearly, including whether it is
-optional.</p>
+<p>If Amiro's data practices change materially, this policy will be updated
+and the "Last updated" date above will change.</p>
 
 <h2>Contact</h2>
 <p>Questions about this policy: <a href="mailto:coffee.devloper@gmail.com">coffee.devloper@gmail.com</a></p>

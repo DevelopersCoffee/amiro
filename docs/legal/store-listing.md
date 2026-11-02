@@ -20,8 +20,9 @@ share everywhere.
 
 **Build your avatar**
 Choose a hairstyle, outfit, and accessories. Rotate it a full 360° to see
-every angle. Your avatar is yours: it lives on your device, not on a
-server.
+every angle. Your avatar is yours: it lives on your device first, with
+optional cloud backup so you can recover your look after reinstalling (see
+the in-app privacy policy).
 
 **Share it instantly**
 Show a QR code, or — on Android — just tap phones together. Whoever you

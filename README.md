@@ -28,7 +28,7 @@ melos run test
 | `packages/sharing/` | Share payloads, `amiro://encounter` / legacy `amiro://share` codecs |
 | `packages/nfc/` | NFC read (NDEF) and Android HCE emulate |
 | `packages/qr/` | QR widget for share URIs; scan UI lives in `app/` |
-| `packages/discovery/` | Encounter ledger, passport, encounter state machine |
+| `packages/discovery/` | Encounter ledger, passport, encounter state machine (see README) |
 | `rust/core/` | Rust identity domain struct + serialization (not wired to Dart yet) |
 
 License: MIT.
