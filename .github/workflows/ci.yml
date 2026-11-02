@@ -49,6 +49,18 @@ jobs:
       - run: melos run analyze
       - run: melos run test
 
+  worker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workers/revenuecat-webhook
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm test
+
   rust:
     runs-on: ubuntu-latest
     defaults:

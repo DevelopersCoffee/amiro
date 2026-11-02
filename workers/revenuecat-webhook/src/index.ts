@@ -1,5 +1,12 @@
+import {
+  constantTimeEqual,
+  verifyRevenueCatWebhookSignature,
+} from './security.ts';
+
 export interface Env {
   WEBHOOK_PATH_TOKEN: string;
+  WEBHOOK_AUTHORIZATION?: string;
+  WEBHOOK_SIGNING_SECRET?: string;
   CRASH_PATH_TOKEN?: string;
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
@@ -47,7 +54,7 @@ export async function handleCrash(
     return new Response('Method not allowed', { status: 405 });
   }
   const token = url.pathname.replace(/^\/crash\//, '');
-  if (!env.CRASH_PATH_TOKEN || token !== env.CRASH_PATH_TOKEN) {
+  if (!env.CRASH_PATH_TOKEN || !constantTimeEqual(token, env.CRASH_PATH_TOKEN)) {
     return new Response('Not found', { status: 404 });
   }
 
@@ -90,6 +97,34 @@ export async function handleCrash(
   return new Response('ok', { status: 200 });
 }
 
+export async function verifyWebhookRequest(
+  request: Request,
+  env: Env,
+  pathToken: string,
+  rawBody: string,
+): Promise<Response | null> {
+  if (!constantTimeEqual(pathToken, env.WEBHOOK_PATH_TOKEN)) {
+    return new Response('Not found', { status: 404 });
+  }
+  if (env.WEBHOOK_AUTHORIZATION) {
+    const auth = request.headers.get('Authorization') ?? '';
+    if (!constantTimeEqual(auth, env.WEBHOOK_AUTHORIZATION)) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+  }
+  if (env.WEBHOOK_SIGNING_SECRET) {
+    const ok = await verifyRevenueCatWebhookSignature(
+      request.headers.get('X-RevenueCat-Webhook-Signature'),
+      rawBody,
+      env.WEBHOOK_SIGNING_SECRET,
+    );
+    if (!ok) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+  }
+  return null;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -101,13 +136,21 @@ export default {
     if (request.method !== 'POST') {
       return new Response('Method not allowed', { status: 405 });
     }
-    if (pathToken !== env.WEBHOOK_PATH_TOKEN) {
-      return new Response('Not found', { status: 404 });
+
+    const rawBody = await request.text();
+    const authFailure = await verifyWebhookRequest(
+      request,
+      env,
+      pathToken,
+      rawBody,
+    );
+    if (authFailure) {
+      return authFailure;
     }
 
     let body: { event?: RevenueCatEvent };
     try {
-      body = await request.json();
+      body = JSON.parse(rawBody);
     } catch {
       return new Response('Invalid JSON', { status: 400 });
     }
