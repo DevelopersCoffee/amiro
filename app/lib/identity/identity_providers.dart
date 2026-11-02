@@ -1,12 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:identity_core/identity_core.dart';
 
+import 'cloud_backup_preferences.dart';
 import 'profile_cloud.dart';
 
 /// Overridden in `main.dart` with the Supabase-backed cloud. Tests keep
 /// the no-network default.
 final profileCloudProvider = Provider<ProfileCloud>((ref) {
   return const NoopProfileCloud();
+});
+
+/// Overridden in `main.dart`. Default: backup off.
+final cloudBackupPreferencesProvider = Provider<CloudBackupPreferences>((ref) {
+  throw UnimplementedError('cloudBackupPreferencesProvider must be overridden');
+});
+
+final cloudBackupEnabledProvider = FutureProvider<bool>((ref) {
+  return ref.read(cloudBackupPreferencesProvider).isEnabled();
 });
 
 /// Overridden in `main.dart` with a real [IsarIdentityRepository] once

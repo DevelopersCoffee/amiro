@@ -39,6 +39,29 @@ class NoopProfileCloud implements ProfileCloud {
   Future<Identity?> claim(String code) async => null;
 }
 
+/// Fields written to Supabase when the user opts in to cloud backup.
+///
+/// Always: id, displayName, username, avatarGender, avatarDefinitionJson,
+/// and privacy flags. Contact fields (bio, email, …) are included only when
+/// their privacy flag is public — private values never leave the device.
+Map<String, dynamic> identityToCloudPayload(Identity identity) {
+  final json = <String, dynamic>{
+    'id': identity.id,
+    'displayName': identity.displayName,
+    'username': identity.username,
+    if (identity.avatarGender != null) 'avatarGender': identity.avatarGender,
+    if (identity.avatarDefinitionJson != null)
+      'avatarDefinitionJson': identity.avatarDefinitionJson,
+    'privacy': identity.privacy.map((key, flag) => MapEntry(key, flag.toJson())),
+  };
+  for (final entry in identity.publicFields().entries) {
+    final key = entry.key;
+    if (key == 'displayName' || key == 'username') continue;
+    json[key] = entry.value;
+  }
+  return json;
+}
+
 /// Decodes a profile payload from Supabase. Returns null for an empty
 /// claim result (`null`) or a body that is not an identity.
 Identity? identityFromCloudPayload(Object? payload) {

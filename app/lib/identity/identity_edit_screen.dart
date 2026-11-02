@@ -37,6 +37,8 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
   bool _hydrated = false;
   bool _userEdited = false;
   bool _applying = false;
+  bool _cloudBackupEnabled = false;
+  bool _cloudPrefsLoaded = false;
   Timer? _saveTimer;
   Future<void> _saveQueue = Future<void>.value();
   String? _status;
@@ -57,6 +59,13 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
       ref.read(profileCloudProvider).recoveryCode().then((code) {
         if (!mounted || code == null || code.isEmpty) return;
         setState(() => _recoveryCode = code);
+      });
+      ref.read(cloudBackupPreferencesProvider).isEnabled().then((enabled) {
+        if (!mounted) return;
+        setState(() {
+          _cloudBackupEnabled = enabled;
+          _cloudPrefsLoaded = true;
+        });
       });
     }
   }
@@ -135,7 +144,10 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
       privacy: _isPublic.map((key, value) => MapEntry(key, PrivacyFlag(value))),
     );
     await ref.read(currentIdentityProvider.notifier).save(identity);
-    final remote = await ref.read(profileCloudProvider).push(identity);
+    var remote = false;
+    if (_cloudBackupEnabled) {
+      remote = await ref.read(profileCloudProvider).push(identity);
+    }
     if (!mounted) return;
     if (remote) {
       final code = await ref.read(profileCloudProvider).recoveryCode();
@@ -166,6 +178,45 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
           );
         },
       );
+    }
+  }
+
+  Future<void> _setCloudBackup(bool enabled) async {
+    if (enabled && !_cloudBackupEnabled) {
+      final accepted = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            backgroundColor: AmiroColors.surface,
+            title: const Text('Back up to the cloud?'),
+            content: const Text(
+              'When enabled, Amiro copies your profile and avatar to our '
+              'encrypted backup service so you can restore on another phone. '
+              'Private contact fields stay on this device unless you mark '
+              'them public. You can turn this off anytime.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Not now'),
+              ),
+              FilledButton(
+                key: const Key('cloudBackupConsentAccept'),
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Enable backup'),
+              ),
+            ],
+          );
+        },
+      );
+      if (accepted != true || !mounted) return;
+    }
+    await ref.read(cloudBackupPreferencesProvider).setEnabled(enabled);
+    ref.invalidate(cloudBackupEnabledProvider);
+    if (!mounted) return;
+    setState(() => _cloudBackupEnabled = enabled);
+    if (enabled && _hasProfileText) {
+      await _save();
     }
   }
 
@@ -315,7 +366,32 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
               ),
             ),
           ],
-          if (cloud.supportsRestore) ...[
+          if (cloud.supportsRestore && _cloudPrefsLoaded) ...[
+            const SizedBox(height: AmiroSpacing.md),
+            AmiroCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionLabel('CLOUD BACKUP'),
+                  const SizedBox(height: AmiroSpacing.sm),
+                  Text(
+                    'Off by default. Turn on to copy your profile to our '
+                    'backup service for restore on another phone.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  Material(
+                    color: Colors.transparent,
+                    child: SwitchListTile(
+                      key: const Key('cloudBackupToggle'),
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Back up my profile'),
+                      value: _cloudBackupEnabled,
+                      onChanged: _setCloudBackup,
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: AmiroSpacing.md),
             AmiroCard(
               child: Column(

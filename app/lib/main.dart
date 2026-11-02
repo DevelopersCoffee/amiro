@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:identity_core/identity_core.dart';
@@ -11,15 +12,20 @@ import 'package:discovery/discovery.dart';
 
 import 'app.dart';
 import 'crash/crash_reporter.dart';
+import 'identity/cloud_backup_preferences.dart';
 import 'identity/identity_providers.dart';
+import 'identity/profile_secrets_store.dart';
 import 'identity/supabase_profile_cloud.dart';
 import 'identity/supabase_public.dart';
+import 'sharing/encounter_share_options.dart';
+import 'sharing/sharing_preferences_providers.dart';
 import 'avatar/avatar_providers.dart';
 import 'discovery/discovery_providers.dart';
 import 'sharing/sharing_providers.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  GoogleFonts.config.allowRuntimeFetching = false;
 
   final supportDir = await getApplicationSupportDirectory();
   final ingestUrl = const String.fromEnvironment('AMIRO_CRASH_INGEST_URL');
@@ -34,15 +40,22 @@ void main() async {
   );
   final isar = await openIdentityIsar(directory: supportDir.path);
   final repository = IsarIdentityRepository(isar);
+  final backupPreferences = CloudBackupPreferences.inDirectory(supportDir);
+  final profileSecrets = ProfileSecretsStore(legacyDirectory: supportDir);
+  await profileSecrets.migrateFromLegacyPlaintext();
   final profileCloud = SupabaseProfileCloud(
     directory: supportDir,
     projectUrl: Uri.parse(supabaseProjectUrl),
     anonKey: supabaseAnonKey,
+    backupPreferences: backupPreferences,
+    secrets: profileSecrets,
   );
-  if (await repository.getCurrent() == null) {
+  if (await repository.getCurrent() == null && await backupPreferences.isEnabled()) {
     final restored = await profileCloud.pull();
     if (restored != null) await repository.save(restored);
   }
+  final encounterSharePreferences =
+      EncounterSharePreferences.inDirectory(supportDir);
 
   // Engine construction lives behind `avatar_renderer`'s own factory: per the
   // spec's global constraint, nothing outside `packages/avatar_renderer` may
@@ -56,6 +69,10 @@ void main() async {
     ProviderScope(
       overrides: [
         identityRepositoryProvider.overrideWithValue(repository),
+        cloudBackupPreferencesProvider.overrideWithValue(backupPreferences),
+        encounterSharePreferencesProvider.overrideWithValue(
+          encounterSharePreferences,
+        ),
         profileCloudProvider.overrideWithValue(profileCloud),
         avatarRendererProvider.overrideWithValue(avatarRenderer),
         avatarRendererFactoryProvider.overrideWithValue(
