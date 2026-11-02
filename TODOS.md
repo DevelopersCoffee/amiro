@@ -17,7 +17,7 @@ of `app/lib/avatar/avatar_screen.dart` + cosmetic asset swap.
 `app/lib/app.dart`'s `_RootTabs` has five destinations: Identity, Avatar, Store, Share, and Passport. The original note said Share was missing; that screen and the later Passport tab are both wired.
 
 ## 6. Store: browsable catalog with on-avatar preview + valuation — v1 DONE (2026-09-23)
-`packages/store/` (catalog, entitlements, valuation) and `app/lib/store/` (StoreScreen, providers) built with TDD, wired into the nav shell as the Store tab. Catalog matches assets that actually exist today: 2 free items (Classic Frame glasses, Signature Tee) + 1 paid item (Riviera Optics glasses, $2.99) — original brand-inspired naming, no real trademarks, per the design review's legal call. Tapping any item previews it live on the avatar (`AvatarRenderer.updateSlot`) and persists it, regardless of ownership; priced+unowned items show a "Buy" button that grants a **local, stubbed entitlement** — no real money moves, this is a placeholder for StoreKit/Play Billing (a separate milestone per `docs/product/requirements.md`'s Monetization section). Avatar valuation (sum of equipped items' catalog price) now shows in the AvatarScreen app bar.
+`packages/store/` (catalog, entitlements, valuation) and `app/lib/store/` (StoreScreen, providers) built with TDD, wired into the nav shell as the Store tab. Catalog today is 11 items in `packages/store/lib/src/cosmetic_listing.dart` (free basics plus three paid Founders-series cosmetics billed through Play). Tapping any item previews it live on the avatar (`AvatarRenderer.updateSlot`) and persists it, regardless of ownership; priced+unowned items show **Buy**, which runs real Play Billing on Android via RevenueCat (see #15 — `main.dart` must not override `entitlementStoreProvider` with a file store). Avatar valuation (sum of equipped items' catalog price) shows in the AvatarScreen app bar.
 
 **Decisions (2026-10-15):**
 - Valuation stays the sum of *equipped* catalog prices, including a paid item the glasses toggle or a Store preview put on the avatar. That matches `avatarValuationCents` and the Avatar screen tests. Owned-only valuation waits until the glasses toggle is a real inventory control and no longer equips `glasses_realistic` by itself.
@@ -37,7 +37,7 @@ Inspired by the Steam "Egg" market (rarity ladder, Series #N drops). `CosmeticLi
 **Known gaps, deliberately deferred:**
 - No rarity filter/sort in the store (7 items don't need it; add once the catalog grows).
 - Epic/Legendary tiers exist but no item uses them yet; they need new assets.
-- No resale/trading market (Egg's market is a Steam feature; Amiro's purchases are stubbed). A real secondary market needs its own payments, fraud and legal decision.
+- No resale/trading market (Egg's market is a Steam feature; primary purchases are real on Android but there is no secondary market). A real resale layer needs its own payments, fraud and legal decision.
 - Meme/cultural skins: original themes only. No real memes or trademarks (`docs/legal/asset-policy.md`).
 - `docs/product/requirements.md` not updated with a rarity section.
 
@@ -67,7 +67,7 @@ PR1 decisions worth remembering:
 - The spec's `CollectionProgress` is named `SeriesCompletion` in `sharing`: `store` already exports a `CollectionProgress`, and the app imports both.
 - `EquippedCosmeticInfo.seriesId` is nullable (free items sit outside any series).
 - Cosmetic name/rarity on the wire are sender-claimed. A receiver that knows the id should prefer its own catalog and treat the wire values as a fallback; this is not proof of ownership.
-- **Two formats coexist until PR4:** the existing `amiro://share?d=` URI (`SharedProfile`, has username and contact fields) still drives the app; `AmiroSharingPayload` is not wired in yet. The QR bridge must decide how contact fields and `username` map across (they are absent from the new payload).
+- **Wire format (historical note):** PR4 planned two coexisting URIs; PR7 cutover shipped `amiro://encounter` for new shares while receive still accepts legacy `amiro://share` (`app/lib/sharing/scan_result.dart`). Contact fields ride on the optional `c=` parameter (`ContactCard`), not inside the payload JSON.
 
 PR2 decisions (`packages/discovery`, library only, not wired into the app):
 - `EncounterRecord` is immutable (spec had mutable fields); an encounter yields a new record via `copyWith`. `localRecordId` (ULID-style, `newLocalRecordId`) is independent of `remoteIdentityId`.

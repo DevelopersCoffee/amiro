@@ -20,12 +20,15 @@ melos run test
 
 | Path | Owns |
 |---|---|
-| `app/` | Flutter application shell |
+| `app/` | Flutter shell: Identity, Avatar, Store, Share, Passport tabs |
 | `packages/identity_core/` | Identity model, privacy flags, local persistence |
 | `packages/avatar_core/` | Avatar definition model |
 | `packages/avatar_renderer/` | 3D avatar rendering (Filament via thermion_flutter) |
-| `packages/store/` | Cosmetic catalog, entitlements (stubbed purchases), avatar valuation |
-| `packages/sharing/`, `nfc/`, `qr/` | Stubs — future milestones |
-| `rust/core/` | Rust identity domain struct + serialization |
+| `packages/store/` | Cosmetic catalog, RevenueCat entitlements, valuation |
+| `packages/sharing/` | Share payloads, `amiro://encounter` / legacy `amiro://share` codecs |
+| `packages/nfc/` | NFC read (NDEF) and Android HCE emulate |
+| `packages/qr/` | QR widget for share URIs; scan UI lives in `app/` |
+| `packages/discovery/` | Encounter ledger, passport, encounter state machine |
+| `rust/core/` | Rust identity domain struct + serialization (not wired to Dart yet) |
 
 License: MIT.

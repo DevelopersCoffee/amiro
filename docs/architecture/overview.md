@@ -4,6 +4,24 @@ rationale is preserved unchanged at
 `../superpowers/specs/2026-09-22-amiro-foundation-design.md`; where the two
 disagree, this document is correct and the spec is history.
 
+## Current snapshot (default branch, 2026-11)
+
+Sections **1–10** below still describe the **2026-09-22 foundation pass**
+only. On today's default branch the product also includes:
+
+- **Store:** real Play Billing on Android via RevenueCat
+  (`packages/store/lib/src/revenuecat_entitlement_store.dart`); 11 catalog
+  items in `packages/store/lib/src/cosmetic_listing.dart`.
+- **Sharing:** `amiro://encounter` QR/NFC + legacy `amiro://share` receive
+  (`packages/sharing`, `packages/nfc`, `packages/qr`, `app/lib/sharing/`).
+- **Discovery:** encounter ledger and Passport tab (`packages/discovery`,
+  `app/lib/discovery/`, fifth tab in `app/lib/app.dart`).
+- **Identity cloud backup:** Supabase profile sync (merged in #43).
+
+For up-to-date package ownership, see the repository map in `/README.md` and
+each package's `README.md`. Where this file still says "stub" for store or
+sharing packages, treat **this snapshot** as correct.
+
 # Amiro Architecture (M0 + M1 + thin avatar-render slice)
 
 **Status:** foundation pass implemented

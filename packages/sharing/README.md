@@ -1,17 +1,21 @@
 # sharing
 
-**Status: stub — not implemented.**
+Owns the on-wire identity and discovery payloads plus URI codecs the app,
+NFC, and QR layers share.
 
-Owns the orchestration between `nfc`, `qr`, and deep-link resolution:
-picking which channel to use, building the compact identity payload
-(`https://id.amiro.app/u/<id>`), and routing an incoming tap/scan to
-either the native profile screen (app installed) or a signal to open
-the web fallback.
+**Primary link (Share tab today):** `amiro://encounter?d=<base64url(payload)>`
+with optional `&c=<base64url(contact card)>`. Built by
+`encodeEncounterUri` / parsed by `decodeEncounterUri` in
+`lib/src/encounter_qr.dart` (`AmiroSharingPayload`, `ContactCard`).
 
-Planned interface (from `docs/superpowers/specs/2026-09-22-amiro-foundation-design.md`
-and the product PRD's NFC/QR sections):
+**Legacy profile link:** `amiro://share?d=<base64url(json)>` via
+`buildShareUri` / `parseShareUri` in `lib/src/share_payload_codec.dart`
+(`SharedProfile`). Still accepted on receive (`app/lib/sharing/scan_result.dart`)
+but no longer emitted for new shares.
 
-- `ShareableIdentityLink buildShareLink(String identityId)`
-- `Stream<IncomingShare> listenForIncomingShares()`
+**NDEF helpers:** `lib/src/ndef_encounter.dart` — decode NFC Forum text
+records to an `amiro://` URI without depending on platform plugins.
 
-Implemented in a future milestone (M4, Sharing), by the Sharing agent.
+Wired from `app/lib/sharing/` (identity card, QR scan, NFC receive, deep
+links). The PRD's shorter `https://id.amiro.app/u/<id>` web fallback is
+not implemented yet.

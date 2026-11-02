@@ -1,25 +1,36 @@
 # QA Test Plan
 
-**Status: this pass covers unit/widget tests only (see below). Full
-device-matrix QA (Android phone, iPhone, Android+NFC, iPhone+NFC) is
-out of scope until NFC/QR ship in M4.**
+**Status:** automated unit/widget tests cover identity, avatar, store,
+sharing, discovery, and theme components on CI (`melos run test`). Full
+device-matrix QA (two-phone NFC tap, iOS parity, real Play purchase flows)
+remains manual and is not fully exercised.
 
-## Coverage shipped in this pass
+## Coverage in CI today
 
 - `rust/core`: `cargo test` — Identity struct validation + serde round-trip.
-- `packages/identity_core`: unit tests for `Identity` model, JSON
-  round-trip, `publicFields()` privacy filtering, `IsarIdentityRepository`
-  CRUD.
-- `packages/avatar_core`: unit tests for `AvatarDefinition`, slot
-  update, JSON round-trip.
-- `packages/avatar_renderer`: unit tests for asset path resolution and
-  `ThermionAvatarRenderer` slot-swap bookkeeping (engine calls faked).
-- `app`: widget tests for identity create/edit (field entry, privacy
-  toggle, save) and avatar screen (initial load, cosmetic swap on/off).
+- `packages/identity_core`: `Identity` model, JSON round-trip,
+  `publicFields()` privacy filtering, `IsarIdentityRepository` CRUD.
+- `packages/avatar_core`: `AvatarDefinition`, slots, JSON round-trip.
+- `packages/avatar_renderer`: asset path resolution and slot-swap bookkeeping
+  (engine faked).
+- `packages/store`: catalog, entitlements (including RevenueCat channel mocks),
+  valuation, rarity/collection helpers.
+- `packages/sharing`, `packages/nfc`, `packages/qr`: payload/URI/NDEF and
+  emulator channel contracts.
+- `packages/discovery`: encounter records, file repository, processor.
+- `app`: widget tests under `app/test/` for identity, avatar, store, sharing
+  (QR scan, NFC receive, scan routing, identity card), discovery/passport,
+  theme components, and related providers.
 
-## Explicitly not covered yet
+## Explicitly not covered (or only partially covered) in CI
 
-NFC, QR, deep links, purchases, offline/online sync divergence, profile
-privacy on the (not-yet-built) web fallback, app-not-installed
-experience, cross-device pairing. Each becomes a QA Agent task when its
-owning milestone ships.
+- Two-device NFC tap-to-tap and real QR scan against a physical code (see
+  `docs/architecture/overview.md` §11).
+- Live Play Billing / RevenueCat purchase sheets and receipt edge cases.
+- iOS store, NFC emulate, and full renderer parity on Apple hardware.
+- Profile cloud backup against a live Supabase project (`identity` PR #43).
+- PRD web fallback when the app is not installed (`https://id.amiro.app/...`).
+
+Each gap becomes a focused QA pass when its hardware or credentials are
+available; device spikes are recorded in the architecture doc rather than
+here.
