@@ -39,7 +39,7 @@ amiro://share?d=<base64url(json)>
 | QR scan | `app/lib/sharing/qr_scan_screen.dart` | camera → `resolveScannedText` |
 | NFC emulate | `packages/nfc` | Android HCE, URI as NDEF text |
 | NFC read | `packages/nfc` | NDEF → first `amiro://` link |
-| Cold/warm deep link | `app/lib/sharing/incoming_share_listener.dart` | `app_links` |
+| Cold/warm deep link | `app/lib/sharing/sharing_providers.dart` (`incomingShareLinkProvider`) | `app_links`; UI in `incoming_share_listener.dart` |
 
 See each package's `README.md` for interfaces; historical design notes remain
 in `docs/superpowers/specs/2026-09-23-nfc-sharing-design.md`.

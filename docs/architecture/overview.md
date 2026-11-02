@@ -19,8 +19,11 @@ only. On today's default branch the product also includes:
 - **Identity cloud backup:** Supabase profile sync (merged in #43).
 
 For up-to-date package ownership, see the repository map in `/README.md` and
-each package's `README.md`. Where this file still says "stub" for store or
-sharing packages, treat **this snapshot** as correct.
+the package `README.md` files under `packages/sharing`, `packages/nfc`,
+`packages/qr`, and `packages/store` (other workspace packages have no
+package-level README — this file and their `pubspec.yaml` are the map).
+Where §1–§10 below still describe foundation-era stubs, treat **this
+snapshot** as correct for what ships today.
 
 # Amiro Architecture (M0 + M1 + thin avatar-render slice)
 
@@ -42,13 +45,14 @@ sharing, 3D avatar, virtual cosmetics store). The foundation pass does
    swappable cosmetic slots) exercising the pipeline — definition JSON →
    render → swap → persist.
 
-Everything NFC/QR/store/backend/purchases-related is a stub package with a
-`README.md` describing its future contract, so package boundaries exist now
-and later milestones fill them in without moving files.
+At foundation time, everything NFC/QR/store/backend/purchases-related was a
+stub package with a `README.md` describing its future contract, so package
+boundaries existed before M3/M4 filled them in without moving files.
 
 ## 2. Explicit non-goals for this pass
 
-- No NFC, no QR generation/scanning (packages exist as empty stubs only).
+- No NFC, no QR generation/scanning in this pass (those packages were empty
+  stubs then; see §11 and the snapshot for what ships now).
 - No backend, no network calls, no auth, no accounts.
 - No purchases/StoreKit/Play Billing.
 - No real cosmetic catalog or store UI — only 2 placeholder cosmetic assets
@@ -71,16 +75,16 @@ amiro/
 │   ├── avatar_core/               # AvatarDefinition model (pure Dart) — data only, no rendering
 │   ├── avatar_renderer/           # Renderer interface + ThermionAvatarRenderer impl
 │   │   └── assets/{avatars,cosmetics}/   # placeholder .glb files live HERE, not at repo root
-│   ├── sharing/  nfc/  qr/  store/       # STUBS — pubspec + README + empty lib only
+│   ├── sharing/  nfc/  qr/  store/       # foundation: stubs; now implemented (see snapshot)
 ├── rust/core/                     # Rust: Identity struct, validation, serde
 ├── docs/
 │   ├── product/requirements.md
 │   ├── architecture/overview.md   # this file
-│   ├── protocols/identity-link.md # stub — not started
+│   ├── protocols/identity-link.md # encounter + legacy share links (implemented)
 │   ├── protocols/avatar-format.md # AvatarDefinition JSON schema (real)
 │   ├── legal/asset-policy.md
 │   ├── legal/third-party-licenses.md
-│   └── qa/test-plan.md            # stub — not started
+│   └── qa/test-plan.md            # CI coverage + manual gaps
 ├── .github/workflows/ci.yml
 ├── pubspec.yaml                   # workspace root: pub `workspace:` list + `melos:` config
 ├── LICENSE (MIT)
@@ -231,8 +235,9 @@ No network calls anywhere in this pass. No data leaves the device.
   iOS has not been attempted — the fixes above were Android-specific
   (Gradle/AGP), and the lighting/camera fix, while platform-agnostic in
   principle, has only been exercised on Android hardware.
-- **`docs/protocols/identity-link.md` and `docs/qa/test-plan.md` are
-  stubs.** Not started.
+- **`docs/protocols/identity-link.md` and `docs/qa/test-plan.md` were
+  stubs at foundation time.** Both are written now (protocol + CI/manual QA
+  scope); see those files and the snapshot above.
 
 ## 8. Risks
 
@@ -277,9 +282,10 @@ pure-Dart packages.
 
 PRD M0 (architecture) fully, M1 (identity) fully, and a thin vertical slice
 of M2 (avatar) — base body + 2 cosmetic slots only, no animation, no camera
-controls. Full M2 (all 18 slots, animation, camera) and everything from M3
-onward (real store, NFC, QR, backend) are deferred and tracked via the stub
-package READMEs.
+controls. Full M2 (all 18 slots, animation, camera) and later PRD scope
+(HTTPS App Links / `id.amiro.app`, server-authoritative scarcity, full
+backend) remain deferred; M3 store and M4 NFC/QR sharing are implemented
+(see snapshot and package READMEs).
 
 ## 11. M4 (Sharing): NFC/QR pass — Task 9 device spike (2026-09-24)
 
