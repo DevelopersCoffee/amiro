@@ -65,16 +65,13 @@ void main() {
   });
 
   group('avatarRarityScore', () {
-    test('is null highest and empty counts when nothing listed is equipped', () {
+    test('is null when nothing listed is equipped', () {
       const definition = AvatarDefinition(id: 'default', body: 'body_superhero_male');
 
-      final score = avatarRarityScore(definition, cosmeticCatalog);
-
-      expect(score.highest, isNull);
-      expect(score.counts, isEmpty);
+      expect(avatarRarityScore(definition, cosmeticCatalog), isNull);
     });
 
-    test('reports the highest equipped tier and per-tier counts', () {
+    test('reports the highest equipped tier', () {
       const definition = AvatarDefinition(
         id: 'default',
         body: 'body_superhero_male',
@@ -82,10 +79,10 @@ void main() {
         top: 'top_placeholder', // common
       );
 
-      final score = avatarRarityScore(definition, cosmeticCatalog);
-
-      expect(score.highest, CosmeticRarity.rare);
-      expect(score.counts, {CosmeticRarity.rare: 1, CosmeticRarity.common: 1});
+      expect(
+        avatarRarityScore(definition, cosmeticCatalog),
+        CosmeticRarity.rare,
+      );
     });
 
     test('ignores an equipped asset id that is not in the catalog', () {
@@ -95,7 +92,7 @@ void main() {
         glasses: 'some_future_unlisted_glasses',
       );
 
-      expect(avatarRarityScore(definition, cosmeticCatalog).highest, isNull);
+      expect(avatarRarityScore(definition, cosmeticCatalog), isNull);
     });
   });
 
