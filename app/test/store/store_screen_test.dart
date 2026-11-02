@@ -6,7 +6,9 @@ import 'package:avatar_core/avatar_core.dart';
 import 'package:avatar_renderer/avatar_renderer.dart';
 import 'package:store/store.dart';
 
+import 'package:amiro_app/avatar/avatar_defaults.dart';
 import 'package:amiro_app/avatar/avatar_providers.dart';
+import 'package:identity_core/identity_core.dart';
 import 'package:amiro_app/identity/identity_providers.dart';
 import 'package:amiro_app/store/store_providers.dart';
 import 'package:amiro_app/store/store_screen.dart';
@@ -19,17 +21,35 @@ import '../identity/in_memory_identity_repository.dart';
 import '../pump_helpers.dart';
 
 /// Matches [_screen]'s default identity (null → male in [resolveAvatarGender]).
-AvatarGender _storeTestGender() => AvatarGender.male;
+AvatarGender _storeTestGender() => resolveAvatarGender(null);
+
+/// [StoreScreen]'s catalog [ListView.separated] builds `2 * rowCount - 1`
+/// sliver children (rows plus separators between them).
+int _storeCatalogSeparatedChildCount(WidgetTester tester) {
+  final listView = tester.widget<ListView>(
+    find.descendant(
+      of: find.byType(StoreScreen),
+      matching: find.byType(ListView),
+    ),
+  );
+  final delegate = listView.childrenDelegate;
+  expect(delegate, isA<SliverChildBuilderDelegate>());
+  return (delegate as SliverChildBuilderDelegate).childCount!;
+}
 
 List<Object> _storeTestRows({Set<String> owned = const {}}) =>
     storeDisplayRows(cosmeticCatalog, owned, _storeTestGender());
 
-Widget _screen(AvatarRenderer renderer, {EntitlementStore? entitlementStore}) {
+Widget _screen(
+  AvatarRenderer renderer, {
+  EntitlementStore? entitlementStore,
+  Identity? identity,
+}) {
   return ProviderScope(
     overrides: [
       avatarRendererProvider.overrideWithValue(renderer),
       identityRepositoryProvider.overrideWithValue(
-        InMemoryIdentityRepository(),
+        InMemoryIdentityRepository(identity),
       ),
       if (entitlementStore != null)
         entitlementStoreProvider.overrideWithValue(entitlementStore),
@@ -43,6 +63,78 @@ Widget _screen(AvatarRenderer renderer, {EntitlementStore? entitlementStore}) {
 
 void main() {
   setUp(resetAvatarLoadChainForTest);
+
+  group('gender-filtered catalog (literal expectations)', () {
+    testWidgets('male identity hides female-fitted hair', (tester) async {
+      useStoreListViewport(tester, storeRowCount: 11);
+      await tester.pumpWidget(
+        _screen(
+          FakeAvatarRenderer(),
+          identity: const Identity(
+            id: 'test',
+            displayName: 'Test',
+            username: 'test',
+            avatarGender: 'male',
+          ),
+        ),
+      );
+      await pumpAfterAvatarLoad(tester);
+
+      expect(find.text('Twin Buns'), findsNothing);
+      for (final name in [
+        'Classic Frame',
+        'Signature Tee',
+        'Clean Part',
+        'Buzz Cut',
+        'Village Tunic',
+        'Village Trousers',
+        'Leather Boots',
+        'Riviera Optics',
+        'Long Flow',
+        'Full Beard',
+      ]) {
+        expect(find.text(name), findsOneWidget, reason: name);
+      }
+      expect(find.text('Series #1 · Founders'), findsOneWidget);
+      expect(_storeCatalogSeparatedChildCount(tester), 2 * 11 - 1);
+    });
+
+    testWidgets('female identity hides male-fitted hair and beards', (
+      tester,
+    ) async {
+      useStoreListViewport(tester, storeRowCount: 9);
+      await tester.pumpWidget(
+        _screen(
+          FakeAvatarRenderer(),
+          identity: const Identity(
+            id: 'test',
+            displayName: 'Test',
+            username: 'test',
+            avatarGender: 'female',
+          ),
+        ),
+      );
+      await pumpAfterAvatarLoad(tester);
+
+      for (final name in ['Clean Part', 'Buzz Cut', 'Full Beard']) {
+        expect(find.text(name), findsNothing, reason: name);
+      }
+      for (final name in [
+        'Classic Frame',
+        'Signature Tee',
+        'Twin Buns',
+        'Village Tunic',
+        'Village Trousers',
+        'Leather Boots',
+        'Riviera Optics',
+        'Long Flow',
+      ]) {
+        expect(find.text(name), findsOneWidget, reason: name);
+      }
+      expect(find.text('Series #1 · Founders'), findsOneWidget);
+      expect(_storeCatalogSeparatedChildCount(tester), 2 * 9 - 1);
+    });
+  });
 
   testWidgets('lists every catalog item with buy affordance or owned state', (
     tester,
