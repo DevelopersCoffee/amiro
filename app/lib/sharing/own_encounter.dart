@@ -5,6 +5,8 @@ import 'package:identity_core/identity_core.dart';
 import 'package:sharing/sharing.dart';
 import 'package:store/store.dart';
 
+import 'encounter_share_options.dart';
+
 /// The identity card the user shows others, as the canonical
 /// [AmiroSharingPayload]: who they are, what they have equipped, how far
 /// through each series they are. Null until they have an avatar to show.
@@ -16,6 +18,7 @@ AmiroSharingPayload? buildOwnEncounterPayload({
   required Identity identity,
   required AvatarDefinition? definition,
   required Set<String> purchasedIds,
+  EncounterShareOptions shareOptions = EncounterShareOptions.defaults,
 }) {
   final persisted = identity.avatarDefinitionJson;
   final AvatarDefinition equipped;
@@ -36,35 +39,42 @@ AmiroSharingPayload? buildOwnEncounterPayload({
     return null;
   }
 
-  final byAssetId = {for (final item in cosmeticCatalog) item.assetId: item};
-  final json = equipped.toJson();
   final cosmetics = <EquippedCosmeticInfo>[];
-  for (final slot in AvatarDefinition.slots) {
-    final listing = byAssetId[json[slot]];
-    if (listing == null) continue;
-    cosmetics.add(
-      EquippedCosmeticInfo(
-        id: listing.id,
-        name: listing.name,
-        seriesId: listing.series?.id,
-        rarity: listing.rarity.wireName,
-      ),
-    );
+  if (shareOptions.includeEquippedCosmetics) {
+    final byAssetId = {for (final item in cosmeticCatalog) item.assetId: item};
+    final json = equipped.toJson();
+    for (final slot in AvatarDefinition.slots) {
+      final listing = byAssetId[json[slot]];
+      if (listing == null) continue;
+      cosmetics.add(
+        EquippedCosmeticInfo(
+          id: listing.id,
+          name: listing.name,
+          seriesId: listing.series?.id,
+          rarity: listing.rarity.wireName,
+        ),
+      );
+    }
   }
+
+  final collectionCompletion = shareOptions.includeCollectionProgress
+      ? [
+          for (final progress
+              in collectionProgress(cosmeticCatalog, purchasedIds))
+            SeriesCompletion(
+              seriesId: progress.series.id,
+              currentCount: progress.owned,
+              totalCount: progress.total,
+            ),
+        ]
+      : <SeriesCompletion>[];
 
   return AmiroSharingPayload(
     remoteIdentityId: identity.id,
     displayName: identity.displayName,
     activeAvatarConfig: config,
     equippedCosmetics: cosmetics,
-    collectionCompletion: [
-      for (final progress in collectionProgress(cosmeticCatalog, purchasedIds))
-        SeriesCompletion(
-          seriesId: progress.series.id,
-          currentCount: progress.owned,
-          totalCount: progress.total,
-        ),
-    ],
+    collectionCompletion: collectionCompletion,
   );
 }
 
@@ -99,11 +109,13 @@ String? buildOwnEncounterUri({
   required Identity identity,
   required AvatarDefinition? definition,
   required Set<String> purchasedIds,
+  EncounterShareOptions shareOptions = EncounterShareOptions.defaults,
 }) {
   final payload = buildOwnEncounterPayload(
     identity: identity,
     definition: definition,
     purchasedIds: purchasedIds,
+    shareOptions: shareOptions,
   );
   if (payload == null) return null;
 

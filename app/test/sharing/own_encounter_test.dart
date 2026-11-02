@@ -6,6 +6,7 @@ import 'package:avatar_core/avatar_core.dart';
 import 'package:identity_core/identity_core.dart';
 import 'package:sharing/sharing.dart';
 
+import 'package:amiro_app/sharing/encounter_share_options.dart';
 import 'package:amiro_app/sharing/own_encounter.dart';
 
 void main() {
@@ -61,11 +62,24 @@ void main() {
       },
     );
 
-    test('reports series completion from purchases', () {
+    test('omits collection progress by default', () {
       final payload = buildOwnEncounterPayload(
         identity: identity,
         definition: definition,
         purchasedIds: const {'riviera_optics'},
+      )!;
+
+      expect(payload.collectionCompletion, isEmpty);
+    });
+
+    test('reports series completion from purchases when opted in', () {
+      final payload = buildOwnEncounterPayload(
+        identity: identity,
+        definition: definition,
+        purchasedIds: const {'riviera_optics'},
+        shareOptions: const EncounterShareOptions(
+          includeCollectionProgress: true,
+        ),
       )!;
 
       final series = payload.collectionCompletion.singleWhere(

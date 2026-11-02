@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,7 +13,9 @@ import 'package:amiro_app/avatar/avatar_providers.dart';
 import 'package:amiro_app/identity/identity_providers.dart';
 import 'package:amiro_app/identity/identity_edit_screen.dart';
 import 'package:amiro_app/sharing/identity_card.dart';
+import 'package:amiro_app/sharing/encounter_share_options.dart';
 import 'package:amiro_app/sharing/share_screen.dart';
+import 'package:amiro_app/sharing/sharing_preferences_providers.dart';
 import 'package:amiro_app/sharing/sharing_providers.dart'
     show nfcEmulatorProvider;
 import 'package:amiro_app/store/store_providers.dart';
@@ -39,8 +43,14 @@ Widget _screen(
   FakeAvatarRenderer? renderer,
   EntitlementStore? entitlements,
 }) {
+  final sharePrefs = EncounterSharePreferences(
+    File(
+      '${Directory.systemTemp.path}/enc_share_${DateTime.now().microsecondsSinceEpoch}.json',
+    ),
+  );
   return ProviderScope(
     overrides: [
+      encounterSharePreferencesProvider.overrideWithValue(sharePrefs),
       identityRepositoryProvider.overrideWithValue(
         InMemoryIdentityRepository(identity),
       ),
@@ -94,9 +104,7 @@ void main() {
     expect(find.byType(ColoredBox), findsWidgets); // the fake renderer's view
   });
 
-  testWidgets('the card shows the equipped rare item and series progress', (
-    tester,
-  ) async {
+  testWidgets('the card shows the equipped rare item', (tester) async {
     tester.view.physicalSize = const Size(800, 2600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -109,22 +117,14 @@ void main() {
         glasses: 'glasses_realistic', // Riviera Optics, Rare, Series #1
       ),
     );
-    final entitlements = InMemoryEntitlementStore();
-    await entitlements.grant('riviera_optics');
 
     await tester.pumpWidget(
-      _screen(
-        NoopNfcEmulator(),
-        identity,
-        renderer: renderer,
-        entitlements: entitlements,
-      ),
+      _screen(NoopNfcEmulator(), identity, renderer: renderer),
     );
     await pumpUntilFound(tester, find.byKey(const Key('shareQrCode')));
 
     expect(find.text('Riviera Optics'), findsOneWidget);
     expect(find.text('Rare'), findsOneWidget);
-    expect(find.text('1 / 3'), findsOneWidget);
   });
 
   testWidgets('shows NFC section when the emulator can emulate', (

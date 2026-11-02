@@ -14,11 +14,15 @@ import '../avatar/avatar_providers.dart';
 import '../avatar/avatar_viewport_placeholder.dart';
 import '../identity/identity_providers.dart';
 import '../store/store_providers.dart';
+import '../theme/amiro_card.dart';
 import '../theme/empty_state.dart';
+import '../theme/section_label.dart';
 import 'identity_card.dart';
 import 'nfc_receive_screen.dart';
 import 'own_encounter.dart';
 import 'qr_scan_screen.dart';
+import 'encounter_share_options.dart';
+import 'sharing_preferences_providers.dart';
 import 'sharing_providers.dart';
 
 class ShareScreen extends ConsumerStatefulWidget {
@@ -126,6 +130,9 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
     final identityAsync = ref.watch(currentIdentityProvider);
     final emulator = ref.watch(nfcEmulatorProvider);
     final owned = ref.watch(ownedCosmeticsProvider).value ?? const <String>{};
+    final shareOptions =
+        ref.watch(encounterShareOptionsProvider).value ??
+        EncounterShareOptions.defaults;
     final renderer = ref.watch(avatarRendererProvider);
     final scene = ref.watch(avatarSceneDefinitionProvider);
 
@@ -181,6 +188,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
             identity: shown,
             definition: definition,
             purchasedIds: owned,
+            shareOptions: shareOptions,
           );
           if (payload == null) {
             if (!_avatarReady) {
@@ -196,11 +204,55 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
             identity: shown,
             definition: definition,
             purchasedIds: owned,
+            shareOptions: shareOptions,
           );
 
           return ListView(
             padding: const EdgeInsets.all(24),
             children: [
+              AmiroCard(
+                child: Material(
+                  color: Colors.transparent,
+                  child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SectionLabel('WHAT TO SHARE'),
+                    SwitchListTile(
+                      key: const Key('shareEquippedCosmeticsToggle'),
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Equipped cosmetics on card'),
+                      value: shareOptions.includeEquippedCosmetics,
+                      onChanged: (value) {
+                        ref
+                            .read(encounterShareOptionsProvider.notifier)
+                            .saveOptions(
+                              shareOptions.copyWith(
+                                includeEquippedCosmetics: value,
+                              ),
+                            );
+                      },
+                    ),
+                    SwitchListTile(
+                      key: const Key('shareCollectionProgressToggle'),
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Collection progress'),
+                      subtitle: const Text('Self-reported series counts'),
+                      value: shareOptions.includeCollectionProgress,
+                      onChanged: (value) {
+                        ref
+                            .read(encounterShareOptionsProvider.notifier)
+                            .saveOptions(
+                              shareOptions.copyWith(
+                                includeCollectionProgress: value,
+                              ),
+                            );
+                      },
+                    ),
+                  ],
+                ),
+                ),
+              ),
+              const SizedBox(height: 16),
               IdentityCard(
                 payload: payload,
                 avatar: const SizedBox(
