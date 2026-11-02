@@ -12,6 +12,7 @@ test('constantTimeEqual rejects unequal strings', () => {
   assert.equal(constantTimeEqual('abc', 'abc'), true);
   assert.equal(constantTimeEqual('', undefined), false);
   assert.equal(constantTimeEqual(undefined, ''), false);
+  assert.equal(constantTimeEqual('a', 'aa'), false);
 });
 
 test('verifyRevenueCatWebhookSignature accepts valid HMAC', async () => {
