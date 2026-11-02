@@ -5,10 +5,14 @@ writes them to Supabase. See `TODOS.md` #15 for the full picture of what's
 wired up and what's still pending (Play Console products, RC↔Play service
 account link, iOS).
 
-The Flutter app never talks to this Worker or to Supabase directly — it
-trusts the RevenueCat SDK's own on-device `CustomerInfo` cache. This Worker
-exists purely as a server-side audit trail (support, fraud review, restoring
-purchase history if the SDK cache is ever lost).
+The Flutter app never calls this Worker. Entitlements on-device come from
+the RevenueCat SDK's `CustomerInfo` cache
+(`packages/store/lib/src/revenuecat_entitlement_store.dart`). Since #43 the
+app **does** talk to the same Supabase project for optional **profile**
+backup/restore (`SupabaseProfileCloud` in `app/lib/identity/`), using the
+public anon key and row-level security — not this Worker's service-role
+path. This Worker exists for purchase-event audit (support, fraud review,
+restoring purchase history if the SDK cache is ever lost).
 
 ## Request flow
 

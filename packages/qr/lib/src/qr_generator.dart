@@ -9,7 +9,8 @@ const _brass = Color(0xFFC08A3E);
 
 /// Renders [data] as a scannable QR code on a brass-framed cream card. Used
 /// for the identity share URI — [data] is expected to already be the full
-/// `amiro://share?d=...` URI, not raw profile data.
+/// `amiro://encounter?...` (or legacy `amiro://share?d=...`) URI, not raw
+/// profile JSON.
 ///
 /// [size] is the code itself; the card adds padding around it.
 Widget buildQrWidget(String data, {double size = 240}) {
