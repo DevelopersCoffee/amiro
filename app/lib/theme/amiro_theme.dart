@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Tokens from DESIGN.md. Keep values in sync with its front matter.
 abstract final class AmiroColors {
@@ -63,8 +62,12 @@ TextStyle amiroMono(BuildContext context) =>
     Theme.of(context).extension<AmiroTypography>()?.mono ??
     const TextStyle(fontFeatures: [FontFeature.tabularFigures()]);
 
-/// [loadFonts] fetches Instrument Sans/Serif at runtime; tests pass false.
+/// Bundled Instrument Sans/Serif and JetBrains Mono (see app/pubspec.yaml).
+/// [loadFonts] false in tests uses the platform fallback.
 ThemeData buildAmiroTheme({bool loadFonts = true}) {
+  const sansFamily = 'Instrument Sans';
+  const serifFamily = 'Instrument Serif';
+  const monoFamily = 'JetBrains Mono';
   const scheme = ColorScheme.dark(
     primary: AmiroColors.primary,
     onPrimary: AmiroColors.onPrimary,
@@ -80,11 +83,9 @@ ThemeData buildAmiroTheme({bool loadFonts = true}) {
     displayColor: AmiroColors.text,
   );
   if (loadFonts) {
-    textTheme = GoogleFonts.instrumentSansTextTheme(textTheme).copyWith(
-      headlineSmall: GoogleFonts.instrumentSerif(
-        textStyle: textTheme.headlineSmall,
-      ),
-      titleLarge: GoogleFonts.instrumentSerif(textStyle: textTheme.titleLarge),
+    textTheme = textTheme.apply(fontFamily: sansFamily).copyWith(
+      headlineSmall: textTheme.headlineSmall?.copyWith(fontFamily: serifFamily),
+      titleLarge: textTheme.titleLarge?.copyWith(fontFamily: serifFamily),
     );
   }
 
@@ -92,7 +93,9 @@ ThemeData buildAmiroTheme({bool loadFonts = true}) {
     fontWeight: FontWeight.w600,
     fontFeatures: [FontFeature.tabularFigures()],
   );
-  if (loadFonts) mono = GoogleFonts.jetBrainsMono(textStyle: mono);
+  if (loadFonts) {
+    mono = mono.copyWith(fontFamily: monoFamily);
+  }
 
   return ThemeData(
     extensions: [AmiroTypography(mono: mono)],
