@@ -97,12 +97,34 @@ export async function handleCrash(
   return new Response('ok', { status: 200 });
 }
 
+function webhookSecretsConfigured(env: Env): boolean {
+  const auth =
+    env.WEBHOOK_AUTHORIZATION != null &&
+    env.WEBHOOK_AUTHORIZATION.length > 0;
+  const signing =
+    env.WEBHOOK_SIGNING_SECRET != null &&
+    env.WEBHOOK_SIGNING_SECRET.length > 0;
+  return auth || signing;
+}
+
 export async function verifyWebhookRequest(
   request: Request,
   env: Env,
   pathToken: string,
-  rawBody: string,
+  rawBodyBytes: Uint8Array,
 ): Promise<Response | null> {
+  const configuredPath =
+    env.WEBHOOK_PATH_TOKEN != null && env.WEBHOOK_PATH_TOKEN.length > 0;
+  if (!configuredPath) {
+    console.error('WEBHOOK_PATH_TOKEN is not configured');
+    return new Response('Webhook not configured', { status: 500 });
+  }
+  if (!webhookSecretsConfigured(env)) {
+    console.error(
+      'Neither WEBHOOK_AUTHORIZATION nor WEBHOOK_SIGNING_SECRET is configured',
+    );
+    return new Response('Webhook not configured', { status: 500 });
+  }
   if (!constantTimeEqual(pathToken, env.WEBHOOK_PATH_TOKEN)) {
     return new Response('Not found', { status: 404 });
   }
@@ -115,7 +137,7 @@ export async function verifyWebhookRequest(
   if (env.WEBHOOK_SIGNING_SECRET) {
     const ok = await verifyRevenueCatWebhookSignature(
       request.headers.get('X-RevenueCat-Webhook-Signature'),
-      rawBody,
+      rawBodyBytes,
       env.WEBHOOK_SIGNING_SECRET,
     );
     if (!ok) {
@@ -137,12 +159,13 @@ export default {
       return new Response('Method not allowed', { status: 405 });
     }
 
-    const rawBody = await request.text();
+    const rawBodyBytes = new Uint8Array(await request.arrayBuffer());
+    const rawBody = new TextDecoder().decode(rawBodyBytes);
     const authFailure = await verifyWebhookRequest(
       request,
       env,
       pathToken,
-      rawBody,
+      rawBodyBytes,
     );
     if (authFailure) {
       return authFailure;

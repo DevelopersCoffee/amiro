@@ -10,6 +10,8 @@ import {
 test('constantTimeEqual rejects unequal strings', () => {
   assert.equal(constantTimeEqual('abc', 'abd'), false);
   assert.equal(constantTimeEqual('abc', 'abc'), true);
+  assert.equal(constantTimeEqual('', undefined), false);
+  assert.equal(constantTimeEqual(undefined, ''), false);
 });
 
 test('verifyRevenueCatWebhookSignature accepts valid HMAC', async () => {
@@ -19,7 +21,12 @@ test('verifyRevenueCatWebhookSignature accepts valid HMAC', async () => {
   const signature = await hmacSha256Hex(secret, `${timestamp}.${body}`);
   const header = `t=${timestamp},v1=${signature}`;
 
-  const ok = await verifyRevenueCatWebhookSignature(header, body, secret, 999999999);
+  const ok = await verifyRevenueCatWebhookSignature(
+    header,
+    new TextEncoder().encode(body),
+    secret,
+    999999999,
+  );
   assert.equal(ok, true);
 });
 
@@ -32,9 +39,25 @@ test('verifyRevenueCatWebhookSignature rejects tampered body', async () => {
 
   const ok = await verifyRevenueCatWebhookSignature(
     header,
-    '{"event":{"id":"2"}}',
+    new TextEncoder().encode('{"event":{"id":"2"}}'),
     secret,
     999999999,
+  );
+  assert.equal(ok, false);
+});
+
+test('verifyRevenueCatWebhookSignature rejects timestamps outside skew window', async () => {
+  const body = '{"event":{"id":"1"}}';
+  const secret = 'test-signing-secret';
+  const timestamp = '1700000000';
+  const signature = await hmacSha256Hex(secret, `${timestamp}.${body}`);
+  const header = `t=${timestamp},v1=${signature}`;
+
+  const ok = await verifyRevenueCatWebhookSignature(
+    header,
+    new TextEncoder().encode(body),
+    secret,
+    300,
   );
   assert.equal(ok, false);
 });

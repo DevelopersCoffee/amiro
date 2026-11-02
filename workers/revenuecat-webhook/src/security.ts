@@ -1,4 +1,13 @@
-export function constantTimeEqual(a: string, b: string): boolean {
+export function constantTimeEqual(
+  a: string | undefined | null,
+  b: string | undefined | null,
+): boolean {
+  if (a == null || b == null) {
+    return false;
+  }
+  if (typeof a !== 'string' || typeof b !== 'string') {
+    return false;
+  }
   const enc = new TextEncoder();
   const left = enc.encode(a);
   const right = enc.encode(b);
@@ -12,7 +21,10 @@ export function constantTimeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-export async function hmacSha256Hex(key: string, message: string): Promise<string> {
+export async function hmacSha256Hex(
+  key: string,
+  message: string | Uint8Array,
+): Promise<string> {
   const enc = new TextEncoder();
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
@@ -21,7 +33,8 @@ export async function hmacSha256Hex(key: string, message: string): Promise<strin
     false,
     ['sign'],
   );
-  const signature = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(message));
+  const data = typeof message === 'string' ? enc.encode(message) : message;
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, data);
   return [...new Uint8Array(signature)]
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
@@ -44,7 +57,7 @@ export function parseRevenueCatSignature(
 
 export async function verifyRevenueCatWebhookSignature(
   header: string | null,
-  rawBody: string,
+  rawBody: Uint8Array,
   signingSecret: string,
   maxSkewSeconds = 300,
 ): Promise<boolean> {
@@ -54,6 +67,11 @@ export async function verifyRevenueCatWebhookSignature(
   if (!Number.isFinite(ts)) return false;
   const now = Math.floor(Date.now() / 1000);
   if (Math.abs(now - ts) > maxSkewSeconds) return false;
-  const expected = await hmacSha256Hex(signingSecret, `${parsed.timestamp}.${rawBody}`);
+  const enc = new TextEncoder();
+  const prefix = enc.encode(`${parsed.timestamp}.`);
+  const message = new Uint8Array(prefix.length + rawBody.length);
+  message.set(prefix);
+  message.set(rawBody, prefix.length);
+  const expected = await hmacSha256Hex(signingSecret, message);
   return constantTimeEqual(expected, parsed.signature);
 }
