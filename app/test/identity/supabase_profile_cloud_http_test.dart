@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:amiro_app/identity/cloud_backup_preferences.dart';
+import 'package:amiro_app/identity/profile_cloud.dart';
 import 'package:amiro_app/identity/profile_secrets_store.dart';
 import 'package:amiro_app/identity/secret_storage.dart';
 import 'package:amiro_app/identity/supabase_profile_cloud.dart';
@@ -90,7 +91,21 @@ void main() {
     expect(harness.requestCount, afterDelete);
   });
 
-  test('revokeBackup fails when DELETE matches zero rows', () async {
+  test('revokeBackup succeeds when backup on but server has no profile row', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    final built = await harness.buildCloud(enabled: true);
+    expect(await built.secrets.readSessionJson(), isNotNull);
+
+    final result = await built.cloud.revokeBackup(
+      identityId: 'never-pushed',
+    );
+    expect(result.success, isTrue);
+    expect(await built.secrets.readSessionJson(), isNull);
+  });
+
+  test('revokeBackup fails when DELETE matches zero rows but row still visible', () async {
     final harness = await _FakeSupabaseHarness.start();
     addTearDown(harness.close);
     harness.deleteReturnsEmpty = true;
@@ -106,6 +121,27 @@ void main() {
     final result = await built.cloud.revokeBackup(identityId: 'id-zero');
     expect(result.success, isFalse);
     expect(result.userMessage, isNotNull);
+    expect(await built.secrets.readSessionJson(), isNotNull);
+  });
+
+  test('X7: failed revoke does not clear credentials', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+    harness.deleteReturnsEmpty = true;
+
+    final built = await harness.buildCloud(enabled: true);
+    await built.cloud.push(
+      const Identity(id: 'id-x7', displayName: 'X', username: 'x'),
+    );
+    await built.secrets.writeRecoveryCode('recovery-secret');
+    final sessionBefore = await built.secrets.readSessionJson();
+
+    expect(
+      (await built.cloud.revokeBackup(identityId: 'id-x7')).success,
+      isFalse,
+    );
+    expect(await built.secrets.readSessionJson(), sessionBefore);
+    expect(await built.cloud.recoveryCode(), 'recovery-secret');
   });
 
   test('revokeBackup clears credentials after a successful DELETE', () async {
@@ -139,6 +175,29 @@ void main() {
     expect(harness.anonymousSignupCount, 0);
   });
 
+  test('dead refresh token (400) starts a new anonymous session', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+    harness.refreshStatusCode = 400;
+    harness.refreshBody = jsonEncode({
+      'error': 'invalid_grant',
+      'error_description': 'refresh_token_not_found',
+    });
+
+    final built = await harness.buildCloud(
+      enabled: true,
+      sessionExpiresAt: DateTime.now().subtract(const Duration(minutes: 5)),
+    );
+
+    expect(
+      await built.cloud.push(
+        const Identity(id: 'id-new', displayName: 'N', username: 'n'),
+      ),
+      isTrue,
+    );
+    expect(harness.anonymousSignupCount, 1);
+  });
+
   test('N7: revokeBackup DELETE filters by identity_id', () async {
     final harness = await _FakeSupabaseHarness.start();
     addTearDown(harness.close);
@@ -160,6 +219,50 @@ void main() {
       harness.lastDeleteUri!.queryParameters['identity_id'],
       'eq.id-filter',
     );
+  });
+
+  test('X3: revokeBackup sends Prefer return=representation on DELETE', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    final built = await harness.buildCloud(enabled: true);
+    await built.cloud.push(
+      const Identity(id: 'id-prefer', displayName: 'P', username: 'p'),
+    );
+    await built.cloud.revokeBackup(identityId: 'id-prefer');
+    expect(harness.lastDeletePrefer, 'return=representation');
+  });
+
+  test('X2: revoke fails when a profile row is still visible after zero DELETE', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+    harness.deleteReturnsEmpty = true;
+
+    final built = await harness.buildCloud(enabled: true);
+    await built.cloud.push(
+      const Identity(id: 'id-vis', displayName: 'V', username: 'v'),
+    );
+
+    final result = await built.cloud.revokeBackup();
+    expect(result.success, isFalse);
+  });
+
+  test('revoke succeeds on retry when row was already deleted', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    final built = await harness.buildCloud(enabled: true);
+    await built.cloud.push(
+      const Identity(id: 'id-retry', displayName: 'R', username: 'r'),
+    );
+    expect(
+      (await built.cloud.revokeBackup(identityId: 'id-retry')).success,
+      isTrue,
+    );
+    harness.profileRows.clear();
+
+    final retry = await built.cloud.revokeBackup(identityId: 'id-retry');
+    expect(retry.success, isTrue);
   });
 
   test('N9: revoke without cloud support does not issue HTTP', () async {
@@ -185,6 +288,18 @@ void main() {
     expect(harness.deleteCount, 0);
     expect(harness.requestCount, 0);
   });
+
+  test('claim returns null on bad code but throws on 503', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+    harness.claimStatusCode = 503;
+
+    final built = await harness.buildCloud(enabled: true);
+    await expectLater(
+      built.cloud.claim('1234567890123456'),
+      throwsA(isA<SessionRefreshFailure>()),
+    );
+  });
 }
 
 class _FakeSupabaseHarness {
@@ -196,9 +311,13 @@ class _FakeSupabaseHarness {
   int deleteCount = 0;
   bool deleteReturnsEmpty = false;
   int refreshStatusCode = 401;
+  String refreshBody = '';
   int anonymousSignupCount = 0;
+  int claimStatusCode = 200;
   Uri? lastDeleteUri;
+  String? lastDeletePrefer;
   Map<String, dynamic>? lastProfileInsert;
+  final List<Map<String, dynamic>> profileRows = [];
 
   static Future<_FakeSupabaseHarness> start() async {
     final server = await HttpServer.bind('127.0.0.1', 0);
@@ -257,15 +376,37 @@ class _FakeSupabaseHarness {
     final path = request.uri.path;
     if (path == '/rest/v1/profiles' && request.method == 'GET') {
       request.response.statusCode = 200;
-      request.response.write('[]');
+      if (request.uri.queryParameters['select'] == 'identity_id') {
+        if (profileRows.isEmpty) {
+          request.response.write('[]');
+        } else {
+          request.response.write(
+            jsonEncode([
+              for (final row in profileRows)
+                {'identity_id': row['identity_id']},
+            ]),
+          );
+        }
+      } else {
+        request.response.write(
+          jsonEncode([
+            for (final row in profileRows) {'payload': row['payload']},
+          ]),
+        );
+      }
     } else if (path == '/rest/v1/profiles' && request.method == 'POST') {
       final body = await utf8.decoder.bind(request).join();
       final decoded = jsonDecode(body);
+      Map<String, dynamic> row;
       if (decoded is List && decoded.isNotEmpty) {
-        lastProfileInsert = Map<String, dynamic>.from(decoded.first as Map);
+        row = Map<String, dynamic>.from(decoded.first as Map);
       } else if (decoded is Map) {
-        lastProfileInsert = Map<String, dynamic>.from(decoded);
+        row = Map<String, dynamic>.from(decoded);
+      } else {
+        row = {};
       }
+      lastProfileInsert = row;
+      profileRows.add(row);
       request.response.statusCode = 201;
       request.response.write('[]');
     } else if (path == '/rest/v1/profiles' && request.method == 'PATCH') {
@@ -277,6 +418,13 @@ class _FakeSupabaseHarness {
     } else if (path == '/rest/v1/profiles' && request.method == 'DELETE') {
       deleteCount += 1;
       lastDeleteUri = request.uri;
+      lastDeletePrefer = request.headers.value('prefer');
+      if (!deleteReturnsEmpty) {
+        final idFilter = request.uri.queryParameters['identity_id'];
+        profileRows.removeWhere(
+          (row) => idFilter == 'eq.${row['identity_id']}',
+        );
+      }
       if (deleteReturnsEmpty) {
         request.response.statusCode = 200;
         request.response.write('[]');
@@ -286,6 +434,9 @@ class _FakeSupabaseHarness {
       }
     } else if (path.startsWith('/auth/v1/token')) {
       request.response.statusCode = refreshStatusCode;
+      if (refreshBody.isNotEmpty) {
+        request.response.write(refreshBody);
+      }
     } else if (path == '/auth/v1/signup') {
       anonymousSignupCount += 1;
       request.response.statusCode = 201;
@@ -297,6 +448,9 @@ class _FakeSupabaseHarness {
           'user': {'id': 'new-user'},
         }),
       );
+    } else if (path == '/rest/v1/rpc/join_profile') {
+      request.response.statusCode = claimStatusCode;
+      request.response.write('null');
     } else {
       request.response.statusCode = 404;
     }

@@ -1,5 +1,21 @@
 import 'package:identity_core/identity_core.dart';
 
+/// Thrown when Supabase session refresh or a transient cloud call fails.
+/// Only [isAuthFailure] may start a new anonymous session.
+class SessionRefreshFailure implements Exception {
+  SessionRefreshFailure(this.statusCode);
+
+  final int statusCode;
+
+  /// Supabase returns 400 for dead refresh tokens; treat all 4xx except
+  /// 408/429 as auth failures. 5xx and rate-limit responses stay transient.
+  bool get isAuthFailure {
+    if (statusCode >= 500) return false;
+    if (statusCode == 408 || statusCode == 429) return false;
+    return statusCode >= 400 && statusCode < 500;
+  }
+}
+
 /// Outcome of removing the server-side profile backup row.
 class RevokeBackupResult {
   const RevokeBackupResult._({required this.success, this.userMessage});

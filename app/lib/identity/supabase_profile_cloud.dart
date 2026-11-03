@@ -107,30 +107,35 @@ class SupabaseProfileCloud implements ProfileCloud {
     try {
       final session = await _ensureSession();
       final id = identityId ?? await _primaryIdentityId(session);
-      if (id == null) {
-        return const RevokeBackupResult.failed(_revokeZeroRowsMessage);
+      if (id != null) {
+        final response = await _send(
+          method: 'DELETE',
+          uri: _rest('profiles').replace(
+            queryParameters: {'identity_id': 'eq.$id'},
+          ),
+          headers: {
+            ..._userHeaders(session),
+            'Prefer': 'return=representation',
+          },
+        );
+        final deletedCount = _deletedRowCount(response);
+        if (response.status >= 200 &&
+            response.status < 300 &&
+            deletedCount > 0) {
+          await secrets.clearCloudBackupCredentials();
+          return const RevokeBackupResult.ok();
+        }
+        if (response.status < 200 || response.status >= 300) {
+          return const RevokeBackupResult.failed();
+        }
+        // Zero rows: re-select below — row may still exist (member device).
       }
-      final response = await _send(
-        method: 'DELETE',
-        uri: _rest('profiles').replace(
-          queryParameters: {'identity_id': 'eq.$id'},
-        ),
-        headers: {
-          ..._userHeaders(session),
-          'Prefer': 'return=representation',
-        },
-      );
-      final deletedCount = _deletedRowCount(response);
-      if (response.status >= 200 &&
-          response.status < 300 &&
-          deletedCount > 0) {
+      final visible = await _selectPayloads(session);
+      if (visible.isEmpty) {
         await secrets.clearCloudBackupCredentials();
         return const RevokeBackupResult.ok();
       }
-      if (response.status >= 200 && response.status < 300) {
-        return const RevokeBackupResult.failed(_revokeZeroRowsMessage);
-      }
-      return const RevokeBackupResult.failed();
+      return const RevokeBackupResult.failed(_revokeZeroRowsMessage);
     } catch (_) {
       return const RevokeBackupResult.failed();
     }
@@ -175,15 +180,25 @@ class SupabaseProfileCloud implements ProfileCloud {
         headers: _userHeaders(session),
         body: jsonEncode({'p_code': trimmed}),
       );
+      if (_isTransientHttpStatus(response.status)) {
+        throw SessionRefreshFailure(response.status);
+      }
       if (response.status < 200 || response.status >= 300) return null;
       if (response.body.isEmpty || response.body == 'null') return null;
       final identity = identityFromCloudPayload(jsonDecode(response.body));
       if (identity == null) return null;
       await secrets.writeRecoveryCode(trimmed);
       return identity;
+    } on SessionRefreshFailure {
+      rethrow;
     } catch (_) {
       return null;
     }
+  }
+
+  static bool _isTransientHttpStatus(int status) {
+    if (status >= 500) return true;
+    return status == 408 || status == 429;
   }
 
   Future<bool> _insertProfile({
@@ -410,16 +425,6 @@ class SupabaseProfileCloud implements ProfileCloud {
       client.close();
     }
   }
-}
-
-/// Thrown when Supabase session refresh fails. Only [isAuthFailure] may start
-/// a new anonymous session; transient errors must not replace the user id.
-class SessionRefreshFailure implements Exception {
-  SessionRefreshFailure(this.statusCode);
-
-  final int statusCode;
-
-  bool get isAuthFailure => statusCode == 401 || statusCode == 403;
 }
 
 class _Session {

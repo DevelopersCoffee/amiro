@@ -62,7 +62,21 @@ void main() {
     expect(amiroRootTabStoreScreenForIndex(2), isA<StoreScreen>());
   });
 
-  testWidgets('R3b: AmiroRootTabs at launch does not configure RevenueCat', (
+  test('R3b: production tab list wires deferred store slot', () {
+    final source = File('lib/app.dart').readAsStringSync();
+    expect(source, contains('const IdentityEditScreen()'));
+    expect(source, contains('amiroRootTabStoreScreenForIndex(_index)'));
+    expect(
+      source,
+      isNot(
+        contains(
+          'const AvatarScreen(),\n            const StoreScreen(isActive:',
+        ),
+      ),
+    );
+  });
+
+  testWidgets('R3b: production AmiroRootTabs keeps Store unmounted at launch', (
     tester,
   ) async {
     useTallTestViewport(tester);
@@ -84,27 +98,18 @@ void main() {
           nfcReader: _SilentNfcReader(),
         ),
         child: const MaterialApp(
-          home: AmiroRootTabs(
-            omitThermionOverlayForTest: true,
-            lightweightTabsForTest: true,
-          ),
+          home: AmiroRootTabs(omitThermionOverlayForTest: true),
         ),
       ),
     );
     await tester.pump();
-    await pumpShort(tester, frames: 6);
+    await pumpShort(tester, frames: 8);
 
-    expect(
-      find.byType(StoreScreen),
-      findsNothing,
-      reason: 'Store tab must stay unmounted at launch (R3b)',
-    );
+    expect(find.byType(StoreScreen), findsNothing);
     expect(
       purchasesCalls.where((c) => c.method == 'setupPurchases'),
       isEmpty,
-      reason: 'Real AmiroRootTabs must not configure RevenueCat at launch (R3b)',
     );
-    expect(find.text('Identity'), findsOneWidget);
 
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
     await tester.pump();

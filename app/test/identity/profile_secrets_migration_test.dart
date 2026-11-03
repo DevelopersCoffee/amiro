@@ -86,6 +86,34 @@ void main() {
     expect(await File('${dir.path}/supabase_session.json').exists(), isTrue);
   });
 
+  test('M1: migrateFromLegacyPlaintext deletes session legacy file in one call', () async {
+    final dir = await Directory.systemTemp.createTemp('amiro_secrets_m1');
+    addTearDown(() => dir.delete(recursive: true));
+    await File('${dir.path}/supabase_session.json').writeAsString('{"x":1}');
+
+    final store = ProfileSecretsStore(
+      legacyDirectory: dir,
+      secureStorage: InMemorySecretStorage(),
+    );
+    await store.migrateFromLegacyPlaintext();
+    expect(await File('${dir.path}/supabase_session.json').exists(), isFalse);
+    expect(await store.readSessionJson(), isNotNull);
+  });
+
+  test('M2: migrateFromLegacyPlaintext deletes recovery legacy file in one call', () async {
+    final dir = await Directory.systemTemp.createTemp('amiro_secrets_m2');
+    addTearDown(() => dir.delete(recursive: true));
+    await File('${dir.path}/profile_recovery_code.txt').writeAsString('abc');
+
+    final store = ProfileSecretsStore(
+      legacyDirectory: dir,
+      secureStorage: InMemorySecretStorage(),
+    );
+    await store.migrateFromLegacyPlaintext();
+    expect(await File('${dir.path}/profile_recovery_code.txt').exists(), isFalse);
+    expect(await store.readRecoveryCode(), 'abc');
+  });
+
   test('M5: writeRecoveryCode removes legacy plaintext file', () async {
     final dir = await Directory.systemTemp.createTemp('amiro_secrets_m5');
     addTearDown(() => dir.delete(recursive: true));

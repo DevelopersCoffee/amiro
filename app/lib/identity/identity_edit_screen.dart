@@ -13,6 +13,7 @@ import '../theme/section_label.dart';
 import 'cloud_backup_consent_dialog.dart';
 import 'cloud_backup_enable.dart';
 import 'identity_providers.dart';
+import 'profile_cloud.dart';
 
 class IdentityEditScreen extends ConsumerStatefulWidget {
   const IdentityEditScreen({super.key});
@@ -251,9 +252,19 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
   }
 
   Future<void> _claim() async {
-    final identity = await ref
-        .read(profileCloudProvider)
-        .claim(_restoreController.text);
+    Identity? identity;
+    try {
+      identity = await ref
+          .read(profileCloudProvider)
+          .claim(_restoreController.text);
+    } on SessionRefreshFailure {
+      if (!mounted) return;
+      setState(
+        () => _status =
+            'Could not reach the backup service. Check your connection and try again.',
+      );
+      return;
+    }
     if (!mounted) return;
     if (identity == null) {
       setState(() => _status = 'That code did not match an Amiro');
