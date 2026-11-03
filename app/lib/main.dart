@@ -13,15 +13,11 @@ import 'package:discovery/discovery.dart';
 import 'app.dart';
 import 'crash/crash_reporter.dart';
 import 'identity/cloud_backup_preferences.dart';
-import 'identity/identity_providers.dart';
 import 'identity/profile_secrets_store.dart';
 import 'identity/supabase_profile_cloud.dart';
 import 'identity/supabase_public.dart';
+import 'launch/provider_overrides.dart';
 import 'sharing/encounter_share_options.dart';
-import 'sharing/sharing_preferences_providers.dart';
-import 'avatar/avatar_providers.dart';
-import 'discovery/discovery_providers.dart';
-import 'sharing/sharing_providers.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,26 +63,18 @@ void main() async {
 
   runApp(
     ProviderScope(
-      overrides: [
-        identityRepositoryProvider.overrideWithValue(repository),
-        cloudBackupPreferencesProvider.overrideWithValue(backupPreferences),
-        encounterSharePreferencesProvider.overrideWithValue(
-          encounterSharePreferences,
-        ),
-        profileCloudProvider.overrideWithValue(profileCloud),
-        avatarRendererProvider.overrideWithValue(avatarRenderer),
-        avatarRendererFactoryProvider.overrideWithValue(
-          ThermionAvatarRenderer.create,
-        ),
-        nfcEmulatorProvider.overrideWithValue(
-          Platform.isAndroid ? AndroidNfcEmulator() : NoopNfcEmulator(),
-        ),
-        nfcReaderProvider.overrideWithValue(ManagerNfcReader()),
-        // entitlementStoreProvider is deliberately not overridden: its
-        // default is the RevenueCat-backed store, so every purchase goes
-        // through Play Billing.
-        discoveryRepositoryProvider.overrideWithValue(discoveryRepository),
-      ],
+      overrides: amiroLaunchProviderOverrides(
+        identityRepository: repository,
+        cloudBackupPreferences: backupPreferences,
+        profileCloud: profileCloud,
+        avatarRenderer: avatarRenderer,
+        avatarRendererFactory: ThermionAvatarRenderer.create,
+        discoveryRepository: discoveryRepository,
+        encounterSharePreferences: encounterSharePreferences,
+        nfcEmulator:
+            Platform.isAndroid ? AndroidNfcEmulator() : NoopNfcEmulator(),
+        nfcReader: ManagerNfcReader(),
+      ),
       child: const AmiroApp(),
     ),
   );

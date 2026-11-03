@@ -277,8 +277,8 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
     super.didChangeDependencies();
     if (_didInit) return;
     _didInit = true;
-    ensureAvatarLoaded(ProviderScope.containerOf(context));
     if (widget.isActive) {
+      ensureAvatarLoaded(ProviderScope.containerOf(context));
       _scheduleEntitlementsLoad();
     }
   }
@@ -287,6 +287,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
   void didUpdateWidget(covariant StoreScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isActive && !oldWidget.isActive) {
+      ensureAvatarLoaded(ProviderScope.containerOf(context));
       _scheduleEntitlementsLoad();
     }
   }

@@ -13,6 +13,11 @@ class CloudBackupPreferences {
     );
   }
 
+  /// Opt-in state held in memory (widget tests).
+  factory CloudBackupPreferences.inMemory({bool enabled = false}) {
+    return _InMemoryCloudBackupPreferences(enabled);
+  }
+
   Future<bool> isEnabled() async {
     if (!await _file.exists()) return false;
     try {
@@ -26,5 +31,19 @@ class CloudBackupPreferences {
 
   Future<void> setEnabled(bool enabled) async {
     await _file.writeAsString(jsonEncode({'enabled': enabled}));
+  }
+}
+
+class _InMemoryCloudBackupPreferences extends CloudBackupPreferences {
+  _InMemoryCloudBackupPreferences(this._enabled) : super(File(''));
+
+  bool _enabled;
+
+  @override
+  Future<bool> isEnabled() async => _enabled;
+
+  @override
+  Future<void> setEnabled(bool enabled) async {
+    _enabled = enabled;
   }
 }

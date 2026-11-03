@@ -67,3 +67,37 @@ test('parseRevenueCatSignature reads timestamp and v1', () => {
   const parsed = parseRevenueCatSignature('t=123,v1=abc');
   assert.deepEqual(parsed, { timestamp: '123', signature: 'abc' });
 });
+
+test('W11: rejects signature that only matches expected as a hex prefix', async () => {
+  const body = '{"event":{"id":"1"}}';
+  const secret = 'test-signing-secret';
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const expected = await hmacSha256Hex(secret, `${timestamp}.${body}`);
+  const prefixOnly = expected.slice(0, 16);
+  assert.notEqual(prefixOnly.length, expected.length);
+  const header = `t=${timestamp},v1=${prefixOnly}`;
+
+  const ok = await verifyRevenueCatWebhookSignature(
+    header,
+    new TextEncoder().encode(body),
+    secret,
+    300,
+  );
+  assert.equal(ok, false);
+});
+
+test('W11: rejects signature with valid prefix plus extra suffix bytes', async () => {
+  const body = '{"event":{"id":"1"}}';
+  const secret = 'test-signing-secret';
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const expected = await hmacSha256Hex(secret, `${timestamp}.${body}`);
+  const header = `t=${timestamp},v1=${expected}00`;
+
+  const ok = await verifyRevenueCatWebhookSignature(
+    header,
+    new TextEncoder().encode(body),
+    secret,
+    300,
+  );
+  assert.equal(ok, false);
+});

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -43,20 +44,40 @@ class _SplashGateState extends State<_SplashGate> {
   @override
   Widget build(BuildContext context) {
     if (_splashDone) {
-      return const IncomingShareListener(child: _RootTabs());
+      return const IncomingShareListener(child: AmiroRootTabs());
     }
     return DcSplash(onDone: () => setState(() => _splashDone = true));
   }
 }
 
-class _RootTabs extends ConsumerStatefulWidget {
-  const _RootTabs();
-
-  @override
-  ConsumerState<_RootTabs> createState() => _RootTabsState();
+/// Store tab activity for a given bottom-nav index (used by [AmiroRootTabs]).
+@visibleForTesting
+Widget amiroRootTabStoreScreenForIndex(int index) {
+  return StoreScreen(isActive: index == 2);
 }
 
-class _RootTabsState extends ConsumerState<_RootTabs> {
+/// Root tab shell (Identity, Avatar, Store, Share, Passport). Used at launch
+/// after the splash; exposed for tests that verify tab wiring (R3).
+class AmiroRootTabs extends ConsumerStatefulWidget {
+  const AmiroRootTabs({
+    super.key,
+    @visibleForTesting this.omitThermionOverlayForTest = false,
+    @visibleForTesting this.lightweightTabsForTest = false,
+  });
+
+  /// Skips [PersistentThermionOverlay] in widget tests (same tab wiring).
+  @visibleForTesting
+  final bool omitThermionOverlayForTest;
+
+  /// Replaces heavy tabs with placeholders; keeps [StoreScreen] wiring for R3.
+  @visibleForTesting
+  final bool lightweightTabsForTest;
+
+  @override
+  ConsumerState<AmiroRootTabs> createState() => _AmiroRootTabsState();
+}
+
+class _AmiroRootTabsState extends ConsumerState<AmiroRootTabs> {
   int _index = 0;
   var _registeredThermionGate = false;
 
@@ -76,27 +97,37 @@ class _RootTabsState extends ConsumerState<_RootTabs> {
   @override
   Widget build(BuildContext context) {
     _registerThermionGateOnce();
-    final screens = [
-      const IdentityEditScreen(),
-      const AvatarScreen(),
-      StoreScreen(isActive: _index == 2),
-      const ShareScreen(),
-      const PassportScreen(),
-    ];
-    return Scaffold(
-      body: AvatarIdentitySyncListener(
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            IndexedStack(
-              index: _index,
-              sizing: StackFit.expand,
-              children: screens,
-            ),
-            PersistentThermionOverlay(activeTabIndex: _index),
-          ],
+    final screens = widget.lightweightTabsForTest
+        ? [
+            const SizedBox.shrink(),
+            const SizedBox.shrink(),
+            amiroRootTabStoreScreenForIndex(_index),
+            const SizedBox.shrink(),
+            const SizedBox.shrink(),
+          ]
+        : [
+            const IdentityEditScreen(),
+            const AvatarScreen(),
+            amiroRootTabStoreScreenForIndex(_index),
+            const ShareScreen(),
+            const PassportScreen(),
+          ];
+    final body = Stack(
+      fit: StackFit.expand,
+      children: [
+        IndexedStack(
+          index: _index,
+          sizing: StackFit.expand,
+          children: screens,
         ),
-      ),
+        if (!widget.omitThermionOverlayForTest)
+          PersistentThermionOverlay(activeTabIndex: _index),
+      ],
+    );
+    return Scaffold(
+      body: widget.lightweightTabsForTest
+          ? body
+          : AvatarIdentitySyncListener(child: body),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: _onTabSelected,

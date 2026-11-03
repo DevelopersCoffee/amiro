@@ -10,6 +10,8 @@ import '../avatar/avatar_defaults.dart';
 import '../theme/amiro_card.dart';
 import '../theme/amiro_theme.dart';
 import '../theme/section_label.dart';
+import 'cloud_backup_consent_dialog.dart';
+import 'cloud_backup_enable.dart';
 import 'identity_providers.dart';
 
 class IdentityEditScreen extends ConsumerStatefulWidget {
@@ -230,33 +232,11 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
       }
     }
     if (enabled && !_cloudBackupEnabled) {
-      final accepted = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) {
-          return AlertDialog(
-            backgroundColor: AmiroColors.surface,
-            title: const Text('Back up to the cloud?'),
-            content: const Text(
-              'When enabled, Amiro copies your profile and avatar to our '
-              'encrypted backup service so you can restore on another phone. '
-              'Private contact fields stay on this device unless you mark '
-              'them public. Turning backup off deletes that server copy.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('Not now'),
-              ),
-              FilledButton(
-                key: const Key('cloudBackupConsentAccept'),
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text('Enable backup'),
-              ),
-            ],
-          );
-        },
+      final accepted = await confirmCloudBackupEnable(
+        currentlyEnabled: _cloudBackupEnabled,
+        showConsentDialog: () => showCloudBackupConsentDialog(context),
       );
-      if (accepted != true || !mounted) return;
+      if (!accepted || !mounted) return;
     }
     await ref.read(cloudBackupPreferencesProvider).setEnabled(enabled);
     ref.invalidate(cloudBackupEnabledProvider);
@@ -434,7 +414,7 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Back up my profile'),
                       value: _cloudBackupEnabled,
-                      onChanged: _setCloudBackup,
+                      onChanged: (value) => unawaited(_setCloudBackup(value)),
                     ),
                   ),
                 ],
