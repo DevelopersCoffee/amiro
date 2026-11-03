@@ -105,9 +105,9 @@ class SupabaseProfileCloud implements ProfileCloud {
       'or the copy was already removed.';
 
   static const _reconnectRecoveryMessage =
-      'This device cannot remove the cloud backup copy. Use the phone that '
-      'turned backup on, or request deletion by email as described in the '
-      'privacy policy.';
+      'This device cannot remove the cloud backup copy. If sign-in on this '
+      'device no longer matches the account that enabled backup, request '
+      'deletion by email as described in the privacy policy.';
 
   @visibleForTesting
   static const reconnectRecoveryMessageForTest = _reconnectRecoveryMessage;
@@ -304,7 +304,12 @@ class SupabaseProfileCloud implements ProfileCloud {
       headers: _userHeaders(session),
     );
     if (response.status < 200 || response.status >= 300) return;
-    final decoded = jsonDecode(response.body);
+    Object? decoded;
+    try {
+      decoded = jsonDecode(response.body);
+    } catch (_) {
+      return;
+    }
     if (decoded is! List || decoded.isEmpty) return;
     final row = decoded.first;
     if (row is! Map) return;

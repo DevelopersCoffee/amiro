@@ -16,6 +16,12 @@ final _goTrueRefreshTokenNotFoundBody = jsonEncode({
   'msg': 'Invalid Refresh Token: Refresh Token Not Found',
 });
 
+/// Pinned copy (BF7); must match production [SupabaseProfileCloud] stranded text.
+const _strandedInstallRevokeMessage =
+    'This device cannot remove the cloud backup copy. If sign-in on this '
+    'device no longer matches the account that enabled backup, request '
+    'deletion by email as described in the privacy policy.';
+
 void main() {
   test('push sends no HTTP when backup is disabled', () async {
     final harness = await _FakeSupabaseHarness.start();
@@ -304,7 +310,7 @@ void main() {
     expect(await built.secrets.readSessionJson(), isNull);
   });
 
-  test('Z2/Z3/Z4: real GoTrue refresh body swaps on refresh_token_not_found', () async {
+  test('Z2/Z3: real GoTrue refresh body swaps on refresh_token_not_found', () async {
     final harness = await _FakeSupabaseHarness.start();
     addTearDown(harness.close);
     harness.refreshStatusCode = 400;
@@ -318,6 +324,29 @@ void main() {
     expect(
       await built.cloud.push(
         const Identity(id: 'id-gotrue', displayName: 'G', username: 'g'),
+      ),
+      isTrue,
+    );
+    expect(harness.anonymousSignupCount, 1);
+  });
+
+  test('Z4: refresh auth failure reads error_description without error_code', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+    harness.refreshStatusCode = 400;
+    harness.refreshBody = jsonEncode({
+      'code': 400,
+      'error_description': 'refresh_token_not_found',
+    });
+
+    final built = await harness.buildCloud(
+      enabled: true,
+      sessionExpiresAt: DateTime.now().subtract(const Duration(minutes: 5)),
+    );
+
+    expect(
+      await built.cloud.push(
+        const Identity(id: 'id-z4', displayName: 'Z', username: 'z'),
       ),
       isTrue,
     );
@@ -351,10 +380,7 @@ void main() {
 
     final result = await built.cloud.revokeBackup(identityId: 'id-swap');
     expect(result.success, isFalse);
-    expect(
-      result.userMessage,
-      SupabaseProfileCloud.reconnectRecoveryMessageForTest,
-    );
+    expect(result.userMessage, _strandedInstallRevokeMessage);
     expect(await built.secrets.readSessionJson(), isNotNull);
     expect(await built.cloud.recoveryCode(), isNotNull);
     expect(await built.secrets.readCloudProfileOwnerId(), 'user-1');
@@ -377,10 +403,7 @@ void main() {
 
     final result = await built.cloud.revokeBackup(identityId: 'id-legacy');
     expect(result.success, isFalse);
-    expect(
-      result.userMessage,
-      SupabaseProfileCloud.reconnectRecoveryMessageForTest,
-    );
+    expect(result.userMessage, _strandedInstallRevokeMessage);
     expect(await built.secrets.readSessionJson(), isNotNull);
     expect(await built.cloud.recoveryCode(), isNotNull);
   });
@@ -423,10 +446,7 @@ void main() {
     final result = await built.cloud.revokeBackup(identityId: 'id-member');
     expect(result.success, isFalse);
     expect(result.userMessage, isNotNull);
-    expect(
-      result.userMessage,
-      isNot(SupabaseProfileCloud.reconnectRecoveryMessageForTest),
-    );
+    expect(result.userMessage, isNot(_strandedInstallRevokeMessage));
     expect(await built.secrets.readSessionJson(), isNotNull);
   });
 
@@ -453,7 +473,7 @@ void main() {
     expect(await built.secrets.readCloudProfileOwnerId(), isNull);
   });
 
-  test('Z13: member push does not write cloud profile owner id', () async {
+  test('Z13/BF1: member push does not write cloud profile owner id', () async {
     final harness = await _FakeSupabaseHarness.start();
     addTearDown(harness.close);
 
@@ -466,6 +486,7 @@ void main() {
         'username': 'm',
       },
       recoveryCode: 'fedcba9876543210',
+      members: {'user-2'},
     );
 
     final built = await harness.buildCloud(
@@ -484,6 +505,34 @@ void main() {
     expect(await built.secrets.readCloudProfileOwnerId(), isNull);
   });
 
+  test('BF1b: member revoke does not backfill cloud profile owner id', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    harness.seedProfile(
+      identityId: 'id-bf1b',
+      ownerId: 'user-1',
+      payload: const {
+        'id': 'id-bf1b',
+        'displayName': 'M',
+        'username': 'm',
+      },
+      recoveryCode: '1234567890123456',
+      members: {'user-2'},
+    );
+
+    final built = await harness.buildCloud(
+      enabled: true,
+      userId: 'user-2',
+      accessToken: 'access-user-2',
+    );
+    await built.secrets.writeRecoveryCode('1234567890123456');
+
+    await built.cloud.revokeBackup(identityId: 'id-bf1b');
+
+    expect(await built.secrets.readCloudProfileOwnerId(), isNull);
+  });
+
   test('Z14: offline claim throws SessionRefreshFailure', () async {
     final harness = await _FakeSupabaseHarness.start();
     addTearDown(harness.close);
@@ -497,22 +546,207 @@ void main() {
     );
   });
 
-  test('legacy owner id backfills from server before revoke DELETE', () async {
+  test('BF3: legacy push backfills stored cloud profile owner id', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    final built = await harness.buildCloud(enabled: true);
+    const identity = Identity(id: 'id-bf3', displayName: 'B', username: 'b');
+    expect(await built.cloud.push(identity), isTrue);
+    await built.secrets.deleteCloudProfileOwnerIdForTest();
+    expect(await built.secrets.readCloudProfileOwnerId(), isNull);
+
+    expect(await built.cloud.push(identity), isTrue);
+    expect(await built.secrets.readCloudProfileOwnerId(), 'user-1');
+  });
+
+  test('BF2: revoke backfills owner id before DELETE runs', () async {
     final harness = await _FakeSupabaseHarness.start();
     addTearDown(harness.close);
 
     final built = await harness.buildCloud(enabled: true);
     await built.cloud.push(
-      const Identity(id: 'id-backfill', displayName: 'B', username: 'b'),
+      const Identity(id: 'id-bf2', displayName: 'B', username: 'b'),
     );
     await built.secrets.deleteCloudProfileOwnerIdForTest();
+    harness.onBeforeDelete = () async {
+      expect(await built.secrets.readCloudProfileOwnerId(), 'user-1');
+    };
+
+    expect(
+      (await built.cloud.revokeBackup(identityId: 'id-bf2')).success,
+      isTrue,
+    );
+  });
+
+  test('BF4: backfill does not overwrite an existing cloud profile owner id', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    final built = await harness.buildCloud(enabled: true);
+    await built.cloud.push(
+      const Identity(id: 'id-bf4', displayName: 'B', username: 'b'),
+    );
+    await built.secrets.writeCloudProfileOwnerId('already-set');
+
+    await built.cloud.push(
+      const Identity(id: 'id-bf4', displayName: 'B2', username: 'b2'),
+    );
+
+    expect(await built.secrets.readCloudProfileOwnerId(), 'already-set');
+  });
+
+  test('BF5/BF6: owner select 500 leaves owner id unchanged', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+    harness.ownerIdSelectStatusCode = 500;
+
+    final built = await harness.buildCloud(enabled: true);
+    await built.cloud.push(
+      const Identity(id: 'id-bf5', displayName: 'B', username: 'b'),
+    );
+    await built.secrets.deleteCloudProfileOwnerIdForTest();
+
+    expect(await built.cloud.push(
+      const Identity(id: 'id-bf5', displayName: 'B2', username: 'b2'),
+    ), isTrue);
     expect(await built.secrets.readCloudProfileOwnerId(), isNull);
 
     expect(
-      (await built.cloud.revokeBackup(identityId: 'id-backfill')).success,
+      (await built.cloud.revokeBackup(identityId: 'id-bf5')).success,
       isTrue,
     );
-    expect(await built.secrets.readSessionJson(), isNull);
+  });
+
+  test('BF6: backfill uses identity_id filter when multiple rows visible', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    final built = await harness.buildCloud(enabled: true);
+    const identity = Identity(id: 'id-target', displayName: 'T', username: 't');
+    expect(await built.cloud.push(identity), isTrue);
+    harness.seedProfile(
+      identityId: 'id-other',
+      ownerId: 'other-owner',
+      payload: const {
+        'id': 'id-other',
+        'displayName': 'O',
+        'username': 'o',
+      },
+      recoveryCode: 'aaaaaaaabbbbbbbb',
+      members: {'user-1'},
+    );
+    await built.secrets.deleteCloudProfileOwnerIdForTest();
+
+    expect(await built.cloud.push(identity), isTrue);
+    expect(await built.secrets.readCloudProfileOwnerId(), 'user-1');
+  });
+
+  test('backfill ignores non-JSON owner select body', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+    harness.ownerIdSelectBody = '<html>not json</html>';
+
+    final built = await harness.buildCloud(enabled: true);
+    await built.cloud.push(
+      const Identity(id: 'id-html', displayName: 'H', username: 'h'),
+    );
+    await built.secrets.deleteCloudProfileOwnerIdForTest();
+
+    expect(await built.cloud.push(
+      const Identity(id: 'id-html', displayName: 'H2', username: 'h2'),
+    ), isTrue);
+    expect(await built.secrets.readCloudProfileOwnerId(), isNull);
+  });
+
+  test('BF3 swap: backfill does not write after session swap', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    final built = await harness.buildCloud(enabled: true);
+    await built.cloud.push(
+      const Identity(id: 'id-swap-bf', displayName: 'S', username: 's'),
+    );
+    await built.secrets.deleteCloudProfileOwnerIdForTest();
+    harness.refreshStatusCode = 400;
+    harness.refreshBody = _goTrueRefreshTokenNotFoundBody;
+    await built.secrets.writeSessionJson(
+      jsonEncode({
+        'access_token': 'access-token',
+        'refresh_token': 'refresh-token',
+        'user_id': 'user-1',
+        'expires_at': DateTime.now()
+            .subtract(const Duration(minutes: 5))
+            .toUtc()
+            .toIso8601String(),
+      }),
+    );
+
+    await built.cloud.revokeBackup(identityId: 'id-swap-bf');
+
+    expect(await built.secrets.readCloudProfileOwnerId(), isNull);
+    expect(harness.anonymousSignupCount, 1);
+  });
+
+  test('X2b: revoke with null identityId uses primary row and fails on zero DELETE', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+    harness.deleteReturnsEmpty = true;
+
+    final built = await harness.buildCloud(enabled: true);
+    await built.cloud.push(
+      const Identity(id: 'id-x2b', displayName: 'X', username: 'x'),
+    );
+
+    final result = await built.cloud.revokeBackup();
+    expect(result.success, isFalse);
+    expect(harness.deleteCount, greaterThan(0));
+  });
+
+  test('fake POST profiles rejects owner_id mismatch with 403', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    final client = HttpClient();
+    final request = await client.postUrl(
+      Uri.parse('http://127.0.0.1:${harness.port}/rest/v1/profiles'),
+    );
+    request.headers.set('Authorization', 'Bearer access-token');
+    request.headers.set('Content-Type', 'application/json');
+    request.write(jsonEncode({
+      'identity_id': 'id-forbidden',
+      'owner_id': 'someone-else',
+      'payload': {'id': 'id-forbidden', 'displayName': 'F', 'username': 'f'},
+      'recovery_code': '1234567890123456',
+    }));
+    final response = await request.close();
+    expect(response.statusCode, 403);
+    client.close();
+  });
+
+  test('fake profile_members rejects non-owner join with 403', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+    harness.seedProfile(
+      identityId: 'id-403',
+      ownerId: 'user-1',
+      payload: const {'id': 'id-403', 'displayName': 'O', 'username': 'o'},
+      recoveryCode: '1234567890123456',
+    );
+
+    final client = HttpClient();
+    final request = await client.postUrl(
+      Uri.parse('http://127.0.0.1:${harness.port}/rest/v1/profile_members'),
+    );
+    request.headers.set('Authorization', 'Bearer access-user-2');
+    request.headers.set('Content-Type', 'application/json');
+    request.write(jsonEncode({
+      'identity_id': 'id-403',
+      'user_id': 'user-2',
+    }));
+    final response = await request.close();
+    expect(response.statusCode, 403);
+    client.close();
   });
 
   test('revoke succeeds on retry when row was already deleted', () async {
@@ -555,23 +789,6 @@ void main() {
     expect((await cloud.revokeBackup()).success, isTrue);
     expect(harness.deleteCount, 0);
     expect(harness.requestCount, 0);
-  });
-
-  test('X11: successful revoke removes legacy recovery plaintext file', () async {
-    final harness = await _FakeSupabaseHarness.start();
-    addTearDown(harness.close);
-
-    final built = await harness.buildCloud(enabled: true);
-    final legacyFile = File(
-      '${built.secrets.legacyDirectory.path}/profile_recovery_code.txt',
-    );
-    await legacyFile.writeAsString('legacy-on-disk');
-    await built.cloud.push(
-      const Identity(id: 'id-x11', displayName: 'L', username: 'l'),
-    );
-
-    expect((await built.cloud.revokeBackup(identityId: 'id-x11')).success, isTrue);
-    expect(await legacyFile.exists(), isFalse);
   });
 
   test('X8: pull returns null when session read throws', () async {
@@ -658,6 +875,9 @@ class _FakeSupabaseHarness {
   String refreshBody = '';
   int anonymousSignupCount = 0;
   int claimStatusCode = 200;
+  int? ownerIdSelectStatusCode;
+  String? ownerIdSelectBody;
+  Future<void> Function()? onBeforeDelete;
   Uri? lastDeleteUri;
   String? lastDeletePrefer;
   Map<String, dynamic>? lastProfileInsert;
@@ -784,11 +1004,18 @@ class _FakeSupabaseHarness {
           ]),
         );
       } else if (select == 'owner_id') {
-        request.response.write(
-          jsonEncode([
-            for (final row in visible) {'owner_id': row.ownerId},
-          ]),
-        );
+        if (ownerIdSelectStatusCode != null) {
+          request.response.statusCode = ownerIdSelectStatusCode!;
+          request.response.write(ownerIdSelectBody ?? '');
+        } else if (ownerIdSelectBody != null) {
+          request.response.write(ownerIdSelectBody);
+        } else {
+          request.response.write(
+            jsonEncode([
+              for (final row in visible) {'owner_id': row.ownerId},
+            ]),
+          );
+        }
       } else {
         request.response.write(
           jsonEncode([
@@ -810,7 +1037,13 @@ class _FakeSupabaseHarness {
       lastProfileInsert = row;
       final identityId = row['identity_id'] as String?;
       final ownerId = row['owner_id'] as String? ?? userId;
-      if (identityId != null && _rowByIdentity(identityId) != null) {
+      if (identityId != null &&
+          ownerId != null &&
+          userId != null &&
+          ownerId != userId) {
+        request.response.statusCode = 403;
+        request.response.write('{}');
+      } else if (identityId != null && _rowByIdentity(identityId) != null) {
         request.response.statusCode = 409;
         request.response.write('{}');
       } else if (identityId != null && ownerId != null) {
@@ -852,13 +1085,24 @@ class _FakeSupabaseHarness {
         final identityId = decoded['identity_id'] as String?;
         final memberId = decoded['user_id'] as String? ?? userId;
         final row = identityId != null ? _rowByIdentity(identityId) : null;
-        if (row != null && memberId != null) {
-          row.members.add(memberId);
+        if (row == null ||
+            userId == null ||
+            memberId == null ||
+            row.ownerId != userId ||
+            memberId != userId) {
+          request.response.statusCode = 403;
+          request.response.write('{}');
+          await request.response.close();
+          return;
         }
+        row.members.add(memberId);
       }
       request.response.statusCode = 201;
       request.response.write('[]');
     } else if (path == '/rest/v1/profiles' && request.method == 'DELETE') {
+      if (onBeforeDelete != null) {
+        await onBeforeDelete!();
+      }
       deleteCount += 1;
       lastDeleteUri = request.uri;
       lastDeletePrefer = request.headers.value('prefer');
