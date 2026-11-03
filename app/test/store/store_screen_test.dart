@@ -40,6 +40,11 @@ int _storeCatalogSeparatedChildCount(WidgetTester tester) {
 List<Object> _storeTestRows({Set<String> owned = const {}}) =>
     storeDisplayRows(cosmeticCatalog, owned, _storeTestGender());
 
+Future<void> pumpStoreReady(WidgetTester tester) async {
+  await pumpAfterAvatarLoad(tester);
+  await pumpShort(tester, frames: 4);
+}
+
 Widget _screen(
   AvatarRenderer renderer, {
   EntitlementStore? entitlementStore,
@@ -56,7 +61,7 @@ Widget _screen(
     ],
     child: MaterialApp(
       theme: buildAmiroTheme(loadFonts: false),
-      home: const StoreScreen(),
+      home: const StoreScreen(isActive: true),
     ),
   );
 }
@@ -78,7 +83,7 @@ void main() {
           ),
         ),
       );
-      await pumpAfterAvatarLoad(tester);
+      await pumpStoreReady(tester);
 
       expect(find.text('Twin Buns'), findsNothing);
       for (final name in [
@@ -114,7 +119,7 @@ void main() {
           ),
         ),
       );
-      await pumpAfterAvatarLoad(tester);
+      await pumpStoreReady(tester);
 
       for (final name in ['Clean Part', 'Buzz Cut', 'Full Beard']) {
         expect(find.text(name), findsNothing, reason: name);
@@ -143,7 +148,7 @@ void main() {
     useStoreListViewport(tester, storeRowCount: rows.length);
     final renderer = FakeAvatarRenderer();
     await tester.pumpWidget(_screen(renderer));
-    await pumpAfterAvatarLoad(tester);
+    await pumpStoreReady(tester);
 
     final visibleItems = rows.whereType<CosmeticListing>();
     for (final item in visibleItems) {
@@ -164,7 +169,7 @@ void main() {
   testWidgets('tapping a free item previews it on the avatar', (tester) async {
     final renderer = FakeAvatarRenderer();
     await tester.pumpWidget(_screen(renderer));
-    await pumpAfterAvatarLoad(tester);
+    await pumpStoreReady(tester);
 
     await tester.tap(find.text('Classic Frame'));
     await pumpShort(tester, frames: 10);
@@ -180,7 +185,7 @@ void main() {
       addTearDown(tester.view.reset);
       final renderer = FakeAvatarRenderer();
       await tester.pumpWidget(_screen(renderer));
-      await pumpAfterAvatarLoad(tester);
+      await pumpStoreReady(tester);
 
       expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
     },
@@ -195,7 +200,7 @@ void main() {
     final renderer = FakeAvatarRenderer();
     final entitlements = InMemoryEntitlementStore();
     await tester.pumpWidget(_screen(renderer, entitlementStore: entitlements));
-    await pumpAfterAvatarLoad(tester);
+    await pumpStoreReady(tester);
 
     expect(
       await entitlements.ownedCosmeticIds(),
@@ -221,7 +226,7 @@ void main() {
       await tester.pumpWidget(
         _screen(renderer, entitlementStore: entitlements),
       );
-      await pumpAfterAvatarLoad(tester);
+      await pumpStoreReady(tester);
 
       await tester.tap(find.widgetWithText(FilledButton, 'Buy \$2.99'));
       await pumpShort(tester, frames: 10);
@@ -244,7 +249,7 @@ void main() {
     final renderer = FakeAvatarRenderer();
     final entitlements = _FailingEntitlementStore();
     await tester.pumpWidget(_screen(renderer, entitlementStore: entitlements));
-    await pumpAfterAvatarLoad(tester);
+    await pumpStoreReady(tester);
 
     await tester.tap(find.widgetWithText(FilledButton, 'Buy \$2.99'));
     await pumpUntilFound(tester, find.textContaining('Purchase failed'));
@@ -265,7 +270,7 @@ void main() {
       await tester.pumpWidget(
         _screen(FakeAvatarRenderer(), entitlementStore: entitlements),
       );
-      await pumpAfterAvatarLoad(tester);
+      await pumpStoreReady(tester);
       // Ownership only becomes visible to the app once restore runs.
       expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
 
@@ -291,7 +296,7 @@ void main() {
     await tester.pumpWidget(
       _screen(FakeAvatarRenderer(), entitlementStore: entitlements),
     );
-    await pumpAfterAvatarLoad(tester);
+    await pumpStoreReady(tester);
 
     await tester.tap(find.text('Restore purchases'));
     await pumpUntilFound(tester, find.textContaining('Restore failed'));
@@ -305,7 +310,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(_screen(FakeAvatarRenderer()));
-    await pumpAfterAvatarLoad(tester);
+    await pumpStoreReady(tester);
 
     final price = tester.widget<Text>(find.text('Buy \$2.99'));
     expect(
@@ -320,7 +325,7 @@ void main() {
       final rows = _storeTestRows();
       useStoreListViewport(tester, storeRowCount: rows.length);
       await tester.pumpWidget(_screen(FakeAvatarRenderer()));
-      await pumpAfterAvatarLoad(tester);
+      await pumpStoreReady(tester);
 
       for (final item in rows.whereType<CosmeticListing>()) {
         expect(
@@ -343,7 +348,7 @@ void main() {
       final rows = _storeTestRows();
       useStoreListViewport(tester, storeRowCount: rows.length);
       await tester.pumpWidget(_screen(FakeAvatarRenderer()));
-      await pumpAfterAvatarLoad(tester);
+      await pumpStoreReady(tester);
 
       final series = rows
           .whereType<CosmeticListing>()
@@ -368,7 +373,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
       await tester.pumpWidget(_screen(FakeAvatarRenderer()));
-      await pumpAfterAvatarLoad(tester);
+      await pumpStoreReady(tester);
 
       final progress = collectionProgress(cosmeticCatalog, const {}).first;
       expect(
@@ -389,7 +394,7 @@ void main() {
         entitlementStore: InMemoryEntitlementStore(),
       ),
     );
-    await pumpAfterAvatarLoad(tester);
+    await pumpStoreReady(tester);
 
     final before = collectionProgress(cosmeticCatalog, const {}).first;
     final buy = find.widgetWithText(FilledButton, 'Buy \$2.99');
@@ -410,7 +415,7 @@ void main() {
     await tester.pumpWidget(
       _screen(FakeAvatarRenderer(), entitlementStore: entitlements),
     );
-    await pumpAfterAvatarLoad(tester);
+    await pumpStoreReady(tester);
 
     expect(find.text('Complete'), findsOneWidget);
     expect(find.textContaining(' / '), findsNothing);
@@ -432,7 +437,7 @@ void main() {
           ),
         );
         await tester.pumpWidget(_screen(renderer));
-        await pumpAfterAvatarLoad(tester);
+        await pumpStoreReady(tester);
 
         expect(find.text('EQUIPPED'), findsOneWidget);
         expect(
@@ -474,7 +479,7 @@ void main() {
           ),
         );
         await tester.pumpWidget(_screen(renderer));
-        await pumpAfterAvatarLoad(tester);
+        await pumpStoreReady(tester);
 
         expect(
           find.descendant(
@@ -501,7 +506,7 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.reset);
         await tester.pumpWidget(_screen(FakeAvatarRenderer()));
-        await pumpAfterAvatarLoad(tester);
+        await pumpStoreReady(tester);
 
         // Classic Frame's asset (glasses_placeholder) is never in the
         // default avatar, unlike the default outfit's free items — so it is
@@ -541,7 +546,7 @@ void main() {
       final rows = _storeTestRows();
       useStoreListViewport(tester, storeRowCount: rows.length);
       await tester.pumpWidget(_screen(FakeAvatarRenderer()));
-      await pumpAfterAvatarLoad(tester);
+      await pumpStoreReady(tester);
 
       expect(find.byType(InkWell), findsWidgets);
       expect(find.byType(ListTile), findsNothing);

@@ -1,5 +1,12 @@
+import {
+  constantTimeEqual,
+  verifyRevenueCatWebhookSignature,
+} from './security.ts';
+
 export interface Env {
   WEBHOOK_PATH_TOKEN: string;
+  WEBHOOK_AUTHORIZATION?: string;
+  WEBHOOK_SIGNING_SECRET?: string;
   CRASH_PATH_TOKEN?: string;
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
@@ -47,7 +54,7 @@ export async function handleCrash(
     return new Response('Method not allowed', { status: 405 });
   }
   const token = url.pathname.replace(/^\/crash\//, '');
-  if (!env.CRASH_PATH_TOKEN || token !== env.CRASH_PATH_TOKEN) {
+  if (!env.CRASH_PATH_TOKEN || !constantTimeEqual(token, env.CRASH_PATH_TOKEN)) {
     return new Response('Not found', { status: 404 });
   }
 
@@ -90,6 +97,56 @@ export async function handleCrash(
   return new Response('ok', { status: 200 });
 }
 
+function webhookSecretsConfigured(env: Env): boolean {
+  const auth =
+    env.WEBHOOK_AUTHORIZATION != null &&
+    env.WEBHOOK_AUTHORIZATION.length > 0;
+  const signing =
+    env.WEBHOOK_SIGNING_SECRET != null &&
+    env.WEBHOOK_SIGNING_SECRET.length > 0;
+  return auth || signing;
+}
+
+export async function verifyWebhookRequest(
+  request: Request,
+  env: Env,
+  pathToken: string,
+  rawBodyBytes: Uint8Array,
+): Promise<Response | null> {
+  const configuredPath =
+    env.WEBHOOK_PATH_TOKEN != null && env.WEBHOOK_PATH_TOKEN.length > 0;
+  if (!configuredPath) {
+    console.error('WEBHOOK_PATH_TOKEN is not configured');
+    return new Response('Webhook not configured', { status: 500 });
+  }
+  if (!webhookSecretsConfigured(env)) {
+    console.error(
+      'Neither WEBHOOK_AUTHORIZATION nor WEBHOOK_SIGNING_SECRET is configured',
+    );
+    return new Response('Webhook not configured', { status: 500 });
+  }
+  if (!constantTimeEqual(pathToken, env.WEBHOOK_PATH_TOKEN)) {
+    return new Response('Not found', { status: 404 });
+  }
+  if (env.WEBHOOK_AUTHORIZATION) {
+    const auth = request.headers.get('Authorization') ?? '';
+    if (!constantTimeEqual(auth, env.WEBHOOK_AUTHORIZATION)) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+  }
+  if (env.WEBHOOK_SIGNING_SECRET) {
+    const ok = await verifyRevenueCatWebhookSignature(
+      request.headers.get('X-RevenueCat-Webhook-Signature'),
+      rawBodyBytes,
+      env.WEBHOOK_SIGNING_SECRET,
+    );
+    if (!ok) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+  }
+  return null;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -101,13 +158,22 @@ export default {
     if (request.method !== 'POST') {
       return new Response('Method not allowed', { status: 405 });
     }
-    if (pathToken !== env.WEBHOOK_PATH_TOKEN) {
-      return new Response('Not found', { status: 404 });
+
+    const rawBodyBytes = new Uint8Array(await request.arrayBuffer());
+    const rawBody = new TextDecoder().decode(rawBodyBytes);
+    const authFailure = await verifyWebhookRequest(
+      request,
+      env,
+      pathToken,
+      rawBodyBytes,
+    );
+    if (authFailure) {
+      return authFailure;
     }
 
     let body: { event?: RevenueCatEvent };
     try {
-      body = await request.json();
+      body = JSON.parse(rawBody);
     } catch {
       return new Response('Invalid JSON', { status: 400 });
     }

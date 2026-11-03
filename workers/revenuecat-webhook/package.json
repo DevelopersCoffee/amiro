@@ -1,9 +1,11 @@
 {
   "name": "amiro-revenuecat-webhook",
   "private": true,
+  "type": "module",
   "scripts": {
     "deploy": "wrangler deploy",
-    "dev": "wrangler dev"
+    "dev": "wrangler dev",
+    "test": "node --experimental-strip-types --test test/*.test.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260926.1",

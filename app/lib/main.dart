@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:identity_core/identity_core.dart';
@@ -11,15 +12,17 @@ import 'package:discovery/discovery.dart';
 
 import 'app.dart';
 import 'crash/crash_reporter.dart';
-import 'identity/identity_providers.dart';
+import 'identity/cloud_backup_preferences.dart';
+import 'identity/profile_secrets_store.dart';
 import 'identity/supabase_profile_cloud.dart';
 import 'identity/supabase_public.dart';
-import 'avatar/avatar_providers.dart';
-import 'discovery/discovery_providers.dart';
-import 'sharing/sharing_providers.dart';
+import 'launch/provider_overrides.dart';
+import 'launch/startup_cloud_restore.dart';
+import 'sharing/encounter_share_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  GoogleFonts.config.allowRuntimeFetching = false;
 
   final supportDir = await getApplicationSupportDirectory();
   final ingestUrl = const String.fromEnvironment('AMIRO_CRASH_INGEST_URL');
@@ -34,15 +37,24 @@ void main() async {
   );
   final isar = await openIdentityIsar(directory: supportDir.path);
   final repository = IsarIdentityRepository(isar);
+  final backupPreferences = CloudBackupPreferences.inDirectory(supportDir);
+  final profileSecrets = ProfileSecretsStore(legacyDirectory: supportDir);
+  await runProfileSecretsMigrationSafely(profileSecrets);
   final profileCloud = SupabaseProfileCloud(
     directory: supportDir,
     projectUrl: Uri.parse(supabaseProjectUrl),
     anonKey: supabaseAnonKey,
+    backupPreferences: backupPreferences,
+    secrets: profileSecrets,
   );
-  if (await repository.getCurrent() == null) {
-    final restored = await profileCloud.pull();
-    if (restored != null) await repository.save(restored);
-  }
+  await tryRestoreIdentityFromCloud(
+    getCurrent: repository.getCurrent,
+    isBackupEnabled: backupPreferences.isEnabled,
+    pull: profileCloud.pull,
+    save: repository.save,
+  );
+  final encounterSharePreferences =
+      EncounterSharePreferences.inDirectory(supportDir);
 
   // Engine construction lives behind `avatar_renderer`'s own factory: per the
   // spec's global constraint, nothing outside `packages/avatar_renderer` may
@@ -54,22 +66,18 @@ void main() async {
 
   runApp(
     ProviderScope(
-      overrides: [
-        identityRepositoryProvider.overrideWithValue(repository),
-        profileCloudProvider.overrideWithValue(profileCloud),
-        avatarRendererProvider.overrideWithValue(avatarRenderer),
-        avatarRendererFactoryProvider.overrideWithValue(
-          ThermionAvatarRenderer.create,
-        ),
-        nfcEmulatorProvider.overrideWithValue(
-          Platform.isAndroid ? AndroidNfcEmulator() : NoopNfcEmulator(),
-        ),
-        nfcReaderProvider.overrideWithValue(ManagerNfcReader()),
-        // entitlementStoreProvider is deliberately not overridden: its
-        // default is the RevenueCat-backed store, so every purchase goes
-        // through Play Billing.
-        discoveryRepositoryProvider.overrideWithValue(discoveryRepository),
-      ],
+      overrides: amiroLaunchProviderOverrides(
+        identityRepository: repository,
+        cloudBackupPreferences: backupPreferences,
+        profileCloud: profileCloud,
+        avatarRenderer: avatarRenderer,
+        avatarRendererFactory: ThermionAvatarRenderer.create,
+        discoveryRepository: discoveryRepository,
+        encounterSharePreferences: encounterSharePreferences,
+        nfcEmulator:
+            Platform.isAndroid ? AndroidNfcEmulator() : NoopNfcEmulator(),
+        nfcReader: ManagerNfcReader(),
+      ),
       child: const AmiroApp(),
     ),
   );

@@ -162,12 +162,12 @@ void main() {
 
     await tester.enterText(find.byKey(const Key('displayNameField')), 'Uday');
     await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 200));
 
     expect((await repo.getCurrent())!.displayName, 'Uday');
-    expect(find.text('Saved on this phone'), findsOneWidget);
   });
 
-  testWidgets('Save shows a confirmation dialog', (tester) async {
+  testWidgets('Save persists after debounced autosave settles', (tester) async {
     useTallTestViewport(tester);
     final repo = InMemoryIdentityRepository();
 
@@ -180,15 +180,15 @@ void main() {
     await tester.pump();
 
     await tester.enterText(find.byKey(const Key('displayNameField')), 'Uday');
+    await tester.enterText(find.byKey(const Key('usernameField')), 'uday');
+    await tester.pump(const Duration(milliseconds: 800));
     await tester.ensureVisible(find.byKey(const Key('saveButton')));
     await tester.tap(find.byKey(const Key('saveButton')));
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 800));
 
-    expect(find.text('Saved'), findsOneWidget);
-    expect(find.text('Saved on this phone'), findsWidgets);
-    await tester.tap(find.byKey(const Key('savedDialogDone')));
-    await tester.pump();
-    expect(find.text('Saved'), findsNothing);
+    final saved = await repo.getCurrent();
+    expect(saved?.displayName, 'Uday');
+    expect(saved?.username, 'uday');
   });
 
   testWidgets('a saved identity is filled in the next time the screen opens', (

@@ -6,6 +6,7 @@ import 'package:avatar_core/avatar_core.dart';
 import 'package:identity_core/identity_core.dart';
 import 'package:sharing/sharing.dart';
 
+import 'package:amiro_app/sharing/encounter_share_options.dart';
 import 'package:amiro_app/sharing/own_encounter.dart';
 
 void main() {
@@ -61,11 +62,48 @@ void main() {
       },
     );
 
-    test('reports series completion from purchases', () {
+    test('defaults include equipped cosmetics and omit collection progress', () {
+      expect(EncounterShareOptions.defaults.includeEquippedCosmetics, isTrue);
+      expect(EncounterShareOptions.defaults.includeCollectionProgress, isFalse);
+    });
+
+    test('S4: fromJson defaults collection progress to off when key is missing', () {
+      final parsed = EncounterShareOptions.fromJson({});
+      expect(parsed.includeCollectionProgress, isFalse);
+      expect(parsed.includeEquippedCosmetics, isTrue);
+    });
+
+    test('omits equipped cosmetics when share option is off', () {
+      final payload = buildOwnEncounterPayload(
+        identity: identity,
+        definition: definition,
+        purchasedIds: const {},
+        shareOptions: const EncounterShareOptions(
+          includeEquippedCosmetics: false,
+        ),
+      )!;
+
+      expect(payload.equippedCosmetics, isEmpty);
+    });
+
+    test('omits collection progress by default', () {
       final payload = buildOwnEncounterPayload(
         identity: identity,
         definition: definition,
         purchasedIds: const {'riviera_optics'},
+      )!;
+
+      expect(payload.collectionCompletion, isEmpty);
+    });
+
+    test('reports series completion from purchases when opted in', () {
+      final payload = buildOwnEncounterPayload(
+        identity: identity,
+        definition: definition,
+        purchasedIds: const {'riviera_optics'},
+        shareOptions: const EncounterShareOptions(
+          includeCollectionProgress: true,
+        ),
       )!;
 
       final series = payload.collectionCompletion.singleWhere(

@@ -1,11 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
 import 'package:identity_core/identity_core.dart';
-import 'package:store/store.dart';
 
+import 'cloud_backup_preferences.dart';
 import 'profile_cloud.dart';
+import 'profile_secrets_store.dart';
 
 /// Anonymous Supabase session plus the profile row it is allowed to read.
 ///
@@ -16,42 +18,43 @@ class SupabaseProfileCloud implements ProfileCloud {
     required this.directory,
     required this.projectUrl,
     required this.anonKey,
+    required this.backupPreferences,
+    required this.secrets,
     Random? random,
   }) : _random = random ?? Random.secure();
 
   final Directory directory;
   final Uri projectUrl;
   final String anonKey;
+  final CloudBackupPreferences backupPreferences;
+  final ProfileSecretsStore secrets;
   final Random _random;
 
   @override
   bool get supportsRestore => anonKey.isNotEmpty;
 
-  File get _sessionFile => File('${directory.path}/supabase_session.json');
-  File get _codeFile => File('${directory.path}/profile_recovery_code.txt');
-
   @override
   Future<String?> recoveryCode() async {
-    if (!await _codeFile.exists()) return null;
-    final code = (await _codeFile.readAsString()).trim();
-    return code.isEmpty ? null : code;
+    final code = await secrets.readRecoveryCode();
+    if (code == null || code.isEmpty) return null;
+    return code.trim();
   }
 
   @override
   Future<bool> push(Identity identity) async {
-    if (!supportsRestore) return false;
+    if (!supportsRestore || !await backupPreferences.isEnabled()) {
+      return false;
+    }
     try {
       final session = await _ensureSession();
       final code = await recoveryCode() ?? await _newCode();
-      final rcUser = await _revenueCatAppUserId();
-      final payload = identity.toJson();
+      final payload = identityToCloudPayload(identity);
       final existing = await _selectPayloads(session);
       if (existing.isEmpty) {
         final inserted = await _insertProfile(
           session: session,
           identity: identity,
           code: code,
-          revenueCatAppUserId: rcUser,
           payload: payload,
         );
         if (!inserted) {
@@ -61,7 +64,6 @@ class SupabaseProfileCloud implements ProfileCloud {
             session: session,
             identityId: identity.id,
             payload: payload,
-            revenueCatAppUserId: rcUser,
           );
           return updated;
         }
@@ -72,7 +74,6 @@ class SupabaseProfileCloud implements ProfileCloud {
           session: session,
           identityId: identity.id,
           payload: payload,
-          revenueCatAppUserId: rcUser,
         );
         if (!updated) return false;
       }
@@ -84,8 +85,10 @@ class SupabaseProfileCloud implements ProfileCloud {
 
   @override
   Future<Identity?> pull() async {
-    if (!supportsRestore || !await _sessionFile.exists()) return null;
+    if (!supportsRestore) return null;
     try {
+      final sessionRaw = await secrets.readSessionJson();
+      if (sessionRaw == null) return null;
       final session = await _ensureSession();
       final rows = await _selectPayloads(session);
       if (rows.isEmpty) return null;
@@ -93,6 +96,96 @@ class SupabaseProfileCloud implements ProfileCloud {
     } catch (_) {
       return null;
     }
+  }
+
+  static const _revokeZeroRowsMessage =
+      'Only the device that created the backup can remove the cloud copy, '
+      'or the copy was already removed.';
+
+  static const _reconnectRecoveryMessage =
+      'Cloud backup is linked to another sign-in. Restore with your recovery '
+      'code, then turn backup off again.';
+
+  @override
+  Future<RevokeBackupResult> revokeBackup({String? identityId}) async {
+    if (!supportsRestore) return const RevokeBackupResult.ok();
+    try {
+      final session = await _ensureSession();
+      final id = identityId ?? await _primaryIdentityId(session);
+      if (id != null) {
+        final response = await _send(
+          method: 'DELETE',
+          uri: _rest('profiles').replace(
+            queryParameters: {'identity_id': 'eq.$id'},
+          ),
+          headers: {
+            ..._userHeaders(session),
+            'Prefer': 'return=representation',
+          },
+        );
+        final deletedCount = _deletedRowCount(response);
+        if (response.status >= 200 &&
+            response.status < 300 &&
+            deletedCount > 0) {
+          await secrets.clearCloudBackupCredentials();
+          return const RevokeBackupResult.ok();
+        }
+        if (response.status < 200 || response.status >= 300) {
+          return const RevokeBackupResult.failed();
+        }
+        // Zero rows: re-select below — row may still exist (member device).
+      }
+      final visible = await _selectPayloads(session);
+      if (visible.isEmpty) {
+        if (!await _canTreatEmptySelectAsGone(session)) {
+          return const RevokeBackupResult.failed(_reconnectRecoveryMessage);
+        }
+        await secrets.clearCloudBackupCredentials();
+        return const RevokeBackupResult.ok();
+      }
+      return const RevokeBackupResult.failed(_revokeZeroRowsMessage);
+    } catch (_) {
+      return const RevokeBackupResult.failed();
+    }
+  }
+
+  Future<bool> _canTreatEmptySelectAsGone(_Session session) async {
+    final ownerId = await secrets.readCloudProfileOwnerId();
+    if (ownerId != null) {
+      return session.userId == ownerId;
+    }
+    final code = await secrets.readRecoveryCode();
+    if (code != null && code.trim().isNotEmpty) {
+      return false;
+    }
+    return true;
+  }
+
+  int _deletedRowCount(({int status, String body}) response) {
+    if (response.body.isEmpty) return 0;
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is List) return decoded.length;
+    } catch (_) {}
+    return 0;
+  }
+
+  Future<String?> _primaryIdentityId(_Session session) async {
+    final response = await _send(
+      method: 'GET',
+      uri: _rest('profiles').replace(
+        queryParameters: {'select': 'identity_id', 'limit': '1'},
+      ),
+      headers: _userHeaders(session),
+    );
+    if (response.status < 200 || response.status >= 300) return null;
+    final decoded = jsonDecode(response.body);
+    if (decoded is! List || decoded.isEmpty) return null;
+    final row = decoded.first;
+    if (row is Map && row['identity_id'] is String) {
+      return row['identity_id'] as String;
+    }
+    return null;
   }
 
   @override
@@ -107,22 +200,35 @@ class SupabaseProfileCloud implements ProfileCloud {
         headers: _userHeaders(session),
         body: jsonEncode({'p_code': trimmed}),
       );
+      if (_isTransientHttpStatus(response.status)) {
+        throw SessionRefreshFailure(response.status);
+      }
       if (response.status < 200 || response.status >= 300) return null;
       if (response.body.isEmpty || response.body == 'null') return null;
       final identity = identityFromCloudPayload(jsonDecode(response.body));
       if (identity == null) return null;
-      await _codeFile.writeAsString(trimmed);
+      await secrets.writeRecoveryCode(trimmed);
       return identity;
+    } on SessionRefreshFailure {
+      rethrow;
+    } on SocketException {
+      throw SessionRefreshFailure(0);
+    } on TimeoutException {
+      throw SessionRefreshFailure(408);
     } catch (_) {
       return null;
     }
+  }
+
+  static bool _isTransientHttpStatus(int status) {
+    if (status >= 500) return true;
+    return status == 408 || status == 429;
   }
 
   Future<bool> _insertProfile({
     required _Session session,
     required Identity identity,
     required String code,
-    required String? revenueCatAppUserId,
     required Map<String, dynamic> payload,
   }) async {
     final response = await _send(
@@ -134,12 +240,11 @@ class SupabaseProfileCloud implements ProfileCloud {
         'owner_id': session.userId,
         'payload': payload,
         'recovery_code': code,
-        if (revenueCatAppUserId != null)
-          'revenuecat_app_user_id': revenueCatAppUserId,
       }),
     );
     if (response.status < 200 || response.status >= 300) return false;
-    await _codeFile.writeAsString(code);
+    await secrets.writeRecoveryCode(code);
+    await secrets.writeCloudProfileOwnerId(session.userId);
     return true;
   }
 
@@ -161,7 +266,6 @@ class SupabaseProfileCloud implements ProfileCloud {
     required _Session session,
     required String identityId,
     required Map<String, dynamic> payload,
-    required String? revenueCatAppUserId,
   }) async {
     final response = await _send(
       method: 'PATCH',
@@ -172,8 +276,6 @@ class SupabaseProfileCloud implements ProfileCloud {
       body: jsonEncode({
         'payload': payload,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
-        if (revenueCatAppUserId != null)
-          'revenuecat_app_user_id': revenueCatAppUserId,
       }),
     );
     return response.status >= 200 && response.status < 300;
@@ -196,14 +298,6 @@ class SupabaseProfileCloud implements ProfileCloud {
     ];
   }
 
-  Future<String?> _revenueCatAppUserId() async {
-    try {
-      return await RevenueCatEntitlementStore().appUserId();
-    } catch (_) {
-      return null;
-    }
-  }
-
   Future<String> _newCode() async {
     final bytes = List<int>.generate(16, (_) => _random.nextInt(256));
     return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
@@ -222,6 +316,9 @@ class SupabaseProfileCloud implements ProfileCloud {
   };
 
   Future<_Session> _ensureSession() async {
+    if (await secrets.hasLegacyPlaintextFiles()) {
+      await secrets.migrateFromLegacyPlaintext();
+    }
     final existing = await _readSession();
     final freshUntil = DateTime.now().add(const Duration(minutes: 1));
     if (existing != null && existing.expiresAt.isAfter(freshUntil)) {
@@ -232,7 +329,10 @@ class SupabaseProfileCloud implements ProfileCloud {
         final refreshed = await _refresh(existing.refreshToken);
         await _writeSession(refreshed);
         return refreshed;
-      } catch (_) {
+      } on SessionRefreshFailure catch (e) {
+        if (!e.isAuthFailure) {
+          rethrow;
+        }
         // A dead refresh token starts a new anonymous user. The recovery
         // code still joins the old profile.
       }
@@ -268,11 +368,31 @@ class SupabaseProfileCloud implements ProfileCloud {
       body: jsonEncode({'refresh_token': refreshToken}),
     );
     if (response.status < 200 || response.status >= 300) {
-      throw StateError('session refresh failed');
+      throw _sessionRefreshFailureFromBody(response.status, response.body);
     }
     final session = _sessionFromJson(jsonDecode(response.body));
-    if (session == null) throw StateError('session refresh failed');
+    if (session == null) {
+      throw _sessionRefreshFailureFromBody(response.status, response.body);
+    }
     return session;
+  }
+
+  SessionRefreshFailure _sessionRefreshFailureFromBody(int status, String body) {
+    String? code;
+    String? description;
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map) {
+        code = decoded['error'] as String? ?? decoded['error_code'] as String?;
+        description =
+            decoded['error_description'] as String? ?? decoded['msg'] as String?;
+      }
+    } catch (_) {}
+    return SessionRefreshFailure(
+      status,
+      errorCode: code,
+      errorDescription: description,
+    );
   }
 
   _Session? _sessionFromJson(Object? decoded) {
@@ -295,33 +415,28 @@ class SupabaseProfileCloud implements ProfileCloud {
   }
 
   Future<_Session?> _readSession() async {
-    if (!await _sessionFile.exists()) return null;
-    try {
-      final decoded = jsonDecode(await _sessionFile.readAsString());
-      if (decoded is! Map) return null;
-      final json = Map<String, dynamic>.from(decoded);
-      final access = json['access_token'];
-      final refresh = json['refresh_token'];
-      final userId = json['user_id'];
-      final expires = json['expires_at'];
-      if (access is! String || refresh is! String || userId is! String) {
-        return null;
-      }
-      return _Session(
-        accessToken: access,
-        refreshToken: refresh,
-        userId: userId,
-        expiresAt: expires is String
-            ? DateTime.tryParse(expires) ?? DateTime.now()
-            : DateTime.now(),
-      );
-    } catch (_) {
+    final raw = await secrets.readSessionJson();
+    final decoded = sessionJsonFromStored(raw);
+    if (decoded == null) return null;
+    final access = decoded['access_token'];
+    final refresh = decoded['refresh_token'];
+    final userId = decoded['user_id'];
+    final expires = decoded['expires_at'];
+    if (access is! String || refresh is! String || userId is! String) {
       return null;
     }
+    return _Session(
+      accessToken: access,
+      refreshToken: refresh,
+      userId: userId,
+      expiresAt: expires is String
+          ? DateTime.tryParse(expires) ?? DateTime.now()
+          : DateTime.now(),
+    );
   }
 
   Future<void> _writeSession(_Session session) async {
-    await _sessionFile.writeAsString(
+    await secrets.writeSessionJson(
       jsonEncode({
         'access_token': session.accessToken,
         'refresh_token': session.refreshToken,
@@ -349,6 +464,10 @@ class SupabaseProfileCloud implements ProfileCloud {
       );
       final text = await response.transform(utf8.decoder).join();
       return (status: response.statusCode, body: text);
+    } on SocketException {
+      throw SessionRefreshFailure(0);
+    } on TimeoutException {
+      throw SessionRefreshFailure(408);
     } finally {
       client.close();
     }

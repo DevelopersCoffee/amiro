@@ -10,7 +10,10 @@ import '../avatar/avatar_defaults.dart';
 import '../theme/amiro_card.dart';
 import '../theme/amiro_theme.dart';
 import '../theme/section_label.dart';
+import 'cloud_backup_consent_dialog.dart';
+import 'cloud_backup_enable.dart';
 import 'identity_providers.dart';
+import 'profile_cloud.dart';
 
 class IdentityEditScreen extends ConsumerStatefulWidget {
   const IdentityEditScreen({super.key});
@@ -37,6 +40,8 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
   bool _hydrated = false;
   bool _userEdited = false;
   bool _applying = false;
+  bool _cloudBackupEnabled = false;
+  bool _cloudPrefsLoaded = false;
   Timer? _saveTimer;
   Future<void> _saveQueue = Future<void>.value();
   String? _status;
@@ -54,9 +59,20 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
       controller.addListener(_onEdited);
     }
     if (ref.read(profileCloudProvider).supportsRestore) {
-      ref.read(profileCloudProvider).recoveryCode().then((code) {
-        if (!mounted || code == null || code.isEmpty) return;
-        setState(() => _recoveryCode = code);
+      ref
+          .read(profileCloudProvider)
+          .recoveryCode()
+          .catchError((Object _) => null)
+          .then((code) {
+            if (!mounted || code == null || code.isEmpty) return;
+            setState(() => _recoveryCode = code);
+          });
+      ref.read(cloudBackupPreferencesProvider).isEnabled().then((enabled) {
+        if (!mounted) return;
+        setState(() {
+          _cloudBackupEnabled = enabled;
+          _cloudPrefsLoaded = true;
+        });
       });
     }
   }
@@ -135,7 +151,13 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
       privacy: _isPublic.map((key, value) => MapEntry(key, PrivacyFlag(value))),
     );
     await ref.read(currentIdentityProvider.notifier).save(identity);
-    final remote = await ref.read(profileCloudProvider).push(identity);
+    var remote = false;
+    final backupOn =
+        _cloudBackupEnabled ||
+        await ref.read(cloudBackupPreferencesProvider).isEnabled();
+    if (backupOn) {
+      remote = await ref.read(profileCloudProvider).push(identity);
+    }
     if (!mounted) return;
     if (remote) {
       final code = await ref.read(profileCloudProvider).recoveryCode();
@@ -169,10 +191,80 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
     }
   }
 
+  Future<void> _setCloudBackup(bool enabled) async {
+    if (!enabled && _cloudBackupEnabled) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            backgroundColor: AmiroColors.surface,
+            title: const Text('Remove cloud backup?'),
+            content: const Text(
+              'Turning this off deletes your profile copy from our backup '
+              'service, including public contact fields and the recovery code '
+              'stored there. Your profile stays on this phone.',
+            ),
+            actions: [
+              TextButton(
+                key: const Key('cloudBackupRevokeCancel'),
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Keep backup'),
+              ),
+              FilledButton(
+                key: const Key('cloudBackupRevokeConfirm'),
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Delete cloud copy'),
+              ),
+            ],
+          );
+        },
+      );
+      if (confirmed != true || !mounted) return;
+      final revokeResult =
+          await ref.read(profileCloudProvider).revokeBackup(
+                identityId: ref.read(currentIdentityProvider).value?.id,
+              );
+      if (!mounted) return;
+      if (!revokeResult.success) {
+        setState(
+          () => _status =
+              revokeResult.userMessage ??
+              'Could not remove the cloud copy. Check your connection and try again.',
+        );
+        return;
+      }
+      setState(() => _recoveryCode = null);
+    }
+    if (enabled && !_cloudBackupEnabled) {
+      final accepted = await confirmCloudBackupEnable(
+        currentlyEnabled: _cloudBackupEnabled,
+        showConsentDialog: () => showCloudBackupConsentDialog(context),
+      );
+      if (!accepted || !mounted) return;
+    }
+    await ref.read(cloudBackupPreferencesProvider).setEnabled(enabled);
+    ref.invalidate(cloudBackupEnabledProvider);
+    if (!mounted) return;
+    setState(() => _cloudBackupEnabled = enabled);
+    if (enabled && _hasProfileText) {
+      await _save();
+    }
+  }
+
   Future<void> _claim() async {
-    final identity = await ref
-        .read(profileCloudProvider)
-        .claim(_restoreController.text);
+    Identity? identity;
+    try {
+      identity = await ref
+          .read(profileCloudProvider)
+          .claim(_restoreController.text);
+    } on SessionRefreshFailure {
+      if (!mounted) return;
+      setState(
+        () => _status =
+            'Could not reach the backup service. Check your connection and try again.',
+      );
+      return;
+    }
     if (!mounted) return;
     if (identity == null) {
       setState(() => _status = 'That code did not match an Amiro');
@@ -302,7 +394,7 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
           const SizedBox(height: AmiroSpacing.lg),
           FilledButton(
             key: const Key('saveButton'),
-            onPressed: () => _save(announce: true),
+            onPressed: () async => _save(announce: true),
             child: const Text('Save'),
           ),
           if (_status != null) ...[
@@ -315,7 +407,33 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
               ),
             ),
           ],
-          if (cloud.supportsRestore) ...[
+          if (cloud.supportsRestore && _cloudPrefsLoaded) ...[
+            const SizedBox(height: AmiroSpacing.md),
+            AmiroCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionLabel('CLOUD BACKUP'),
+                  const SizedBox(height: AmiroSpacing.sm),
+                  Text(
+                    'Off by default. Turn on to copy your profile to our '
+                    'backup service for restore on another phone. Turning it '
+                    'off deletes the server copy.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  Material(
+                    color: Colors.transparent,
+                    child: SwitchListTile(
+                      key: const Key('cloudBackupToggle'),
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Back up my profile'),
+                      value: _cloudBackupEnabled,
+                      onChanged: (value) => unawaited(_setCloudBackup(value)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: AmiroSpacing.md),
             AmiroCard(
               child: Column(

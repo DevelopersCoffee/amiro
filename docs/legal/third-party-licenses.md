@@ -12,4 +12,5 @@ depends on. Update whenever a new significant dependency is added.
 | Melos | ^8.9.0 (dev-only) | MIT | Monorepo tooling, not shipped in the app |
 | Riverpod (flutter_riverpod) | ^2.5.1 | MIT | State management |
 | lints | ^4.0.0 (dev-only) | BSD-3-Clause | Analyzer rule set, not shipped in the app |
+| Instrument Sans / Instrument Serif / JetBrains Mono (bundled under `app/assets/fonts/`) | shipped with app | SIL Open Font License 1.1 | See `app/assets/fonts/OFL.txt` |
 | cli_util | ^0.6.0 (override, dev-only) | BSD-3-Clause | Workspace-root `dependency_overrides` entry needed to reconcile Melos with thermion's transitive constraint; see the root `pubspec.yaml` |
