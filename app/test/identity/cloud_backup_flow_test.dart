@@ -20,7 +20,7 @@ void main() {
     );
     expect(await cloud.push(identity), isTrue);
     expect(cloud.pushCalls, 1);
-    expect(await cloud.revokeBackup(), isTrue);
+    expect((await cloud.revokeBackup()).success, isTrue);
     expect(cloud.revokeCalls, 1);
   });
 

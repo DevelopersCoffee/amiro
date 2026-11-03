@@ -78,13 +78,65 @@ void main() {
     );
     expect(await built.cloud.push(identity), isTrue);
 
-    expect(await built.cloud.revokeBackup(identityId: 'id-3'), isTrue);
+    expect(
+      (await built.cloud.revokeBackup(identityId: 'id-3')).success,
+      isTrue,
+    );
     expect(harness.deleteCount, 1);
     final afterDelete = harness.requestCount;
 
     await built.prefs.setEnabled(false);
     expect(await built.cloud.push(identity), isFalse);
     expect(harness.requestCount, afterDelete);
+  });
+
+  test('revokeBackup fails when DELETE matches zero rows', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+    harness.deleteReturnsEmpty = true;
+
+    final built = await harness.buildCloud(enabled: true);
+    const identity = Identity(
+      id: 'id-zero',
+      displayName: 'Z',
+      username: 'z',
+    );
+    expect(await built.cloud.push(identity), isTrue);
+
+    final result = await built.cloud.revokeBackup(identityId: 'id-zero');
+    expect(result.success, isFalse);
+    expect(result.userMessage, isNotNull);
+  });
+
+  test('revokeBackup clears credentials after a successful DELETE', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    final built = await harness.buildCloud(enabled: true);
+    await built.cloud.push(
+      const Identity(id: 'id-4', displayName: 'A', username: 'a'),
+    );
+    expect(await built.secrets.readSessionJson(), isNotNull);
+    expect(await built.cloud.recoveryCode(), isNotNull);
+
+    expect((await built.cloud.revokeBackup(identityId: 'id-4')).success, isTrue);
+    expect(await built.secrets.readSessionJson(), isNull);
+    expect(await built.cloud.recoveryCode(), isNull);
+  });
+
+  test('transient refresh failure does not sign in as a new anonymous user', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+    harness.refreshStatusCode = 503;
+
+    final built = await harness.buildCloud(
+      enabled: true,
+      sessionExpiresAt: DateTime.now().subtract(const Duration(minutes: 5)),
+    );
+
+    final result = await built.cloud.revokeBackup(identityId: 'id-x');
+    expect(result.success, isFalse);
+    expect(harness.anonymousSignupCount, 0);
   });
 }
 
@@ -95,6 +147,9 @@ class _FakeSupabaseHarness {
   final int port;
   int requestCount = 0;
   int deleteCount = 0;
+  bool deleteReturnsEmpty = false;
+  int refreshStatusCode = 401;
+  int anonymousSignupCount = 0;
   Map<String, dynamic>? lastProfileInsert;
 
   static Future<_FakeSupabaseHarness> start() async {
@@ -104,8 +159,13 @@ class _FakeSupabaseHarness {
     return harness;
   }
 
-  Future<({SupabaseProfileCloud cloud, CloudBackupPreferences prefs})> buildCloud({
+  Future<({
+    SupabaseProfileCloud cloud,
+    CloudBackupPreferences prefs,
+    ProfileSecretsStore secrets,
+  })> buildCloud({
     required bool enabled,
+    DateTime? sessionExpiresAt,
   }) async {
     final dir = Directory.systemTemp.createTempSync('amiro_fake_sb');
     final prefs = CloudBackupPreferences.inDirectory(dir);
@@ -116,15 +176,15 @@ class _FakeSupabaseHarness {
       legacyDirectory: dir,
       secureStorage: InMemorySecretStorage(),
     );
+    final expires =
+        sessionExpiresAt ??
+        DateTime.now().add(const Duration(hours: 1));
     await secrets.writeSessionJson(
       jsonEncode({
         'access_token': 'access-token',
         'refresh_token': 'refresh-token',
         'user_id': 'user-1',
-        'expires_at': DateTime.now()
-            .add(const Duration(hours: 1))
-            .toUtc()
-            .toIso8601String(),
+        'expires_at': expires.toUtc().toIso8601String(),
       }),
     );
     return (
@@ -136,6 +196,7 @@ class _FakeSupabaseHarness {
         secrets: secrets,
       ),
       prefs: prefs,
+      secrets: secrets,
     );
   }
 
@@ -167,9 +228,26 @@ class _FakeSupabaseHarness {
       request.response.write('[]');
     } else if (path == '/rest/v1/profiles' && request.method == 'DELETE') {
       deleteCount += 1;
-      request.response.statusCode = 204;
+      if (deleteReturnsEmpty) {
+        request.response.statusCode = 200;
+        request.response.write('[]');
+      } else {
+        request.response.statusCode = 200;
+        request.response.write(jsonEncode([{'identity_id': 'deleted'}]));
+      }
     } else if (path.startsWith('/auth/v1/token')) {
-      request.response.statusCode = 401;
+      request.response.statusCode = refreshStatusCode;
+    } else if (path == '/auth/v1/signup') {
+      anonymousSignupCount += 1;
+      request.response.statusCode = 201;
+      request.response.write(
+        jsonEncode({
+          'access_token': 'new-access',
+          'refresh_token': 'new-refresh',
+          'expires_in': 3600,
+          'user': {'id': 'new-user'},
+        }),
+      );
     } else {
       request.response.statusCode = 404;
     }

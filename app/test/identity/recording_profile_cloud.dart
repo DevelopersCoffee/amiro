@@ -8,7 +8,7 @@ class RecordingProfileCloud implements ProfileCloud {
   int pushCalls = 0;
   int revokeCalls = 0;
   Identity? lastPushed;
-  bool revokeResult = true;
+  RevokeBackupResult revokeResult = const RevokeBackupResult.ok();
 
   @override
   bool get supportsRestore => supportsRestoreValue;
@@ -30,7 +30,7 @@ class RecordingProfileCloud implements ProfileCloud {
   Future<Identity?> claim(String code) async => null;
 
   @override
-  Future<bool> revokeBackup({String? identityId}) async {
+  Future<RevokeBackupResult> revokeBackup({String? identityId}) async {
     revokeCalls += 1;
     return revokeResult;
   }

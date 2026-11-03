@@ -60,6 +60,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm test
+      - run: npx tsc --noEmit
 
   rust:
     runs-on: ubuntu-latest

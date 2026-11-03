@@ -5,4 +5,4 @@ grant delete on public.profiles to authenticated;
 create policy profiles_delete_owner
   on public.profiles for delete
   to authenticated
-  using (owner_id = auth.uid());
+  using (owner_id = (select auth.uid()));

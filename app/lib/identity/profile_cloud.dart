@@ -1,5 +1,18 @@
 import 'package:identity_core/identity_core.dart';
 
+/// Outcome of removing the server-side profile backup row.
+class RevokeBackupResult {
+  const RevokeBackupResult._({required this.success, this.userMessage});
+
+  const RevokeBackupResult.ok() : this._(success: true);
+
+  const RevokeBackupResult.failed([String? userMessage])
+    : this._(success: false, userMessage: userMessage);
+
+  final bool success;
+  final String? userMessage;
+}
+
 /// Backup of the on-device identity. Local Isar is still what the app reads
 /// on launch; this copy is what survives a reinstall or a second phone.
 abstract class ProfileCloud {
@@ -20,8 +33,8 @@ abstract class ProfileCloud {
   Future<Identity?> claim(String code);
 
   /// Removes this device's cloud backup row (profile payload, recovery code,
-  /// RevenueCat id on the server). Returns whether the server accepted delete.
-  Future<bool> revokeBackup({String? identityId});
+  /// RevenueCat id on the server).
+  Future<RevokeBackupResult> revokeBackup({String? identityId});
 }
 
 class NoopProfileCloud implements ProfileCloud {
@@ -43,7 +56,9 @@ class NoopProfileCloud implements ProfileCloud {
   Future<Identity?> claim(String code) async => null;
 
   @override
-  Future<bool> revokeBackup({String? identityId}) async => true;
+  Future<RevokeBackupResult> revokeBackup({String? identityId}) async {
+    return const RevokeBackupResult.ok();
+  }
 }
 
 /// Fields written to Supabase when the user opts in to cloud backup.

@@ -85,9 +85,9 @@ class SupabaseProfileCloud implements ProfileCloud {
   @override
   Future<Identity?> pull() async {
     if (!supportsRestore) return null;
-    final sessionRaw = await secrets.readSessionJson();
-    if (sessionRaw == null) return null;
     try {
+      final sessionRaw = await secrets.readSessionJson();
+      if (sessionRaw == null) return null;
       final session = await _ensureSession();
       final rows = await _selectPayloads(session);
       if (rows.isEmpty) return null;
@@ -97,28 +97,52 @@ class SupabaseProfileCloud implements ProfileCloud {
     }
   }
 
+  static const _revokeZeroRowsMessage =
+      'Only the device that created the backup can remove the cloud copy, '
+      'or the copy was already removed.';
+
   @override
-  Future<bool> revokeBackup({String? identityId}) async {
-    if (!supportsRestore) return true;
+  Future<RevokeBackupResult> revokeBackup({String? identityId}) async {
+    if (!supportsRestore) return const RevokeBackupResult.ok();
     try {
       final session = await _ensureSession();
       final id = identityId ?? await _primaryIdentityId(session);
-      if (id == null) return true;
+      if (id == null) {
+        return const RevokeBackupResult.failed(_revokeZeroRowsMessage);
+      }
       final response = await _send(
         method: 'DELETE',
         uri: _rest('profiles').replace(
           queryParameters: {'identity_id': 'eq.$id'},
         ),
-        headers: _userHeaders(session),
+        headers: {
+          ..._userHeaders(session),
+          'Prefer': 'return=representation',
+        },
       );
-      if (response.status >= 200 && response.status < 300) {
-        return true;
+      final deletedCount = _deletedRowCount(response);
+      if (response.status >= 200 &&
+          response.status < 300 &&
+          deletedCount > 0) {
+        await secrets.clearCloudBackupCredentials();
+        return const RevokeBackupResult.ok();
       }
-      if (response.status == 404) return true;
-      return false;
+      if (response.status >= 200 && response.status < 300) {
+        return const RevokeBackupResult.failed(_revokeZeroRowsMessage);
+      }
+      return const RevokeBackupResult.failed();
     } catch (_) {
-      return false;
+      return const RevokeBackupResult.failed();
     }
+  }
+
+  int _deletedRowCount(({int status, String body}) response) {
+    if (response.body.isEmpty) return 0;
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is List) return decoded.length;
+    } catch (_) {}
+    return 0;
   }
 
   Future<String?> _primaryIdentityId(_Session session) async {
@@ -265,7 +289,10 @@ class SupabaseProfileCloud implements ProfileCloud {
         final refreshed = await _refresh(existing.refreshToken);
         await _writeSession(refreshed);
         return refreshed;
-      } catch (_) {
+      } on SessionRefreshFailure catch (e) {
+        if (!e.isAuthFailure) {
+          rethrow;
+        }
         // A dead refresh token starts a new anonymous user. The recovery
         // code still joins the old profile.
       }
@@ -301,10 +328,12 @@ class SupabaseProfileCloud implements ProfileCloud {
       body: jsonEncode({'refresh_token': refreshToken}),
     );
     if (response.status < 200 || response.status >= 300) {
-      throw StateError('session refresh failed');
+      throw SessionRefreshFailure(response.status);
     }
     final session = _sessionFromJson(jsonDecode(response.body));
-    if (session == null) throw StateError('session refresh failed');
+    if (session == null) {
+      throw SessionRefreshFailure(response.status);
+    }
     return session;
   }
 
@@ -381,6 +410,16 @@ class SupabaseProfileCloud implements ProfileCloud {
       client.close();
     }
   }
+}
+
+/// Thrown when Supabase session refresh fails. Only [isAuthFailure] may start
+/// a new anonymous session; transient errors must not replace the user id.
+class SessionRefreshFailure implements Exception {
+  SessionRefreshFailure(this.statusCode);
+
+  final int statusCode;
+
+  bool get isAuthFailure => statusCode == 401 || statusCode == 403;
 }
 
 class _Session {

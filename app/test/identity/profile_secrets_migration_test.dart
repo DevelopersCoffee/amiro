@@ -17,6 +17,37 @@ class _ThrowingSecretStorage implements SecretStorage {
       throw StateError('keystore down');
 }
 
+class _SlowWriteStorage implements SecretStorage {
+  final _inner = InMemorySecretStorage();
+
+  @override
+  Future<void> delete(String key) => _inner.delete(key);
+
+  @override
+  Future<String?> read(String key) => _inner.read(key);
+
+  @override
+  Future<void> write(String key, String value) async {
+    await Future<void>.delayed(const Duration(seconds: 5));
+    await _inner.write(key, value);
+  }
+}
+
+class _ReadOkWriteFailStorage implements SecretStorage {
+  final _inner = InMemorySecretStorage();
+
+  @override
+  Future<void> delete(String key) => _inner.delete(key);
+
+  @override
+  Future<String?> read(String key) => _inner.read(key);
+
+  @override
+  Future<void> write(String key, String value) async {
+    throw StateError('write failed');
+  }
+}
+
 void main() {
   test('migrate skips secure storage when no legacy files exist', () async {
     final dir = await Directory.systemTemp.createTemp('amiro_secrets_skip');
@@ -40,6 +71,66 @@ void main() {
     );
     await runProfileSecretsMigrationSafely(store);
     expect(await File('${dir.path}/supabase_session.json').exists(), isTrue);
+  });
+
+  test('M3: legacy file remains when secure write fails during migration', () async {
+    final dir = await Directory.systemTemp.createTemp('amiro_secrets_m3');
+    addTearDown(() => dir.delete(recursive: true));
+    await File('${dir.path}/supabase_session.json').writeAsString('{"x":1}');
+
+    final store = ProfileSecretsStore(
+      legacyDirectory: dir,
+      secureStorage: _ReadOkWriteFailStorage(),
+    );
+    await expectLater(store.migrateFromLegacyPlaintext(), throwsStateError);
+    expect(await File('${dir.path}/supabase_session.json').exists(), isTrue);
+  });
+
+  test('M5: writeRecoveryCode removes legacy plaintext file', () async {
+    final dir = await Directory.systemTemp.createTemp('amiro_secrets_m5');
+    addTearDown(() => dir.delete(recursive: true));
+    await File('${dir.path}/profile_recovery_code.txt').writeAsString('code123');
+
+    final store = ProfileSecretsStore(
+      legacyDirectory: dir,
+      secureStorage: InMemorySecretStorage(),
+    );
+    await store.writeRecoveryCode('code123');
+    expect(await File('${dir.path}/profile_recovery_code.txt').exists(), isFalse);
+  });
+
+  test('runProfileSecretsMigrationSafely times out without losing legacy file', () async {
+    final dir = await Directory.systemTemp.createTemp('amiro_secrets_n1');
+    addTearDown(() => dir.delete(recursive: true));
+    await File('${dir.path}/supabase_session.json').writeAsString('{}');
+
+    final store = ProfileSecretsStore(
+      legacyDirectory: dir,
+      secureStorage: _SlowWriteStorage(),
+    );
+    final stopwatch = Stopwatch()..start();
+    await runProfileSecretsMigrationSafely(
+      store,
+      timeout: const Duration(milliseconds: 100),
+    );
+    stopwatch.stop();
+    expect(stopwatch.elapsed, lessThan(const Duration(seconds: 2)));
+    expect(await File('${dir.path}/supabase_session.json').exists(), isTrue);
+  });
+
+  test('removes stale legacy session when secure storage already has a value', () async {
+    final dir = await Directory.systemTemp.createTemp('amiro_stale_legacy');
+    addTearDown(() => dir.delete(recursive: true));
+    await File('${dir.path}/supabase_session.json').writeAsString('stale');
+
+    final storage = InMemorySecretStorage();
+    await storage.write('supabase_session_json', '{"secure":true}');
+    final store = ProfileSecretsStore(
+      legacyDirectory: dir,
+      secureStorage: storage,
+    );
+    await store.migrateFromLegacyPlaintext();
+    expect(await File('${dir.path}/supabase_session.json').exists(), isFalse);
   });
 
   test('writeSessionJson removes legacy plaintext file', () async {

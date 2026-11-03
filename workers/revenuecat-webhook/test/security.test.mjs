@@ -86,6 +86,27 @@ test('W11: rejects signature that only matches expected as a hex prefix', async 
   assert.equal(ok, false);
 });
 
+test('W7: HMAC verifies raw bytes that are not valid UTF-8 text', async () => {
+  const secret = 'test-signing-secret';
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const rawBody = new Uint8Array([0xff, 0xfe, 0x7b, 0x7d]);
+  const enc = new TextEncoder();
+  const prefix = enc.encode(`${timestamp}.`);
+  const message = new Uint8Array(prefix.length + rawBody.length);
+  message.set(prefix);
+  message.set(rawBody, prefix.length);
+  const signature = await hmacSha256Hex(secret, message);
+  const header = `t=${timestamp},v1=${signature}`;
+
+  const ok = await verifyRevenueCatWebhookSignature(
+    header,
+    rawBody,
+    secret,
+    300,
+  );
+  assert.equal(ok, true);
+});
+
 test('W11: rejects signature with valid prefix plus extra suffix bytes', async () => {
   const body = '{"event":{"id":"1"}}';
   const secret = 'test-signing-secret';

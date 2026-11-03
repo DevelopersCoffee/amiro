@@ -205,6 +205,7 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
             ),
             actions: [
               TextButton(
+                key: const Key('cloudBackupRevokeCancel'),
                 onPressed: () => Navigator.of(dialogContext).pop(false),
                 child: const Text('Keep backup'),
               ),
@@ -218,18 +219,20 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
         },
       );
       if (confirmed != true || !mounted) return;
-      final removed =
+      final revokeResult =
           await ref.read(profileCloudProvider).revokeBackup(
                 identityId: ref.read(currentIdentityProvider).value?.id,
               );
       if (!mounted) return;
-      if (!removed) {
+      if (!revokeResult.success) {
         setState(
           () => _status =
+              revokeResult.userMessage ??
               'Could not remove the cloud copy. Check your connection and try again.',
         );
         return;
       }
+      setState(() => _recoveryCode = null);
     }
     if (enabled && !_cloudBackupEnabled) {
       final accepted = await confirmCloudBackupEnable(

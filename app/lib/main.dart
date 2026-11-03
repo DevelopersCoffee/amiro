@@ -47,8 +47,10 @@ void main() async {
     secrets: profileSecrets,
   );
   if (await repository.getCurrent() == null && await backupPreferences.isEnabled()) {
-    final restored = await profileCloud.pull();
-    if (restored != null) await repository.save(restored);
+    try {
+      final restored = await profileCloud.pull();
+      if (restored != null) await repository.save(restored);
+    } catch (_) {}
   }
   final encounterSharePreferences =
       EncounterSharePreferences.inDirectory(supportDir);

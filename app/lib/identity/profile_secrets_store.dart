@@ -37,6 +37,8 @@ class ProfileSecretsStore {
           await _secure.write(_sessionKey, raw);
           await _legacySessionFile.delete();
         }
+      } else {
+        await _legacySessionFile.delete();
       }
     }
     if (await _legacyCodeFile.exists()) {
@@ -46,7 +48,21 @@ class ProfileSecretsStore {
           await _secure.write(_recoveryCodeKey, code);
           await _legacyCodeFile.delete();
         }
+      } else {
+        await _legacyCodeFile.delete();
       }
+    }
+  }
+
+  /// Clears Supabase session and recovery code after a successful cloud revoke.
+  Future<void> clearCloudBackupCredentials() async {
+    await _secure.delete(_sessionKey);
+    await _secure.delete(_recoveryCodeKey);
+    if (await _legacySessionFile.exists()) {
+      await _legacySessionFile.delete();
+    }
+    if (await _legacyCodeFile.exists()) {
+      await _legacyCodeFile.delete();
     }
   }
 

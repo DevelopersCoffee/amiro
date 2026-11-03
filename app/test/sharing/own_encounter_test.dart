@@ -67,6 +67,12 @@ void main() {
       expect(EncounterShareOptions.defaults.includeCollectionProgress, isFalse);
     });
 
+    test('S4: fromJson defaults collection progress to off when key is missing', () {
+      final parsed = EncounterShareOptions.fromJson({});
+      expect(parsed.includeCollectionProgress, isFalse);
+      expect(parsed.includeEquippedCosmetics, isTrue);
+    });
+
     test('omits equipped cosmetics when share option is off', () {
       final payload = buildOwnEncounterPayload(
         identity: identity,
