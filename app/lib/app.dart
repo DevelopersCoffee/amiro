@@ -52,7 +52,9 @@ class _SplashGateState extends State<_SplashGate> {
 /// Store tab activity for a given bottom-nav index (used by [AmiroRootTabs]).
 @visibleForTesting
 Widget amiroRootTabStoreScreenForIndex(int index) {
-  return StoreScreen(isActive: index == 2);
+  // Keep [StoreScreen] out of the tree until the Store tab is selected (R3/R3b).
+  if (index != 2) return const SizedBox.shrink();
+  return const StoreScreen(isActive: true);
 }
 
 /// Root tab shell (Identity, Avatar, Store, Share, Passport). Used at launch
@@ -95,7 +97,9 @@ class _AmiroRootTabsState extends ConsumerState<AmiroRootTabs> {
 
   @override
   Widget build(BuildContext context) {
-    _registerThermionGateOnce();
+    if (!widget.omitThermionOverlayForTest) {
+      _registerThermionGateOnce();
+    }
     final screens = widget.lightweightTabsForTest
         ? [
             const SizedBox.shrink(),

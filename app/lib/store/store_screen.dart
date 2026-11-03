@@ -346,7 +346,9 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
   @override
   Widget build(BuildContext context) {
     final renderer = ref.watch(avatarRendererProvider);
-    final owned = ref.watch(ownedCosmeticsProvider).value ?? const <String>{};
+    final owned = widget.isActive
+        ? ref.watch(ownedCosmeticsProvider).value ?? const <String>{}
+        : const <String>{};
     final gender = resolveAvatarGender(
       ref.watch(currentIdentityProvider).value,
     );

@@ -17,6 +17,7 @@ import 'identity/profile_secrets_store.dart';
 import 'identity/supabase_profile_cloud.dart';
 import 'identity/supabase_public.dart';
 import 'launch/provider_overrides.dart';
+import 'launch/startup_cloud_restore.dart';
 import 'sharing/encounter_share_options.dart';
 
 void main() async {
@@ -46,12 +47,12 @@ void main() async {
     backupPreferences: backupPreferences,
     secrets: profileSecrets,
   );
-  if (await repository.getCurrent() == null && await backupPreferences.isEnabled()) {
-    try {
-      final restored = await profileCloud.pull();
-      if (restored != null) await repository.save(restored);
-    } catch (_) {}
-  }
+  await tryRestoreIdentityFromCloud(
+    getCurrent: repository.getCurrent,
+    isBackupEnabled: backupPreferences.isEnabled,
+    pull: profileCloud.pull,
+    save: repository.save,
+  );
   final encounterSharePreferences =
       EncounterSharePreferences.inDirectory(supportDir);
 

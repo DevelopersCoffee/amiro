@@ -138,6 +138,53 @@ void main() {
     expect(result.success, isFalse);
     expect(harness.anonymousSignupCount, 0);
   });
+
+  test('N7: revokeBackup DELETE filters by identity_id', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    final built = await harness.buildCloud(enabled: true);
+    const identity = Identity(
+      id: 'id-filter',
+      displayName: 'F',
+      username: 'f',
+    );
+    expect(await built.cloud.push(identity), isTrue);
+
+    expect(
+      (await built.cloud.revokeBackup(identityId: 'id-filter')).success,
+      isTrue,
+    );
+    expect(harness.lastDeleteUri, isNotNull);
+    expect(
+      harness.lastDeleteUri!.queryParameters['identity_id'],
+      'eq.id-filter',
+    );
+  });
+
+  test('N9: revoke without cloud support does not issue HTTP', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    final dir = Directory.systemTemp.createTempSync('amiro_no_cloud');
+    final prefs = CloudBackupPreferences.inDirectory(dir);
+    await prefs.setEnabled(true);
+    final secrets = ProfileSecretsStore(
+      legacyDirectory: dir,
+      secureStorage: InMemorySecretStorage(),
+    );
+    final cloud = SupabaseProfileCloud(
+      directory: dir,
+      projectUrl: Uri.parse('http://127.0.0.1:${harness.port}'),
+      anonKey: '',
+      backupPreferences: prefs,
+      secrets: secrets,
+    );
+    expect(cloud.supportsRestore, isFalse);
+    expect((await cloud.revokeBackup()).success, isTrue);
+    expect(harness.deleteCount, 0);
+    expect(harness.requestCount, 0);
+  });
 }
 
 class _FakeSupabaseHarness {
@@ -150,6 +197,7 @@ class _FakeSupabaseHarness {
   bool deleteReturnsEmpty = false;
   int refreshStatusCode = 401;
   int anonymousSignupCount = 0;
+  Uri? lastDeleteUri;
   Map<String, dynamic>? lastProfileInsert;
 
   static Future<_FakeSupabaseHarness> start() async {
@@ -228,6 +276,7 @@ class _FakeSupabaseHarness {
       request.response.write('[]');
     } else if (path == '/rest/v1/profiles' && request.method == 'DELETE') {
       deleteCount += 1;
+      lastDeleteUri = request.uri;
       if (deleteReturnsEmpty) {
         request.response.statusCode = 200;
         request.response.write('[]');
