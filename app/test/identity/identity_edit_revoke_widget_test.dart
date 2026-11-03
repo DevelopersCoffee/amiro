@@ -60,6 +60,47 @@ void main() {
     expect(find.byKey(const Key('recoveryCode')), findsOneWidget);
   });
 
+  testWidgets('X12: successful revoke clears recovery code from the UI', (
+    tester,
+  ) async {
+    useTallTestViewport(tester);
+    final prefs = CloudBackupPreferences.inMemory(enabled: true);
+    final cloud = RecordingProfileCloud();
+    const identity = Identity(id: 'id-1', displayName: 'A', username: 'a');
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          identityRepositoryProvider.overrideWithValue(
+            InMemoryIdentityRepository(identity),
+          ),
+          cloudBackupPreferencesProvider.overrideWithValue(prefs),
+          profileCloudProvider.overrideWithValue(cloud),
+        ],
+        child: const MaterialApp(home: IdentityEditScreen()),
+      ),
+    );
+    await tester.pump();
+    await pumpUntilFound(tester, find.byKey(const Key('recoveryCode')));
+    expect(find.byKey(const Key('recoveryCode')), findsOneWidget);
+
+    await _waitForCloudToggle(tester);
+    await tester.ensureVisible(find.byKey(const Key('cloudBackupToggle')));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('cloudBackupToggle')),
+        matching: find.byType(Switch),
+      ),
+      warnIfMissed: false,
+    );
+    await pumpUntilFound(tester, find.byKey(const Key('cloudBackupRevokeConfirm')));
+    await tester.tap(find.byKey(const Key('cloudBackupRevokeConfirm')));
+    await pumpShort(tester, frames: 8);
+
+    expect(cloud.revokeCalls, 1);
+    expect(find.byKey(const Key('recoveryCode')), findsNothing);
+  });
+
   testWidgets('cancel revoke dialog keeps backup on', (tester) async {
     useTallTestViewport(tester);
     final prefs = CloudBackupPreferences.inMemory(enabled: true);

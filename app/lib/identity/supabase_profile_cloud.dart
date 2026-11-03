@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:identity_core/identity_core.dart';
 
 import 'cloud_backup_preferences.dart';
@@ -76,6 +77,7 @@ class SupabaseProfileCloud implements ProfileCloud {
           payload: payload,
         );
         if (!updated) return false;
+        await _maybeBackfillCloudProfileOwnerId(session, identity.id);
       }
       return true;
     } catch (_) {
@@ -103,8 +105,12 @@ class SupabaseProfileCloud implements ProfileCloud {
       'or the copy was already removed.';
 
   static const _reconnectRecoveryMessage =
-      'Cloud backup is linked to another sign-in. Restore with your recovery '
-      'code, then turn backup off again.';
+      'This device cannot remove the cloud backup copy. If sign-in on this '
+      'device no longer matches the account that enabled backup, request '
+      'deletion by email as described in the privacy policy.';
+
+  @visibleForTesting
+  static const reconnectRecoveryMessageForTest = _reconnectRecoveryMessage;
 
   @override
   Future<RevokeBackupResult> revokeBackup({String? identityId}) async {
@@ -113,6 +119,7 @@ class SupabaseProfileCloud implements ProfileCloud {
       final session = await _ensureSession();
       final id = identityId ?? await _primaryIdentityId(session);
       if (id != null) {
+        await _maybeBackfillCloudProfileOwnerId(session, id);
         final response = await _send(
           method: 'DELETE',
           uri: _rest('profiles').replace(
@@ -279,6 +286,37 @@ class SupabaseProfileCloud implements ProfileCloud {
       }),
     );
     return response.status >= 200 && response.status < 300;
+  }
+
+  Future<void> _maybeBackfillCloudProfileOwnerId(
+    _Session session,
+    String identityId,
+  ) async {
+    if (await secrets.readCloudProfileOwnerId() != null) return;
+    final response = await _send(
+      method: 'GET',
+      uri: _rest('profiles').replace(
+        queryParameters: {
+          'select': 'owner_id',
+          'identity_id': 'eq.$identityId',
+        },
+      ),
+      headers: _userHeaders(session),
+    );
+    if (response.status < 200 || response.status >= 300) return;
+    Object? decoded;
+    try {
+      decoded = jsonDecode(response.body);
+    } catch (_) {
+      return;
+    }
+    if (decoded is! List || decoded.isEmpty) return;
+    final row = decoded.first;
+    if (row is! Map) return;
+    final ownerId = row['owner_id'];
+    if (ownerId is String && ownerId == session.userId) {
+      await secrets.writeCloudProfileOwnerId(ownerId);
+    }
   }
 
   Future<List<Object?>> _selectPayloads(_Session session) async {
