@@ -141,6 +141,46 @@ test('/crash returns 404 when CRASH_PATH_TOKEN is unset', async () => {
   assert.equal(upstream, 0);
 });
 
+test('W7b: handler accepts BOM-prefixed body signed over raw bytes', async () => {
+  const secret = 'signing-secret';
+  const json = '{"event":{"id":"1","type":"TEST","app_user_id":"u1"}}';
+  const bodyText = `\uFEFF${json}`;
+  const rawBodyBytes = new TextEncoder().encode(bodyText);
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const prefix = new TextEncoder().encode(`${timestamp}.`);
+  const message = new Uint8Array(prefix.length + rawBodyBytes.length);
+  message.set(prefix);
+  message.set(rawBodyBytes, prefix.length);
+  const signature = await hmacSha256Hex(secret, message);
+  const header = `t=${timestamp},v1=${signature}`;
+  let upstream = 0;
+  const env = {
+    WEBHOOK_PATH_TOKEN: 'path-token',
+    WEBHOOK_SIGNING_SECRET: secret,
+    SUPABASE_URL: baseEnv.SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY: baseEnv.SUPABASE_SERVICE_ROLE_KEY,
+  };
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    assert.match(String(url), /revenuecat_events/);
+    upstream += 1;
+    return new Response('[]', { status: 201 });
+  };
+  try {
+    const response = await worker.fetch(
+      webhookRequest('path-token', {
+        headers: { 'X-RevenueCat-Webhook-Signature': header },
+        body: bodyText,
+      }),
+      env,
+    );
+    assert.equal(response.status, 200);
+    assert.ok(upstream >= 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('constantTimeEqual(undefined) does not match empty path token', async () => {
   const { constantTimeEqual } = await import('../src/security.ts');
   assert.equal(constantTimeEqual('', undefined), false);

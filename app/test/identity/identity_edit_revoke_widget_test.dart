@@ -57,6 +57,7 @@ void main() {
       isTrue,
     );
     expect(find.textContaining('Server copy still there'), findsOneWidget);
+    expect(find.byKey(const Key('recoveryCode')), findsOneWidget);
   });
 
   testWidgets('cancel revoke dialog keeps backup on', (tester) async {

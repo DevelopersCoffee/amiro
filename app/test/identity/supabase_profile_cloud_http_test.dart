@@ -175,6 +175,42 @@ void main() {
     expect(harness.anonymousSignupCount, 0);
   });
 
+  test('Y5: 429 refresh does not swap to a new anonymous user', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+    harness.refreshStatusCode = 429;
+
+    final built = await harness.buildCloud(
+      enabled: true,
+      sessionExpiresAt: DateTime.now().subtract(const Duration(minutes: 5)),
+    );
+
+    final result = await built.cloud.revokeBackup(identityId: 'id-x');
+    expect(result.success, isFalse);
+    expect(harness.anonymousSignupCount, 0);
+  });
+
+  test('400 validation_failed refresh does not swap users', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+    harness.refreshStatusCode = 400;
+    harness.refreshBody = jsonEncode({
+      'error': 'validation_failed',
+      'error_description': 'bad request',
+    });
+
+    final built = await harness.buildCloud(
+      enabled: true,
+      sessionExpiresAt: DateTime.now().subtract(const Duration(minutes: 5)),
+    );
+
+    expect(
+      (await built.cloud.revokeBackup(identityId: 'id-x')).success,
+      isFalse,
+    );
+    expect(harness.anonymousSignupCount, 0);
+  });
+
   test('dead refresh token (400) starts a new anonymous session', () async {
     final harness = await _FakeSupabaseHarness.start();
     addTearDown(harness.close);
@@ -247,6 +283,58 @@ void main() {
     expect(result.success, isFalse);
   });
 
+  test('Y3: empty re-select clears credentials when owner session matches', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+    harness.deleteReturnsEmpty = true;
+
+    final built = await harness.buildCloud(enabled: true);
+    await built.cloud.push(
+      const Identity(id: 'id-y3', displayName: 'Y', username: 'y'),
+    );
+    expect(await built.secrets.readCloudProfileOwnerId(), 'user-1');
+    harness.profileRows.clear();
+
+    final result = await built.cloud.revokeBackup(identityId: 'id-y3');
+    expect(result.success, isTrue);
+    expect(await built.secrets.readSessionJson(), isNull);
+  });
+
+  test('B1: session swap after dead refresh cannot falsely revoke', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    final built = await harness.buildCloud(enabled: true);
+    await built.cloud.push(
+      const Identity(id: 'id-swap', displayName: 'S', username: 's'),
+    );
+    expect(await built.secrets.readCloudProfileOwnerId(), 'user-1');
+
+    harness.refreshStatusCode = 400;
+    harness.refreshBody = jsonEncode({
+      'error': 'invalid_grant',
+      'error_description': 'refresh_token_not_found',
+    });
+    harness.deleteReturnsEmpty = true;
+    await built.secrets.writeSessionJson(
+      jsonEncode({
+        'access_token': 'access-token',
+        'refresh_token': 'refresh-token',
+        'user_id': 'user-1',
+        'expires_at': DateTime.now()
+            .subtract(const Duration(minutes: 5))
+            .toUtc()
+            .toIso8601String(),
+      }),
+    );
+
+    final result = await built.cloud.revokeBackup(identityId: 'id-swap');
+    expect(result.success, isFalse);
+    expect(await built.secrets.readSessionJson(), isNotNull);
+    expect(await built.cloud.recoveryCode(), isNotNull);
+    expect(await built.secrets.readCloudProfileOwnerId(), 'user-1');
+  });
+
   test('revoke succeeds on retry when row was already deleted', () async {
     final harness = await _FakeSupabaseHarness.start();
     addTearDown(harness.close);
@@ -289,6 +377,47 @@ void main() {
     expect(harness.requestCount, 0);
   });
 
+  test('X11: successful revoke removes legacy recovery plaintext file', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    final built = await harness.buildCloud(enabled: true);
+    final legacyFile = File(
+      '${built.secrets.legacyDirectory.path}/profile_recovery_code.txt',
+    );
+    await legacyFile.writeAsString('legacy-on-disk');
+    await built.cloud.push(
+      const Identity(id: 'id-x11', displayName: 'L', username: 'l'),
+    );
+
+    expect((await built.cloud.revokeBackup(identityId: 'id-x11')).success, isTrue);
+    expect(await legacyFile.exists(), isFalse);
+  });
+
+  test('X8: pull returns null when session read throws', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    final dir = Directory.systemTemp.createTempSync('amiro_pull_x8');
+    final storage = _ThrowOnSessionReadStorage();
+    final secrets = ProfileSecretsStore(
+      legacyDirectory: dir,
+      secureStorage: storage,
+    );
+    await secrets.writeSessionJson('{"access_token":"a"}');
+    final prefs = CloudBackupPreferences.inDirectory(dir);
+    await prefs.setEnabled(true);
+    final cloud = SupabaseProfileCloud(
+      directory: dir,
+      projectUrl: Uri.parse('http://127.0.0.1:${harness.port}'),
+      anonKey: 'anon-key',
+      backupPreferences: prefs,
+      secrets: secrets,
+    );
+
+    expect(await cloud.pull(), isNull);
+  });
+
   test('claim returns null on bad code but throws on 503', () async {
     final harness = await _FakeSupabaseHarness.start();
     addTearDown(harness.close);
@@ -300,6 +429,22 @@ void main() {
       throwsA(isA<SessionRefreshFailure>()),
     );
   });
+}
+
+class _ThrowOnSessionReadStorage implements SecretStorage {
+  @override
+  Future<void> delete(String key) async {}
+
+  @override
+  Future<String?> read(String key) async {
+    if (key == 'supabase_session_json') {
+      throw StateError('keystore read failed');
+    }
+    return null;
+  }
+
+  @override
+  Future<void> write(String key, String value) async {}
 }
 
 class _FakeSupabaseHarness {
@@ -419,18 +564,23 @@ class _FakeSupabaseHarness {
       deleteCount += 1;
       lastDeleteUri = request.uri;
       lastDeletePrefer = request.headers.value('prefer');
-      if (!deleteReturnsEmpty) {
-        final idFilter = request.uri.queryParameters['identity_id'];
+      final idFilter = request.uri.queryParameters['identity_id'];
+      final hadRow = profileRows.any(
+        (row) => idFilter == 'eq.${row['identity_id']}',
+      );
+      if (!deleteReturnsEmpty && hadRow) {
         profileRows.removeWhere(
           (row) => idFilter == 'eq.${row['identity_id']}',
         );
-      }
-      if (deleteReturnsEmpty) {
         request.response.statusCode = 200;
-        request.response.write('[]');
+        request.response.write(
+          jsonEncode([
+            {'identity_id': idFilter?.replaceFirst('eq.', '') ?? 'deleted'},
+          ]),
+        );
       } else {
         request.response.statusCode = 200;
-        request.response.write(jsonEncode([{'identity_id': 'deleted'}]));
+        request.response.write('[]');
       }
     } else if (path.startsWith('/auth/v1/token')) {
       request.response.statusCode = refreshStatusCode;

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -101,6 +102,10 @@ class SupabaseProfileCloud implements ProfileCloud {
       'Only the device that created the backup can remove the cloud copy, '
       'or the copy was already removed.';
 
+  static const _reconnectRecoveryMessage =
+      'Cloud backup is linked to another sign-in. Restore with your recovery '
+      'code, then turn backup off again.';
+
   @override
   Future<RevokeBackupResult> revokeBackup({String? identityId}) async {
     if (!supportsRestore) return const RevokeBackupResult.ok();
@@ -132,6 +137,9 @@ class SupabaseProfileCloud implements ProfileCloud {
       }
       final visible = await _selectPayloads(session);
       if (visible.isEmpty) {
+        if (!await _canTreatEmptySelectAsGone(session)) {
+          return const RevokeBackupResult.failed(_reconnectRecoveryMessage);
+        }
         await secrets.clearCloudBackupCredentials();
         return const RevokeBackupResult.ok();
       }
@@ -139,6 +147,18 @@ class SupabaseProfileCloud implements ProfileCloud {
     } catch (_) {
       return const RevokeBackupResult.failed();
     }
+  }
+
+  Future<bool> _canTreatEmptySelectAsGone(_Session session) async {
+    final ownerId = await secrets.readCloudProfileOwnerId();
+    if (ownerId != null) {
+      return session.userId == ownerId;
+    }
+    final code = await secrets.readRecoveryCode();
+    if (code != null && code.trim().isNotEmpty) {
+      return false;
+    }
+    return true;
   }
 
   int _deletedRowCount(({int status, String body}) response) {
@@ -191,6 +211,10 @@ class SupabaseProfileCloud implements ProfileCloud {
       return identity;
     } on SessionRefreshFailure {
       rethrow;
+    } on SocketException {
+      throw SessionRefreshFailure(0);
+    } on TimeoutException {
+      throw SessionRefreshFailure(408);
     } catch (_) {
       return null;
     }
@@ -220,6 +244,7 @@ class SupabaseProfileCloud implements ProfileCloud {
     );
     if (response.status < 200 || response.status >= 300) return false;
     await secrets.writeRecoveryCode(code);
+    await secrets.writeCloudProfileOwnerId(session.userId);
     return true;
   }
 
@@ -343,13 +368,31 @@ class SupabaseProfileCloud implements ProfileCloud {
       body: jsonEncode({'refresh_token': refreshToken}),
     );
     if (response.status < 200 || response.status >= 300) {
-      throw SessionRefreshFailure(response.status);
+      throw _sessionRefreshFailureFromBody(response.status, response.body);
     }
     final session = _sessionFromJson(jsonDecode(response.body));
     if (session == null) {
-      throw SessionRefreshFailure(response.status);
+      throw _sessionRefreshFailureFromBody(response.status, response.body);
     }
     return session;
+  }
+
+  SessionRefreshFailure _sessionRefreshFailureFromBody(int status, String body) {
+    String? code;
+    String? description;
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map) {
+        code = decoded['error'] as String? ?? decoded['error_code'] as String?;
+        description =
+            decoded['error_description'] as String? ?? decoded['msg'] as String?;
+      }
+    } catch (_) {}
+    return SessionRefreshFailure(
+      status,
+      errorCode: code,
+      errorDescription: description,
+    );
   }
 
   _Session? _sessionFromJson(Object? decoded) {
@@ -421,6 +464,10 @@ class SupabaseProfileCloud implements ProfileCloud {
       );
       final text = await response.transform(utf8.decoder).join();
       return (status: response.statusCode, body: text);
+    } on SocketException {
+      throw SessionRefreshFailure(0);
+    } on TimeoutException {
+      throw SessionRefreshFailure(408);
     } finally {
       client.close();
     }

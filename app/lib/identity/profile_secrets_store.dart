@@ -15,6 +15,7 @@ class ProfileSecretsStore {
 
   static const _sessionKey = 'supabase_session_json';
   static const _recoveryCodeKey = 'profile_recovery_code';
+  static const _cloudOwnerKey = 'cloud_profile_owner_id';
 
   File get _legacySessionFile =>
       File('${legacyDirectory.path}/supabase_session.json');
@@ -54,10 +55,16 @@ class ProfileSecretsStore {
     }
   }
 
+  Future<String?> readCloudProfileOwnerId() => _secure.read(_cloudOwnerKey);
+
+  Future<void> writeCloudProfileOwnerId(String ownerId) =>
+      _secure.write(_cloudOwnerKey, ownerId);
+
   /// Clears Supabase session and recovery code after a successful cloud revoke.
   Future<void> clearCloudBackupCredentials() async {
     await _secure.delete(_sessionKey);
     await _secure.delete(_recoveryCodeKey);
+    await _secure.delete(_cloudOwnerKey);
     if (await _legacySessionFile.exists()) {
       await _legacySessionFile.delete();
     }

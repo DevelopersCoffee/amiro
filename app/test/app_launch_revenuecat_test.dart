@@ -62,20 +62,6 @@ void main() {
     expect(amiroRootTabStoreScreenForIndex(2), isA<StoreScreen>());
   });
 
-  test('R3b: production tab list wires deferred store slot', () {
-    final source = File('lib/app.dart').readAsStringSync();
-    expect(source, contains('const IdentityEditScreen()'));
-    expect(source, contains('amiroRootTabStoreScreenForIndex(_index)'));
-    expect(
-      source,
-      isNot(
-        contains(
-          'const AvatarScreen(),\n            const StoreScreen(isActive:',
-        ),
-      ),
-    );
-  });
-
   testWidgets('R3b: production AmiroRootTabs keeps Store unmounted at launch', (
     tester,
   ) async {
@@ -105,7 +91,11 @@ void main() {
     await tester.pump();
     await pumpShort(tester, frames: 8);
 
-    expect(find.byType(StoreScreen), findsNothing);
+    expect(
+      find.byType(StoreScreen, skipOffstage: false),
+      findsNothing,
+      reason: 'Store must not be in the production IndexedStack at launch',
+    );
     expect(
       purchasesCalls.where((c) => c.method == 'setupPurchases'),
       isEmpty,

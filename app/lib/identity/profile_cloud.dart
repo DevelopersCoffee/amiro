@@ -3,16 +3,33 @@ import 'package:identity_core/identity_core.dart';
 /// Thrown when Supabase session refresh or a transient cloud call fails.
 /// Only [isAuthFailure] may start a new anonymous session.
 class SessionRefreshFailure implements Exception {
-  SessionRefreshFailure(this.statusCode);
+  SessionRefreshFailure(
+    this.statusCode, {
+    this.errorCode,
+    this.errorDescription,
+  });
 
   final int statusCode;
+  final String? errorCode;
+  final String? errorDescription;
 
-  /// Supabase returns 400 for dead refresh tokens; treat all 4xx except
-  /// 408/429 as auth failures. 5xx and rate-limit responses stay transient.
+  /// Only documented dead-session refresh errors (plus 401/403) may swap users.
   bool get isAuthFailure {
-    if (statusCode >= 500) return false;
-    if (statusCode == 408 || statusCode == 429) return false;
-    return statusCode >= 400 && statusCode < 500;
+    if (statusCode == 401 || statusCode == 403) return true;
+    if (statusCode != 400) return false;
+    final code = errorCode?.toLowerCase();
+    final desc = errorDescription?.toLowerCase() ?? '';
+    if (code == 'invalid_grant') return true;
+    const markers = [
+      'refresh_token_not_found',
+      'refresh_token_already_used',
+      'session_not_found',
+      'session_expired',
+    ];
+    for (final marker in markers) {
+      if (code == marker || desc.contains(marker)) return true;
+    }
+    return false;
   }
 }
 
