@@ -9,6 +9,13 @@ import 'package:amiro_app/identity/supabase_profile_cloud.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:identity_core/identity_core.dart';
 
+/// Real GoTrue refresh error body (not the OAuth-style `error`/`error_description`).
+final _goTrueRefreshTokenNotFoundBody = jsonEncode({
+  'code': 400,
+  'error_code': 'refresh_token_not_found',
+  'msg': 'Invalid Refresh Token: Refresh Token Not Found',
+});
+
 void main() {
   test('push sends no HTTP when backup is disabled', () async {
     final harness = await _FakeSupabaseHarness.start();
@@ -215,10 +222,7 @@ void main() {
     final harness = await _FakeSupabaseHarness.start();
     addTearDown(harness.close);
     harness.refreshStatusCode = 400;
-    harness.refreshBody = jsonEncode({
-      'error': 'invalid_grant',
-      'error_description': 'refresh_token_not_found',
-    });
+    harness.refreshBody = _goTrueRefreshTokenNotFoundBody;
 
     final built = await harness.buildCloud(
       enabled: true,
@@ -300,7 +304,27 @@ void main() {
     expect(await built.secrets.readSessionJson(), isNull);
   });
 
-  test('B1: session swap after dead refresh cannot falsely revoke', () async {
+  test('Z2/Z3/Z4: real GoTrue refresh body swaps on refresh_token_not_found', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+    harness.refreshStatusCode = 400;
+    harness.refreshBody = _goTrueRefreshTokenNotFoundBody;
+
+    final built = await harness.buildCloud(
+      enabled: true,
+      sessionExpiresAt: DateTime.now().subtract(const Duration(minutes: 5)),
+    );
+
+    expect(
+      await built.cloud.push(
+        const Identity(id: 'id-gotrue', displayName: 'G', username: 'g'),
+      ),
+      isTrue,
+    );
+    expect(harness.anonymousSignupCount, 1);
+  });
+
+  test('Z5/B1: swapped owner fails empty re-select and keeps credentials', () async {
     final harness = await _FakeSupabaseHarness.start();
     addTearDown(harness.close);
 
@@ -311,10 +335,7 @@ void main() {
     expect(await built.secrets.readCloudProfileOwnerId(), 'user-1');
 
     harness.refreshStatusCode = 400;
-    harness.refreshBody = jsonEncode({
-      'error': 'invalid_grant',
-      'error_description': 'refresh_token_not_found',
-    });
+    harness.refreshBody = _goTrueRefreshTokenNotFoundBody;
     harness.deleteReturnsEmpty = true;
     await built.secrets.writeSessionJson(
       jsonEncode({
@@ -330,9 +351,168 @@ void main() {
 
     final result = await built.cloud.revokeBackup(identityId: 'id-swap');
     expect(result.success, isFalse);
+    expect(
+      result.userMessage,
+      SupabaseProfileCloud.reconnectRecoveryMessageForTest,
+    );
     expect(await built.secrets.readSessionJson(), isNotNull);
     expect(await built.cloud.recoveryCode(), isNotNull);
     expect(await built.secrets.readCloudProfileOwnerId(), 'user-1');
+    expect(harness.anonymousSignupCount, 1);
+  });
+
+  test('Z6: legacy install with recovery code fails when row is not visible', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+    harness.deleteReturnsEmpty = true;
+
+    final built = await harness.buildCloud(enabled: true);
+    await built.cloud.push(
+      const Identity(id: 'id-legacy', displayName: 'L', username: 'l'),
+    );
+    await built.secrets.deleteCloudProfileOwnerIdForTest();
+    expect(await built.secrets.readCloudProfileOwnerId(), isNull);
+    expect(await built.cloud.recoveryCode(), isNotNull);
+    harness.profileRows.clear();
+
+    final result = await built.cloud.revokeBackup(identityId: 'id-legacy');
+    expect(result.success, isFalse);
+    expect(
+      result.userMessage,
+      SupabaseProfileCloud.reconnectRecoveryMessageForTest,
+    );
+    expect(await built.secrets.readSessionJson(), isNotNull);
+    expect(await built.cloud.recoveryCode(), isNotNull);
+  });
+
+  test('Z9: no owner id and no recovery code succeeds when row is gone', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    final built = await harness.buildCloud(enabled: true);
+    expect(await built.cloud.recoveryCode(), isNull);
+
+    final result = await built.cloud.revokeBackup(identityId: 'never-uploaded');
+    expect(result.success, isTrue);
+    expect(await built.secrets.readSessionJson(), isNull);
+  });
+
+  test('member revoke sees row but cannot delete (owner-only DELETE)', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    harness.seedProfile(
+      identityId: 'id-member',
+      ownerId: 'user-1',
+      payload: const {
+        'id': 'id-member',
+        'displayName': 'O',
+        'username': 'o',
+      },
+      recoveryCode: '1234567890123456',
+      members: {'user-2'},
+    );
+
+    final built = await harness.buildCloud(
+      enabled: true,
+      userId: 'user-2',
+      accessToken: 'access-user-2',
+    );
+    await built.secrets.writeRecoveryCode('1234567890123456');
+
+    final result = await built.cloud.revokeBackup(identityId: 'id-member');
+    expect(result.success, isFalse);
+    expect(result.userMessage, isNotNull);
+    expect(
+      result.userMessage,
+      isNot(SupabaseProfileCloud.reconnectRecoveryMessageForTest),
+    );
+    expect(await built.secrets.readSessionJson(), isNotNull);
+  });
+
+  test('Z12: claim does not write cloud profile owner id', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    harness.seedProfile(
+      identityId: 'id-claim',
+      ownerId: 'user-owner',
+      payload: const {
+        'id': 'id-claim',
+        'displayName': 'C',
+        'username': 'c',
+      },
+      recoveryCode: 'abcdef0123456789',
+    );
+
+    final built = await harness.buildCloud(enabled: true);
+    expect(await built.secrets.readCloudProfileOwnerId(), isNull);
+
+    final identity = await built.cloud.claim('abcdef0123456789');
+    expect(identity, isNotNull);
+    expect(await built.secrets.readCloudProfileOwnerId(), isNull);
+  });
+
+  test('Z13: member push does not write cloud profile owner id', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    harness.seedProfile(
+      identityId: 'id-z13',
+      ownerId: 'user-1',
+      payload: const {
+        'id': 'id-z13',
+        'displayName': 'M',
+        'username': 'm',
+      },
+      recoveryCode: 'fedcba9876543210',
+    );
+
+    final built = await harness.buildCloud(
+      enabled: true,
+      userId: 'user-2',
+      accessToken: 'access-user-2',
+    );
+    expect(await built.secrets.readCloudProfileOwnerId(), isNull);
+
+    expect(
+      await built.cloud.push(
+        const Identity(id: 'id-z13', displayName: 'M', username: 'm'),
+      ),
+      isTrue,
+    );
+    expect(await built.secrets.readCloudProfileOwnerId(), isNull);
+  });
+
+  test('Z14: offline claim throws SessionRefreshFailure', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    final built = await harness.buildCloud(enabled: true);
+    await harness.close();
+
+    await expectLater(
+      built.cloud.claim('1234567890123456'),
+      throwsA(isA<SessionRefreshFailure>()),
+    );
+  });
+
+  test('legacy owner id backfills from server before revoke DELETE', () async {
+    final harness = await _FakeSupabaseHarness.start();
+    addTearDown(harness.close);
+
+    final built = await harness.buildCloud(enabled: true);
+    await built.cloud.push(
+      const Identity(id: 'id-backfill', displayName: 'B', username: 'b'),
+    );
+    await built.secrets.deleteCloudProfileOwnerIdForTest();
+    expect(await built.secrets.readCloudProfileOwnerId(), isNull);
+
+    expect(
+      (await built.cloud.revokeBackup(identityId: 'id-backfill')).success,
+      isTrue,
+    );
+    expect(await built.secrets.readSessionJson(), isNull);
   });
 
   test('revoke succeeds on retry when row was already deleted', () async {
@@ -447,6 +627,25 @@ class _ThrowOnSessionReadStorage implements SecretStorage {
   Future<void> write(String key, String value) async {}
 }
 
+class _ProfileRow {
+  _ProfileRow({
+    required this.identityId,
+    required this.ownerId,
+    required this.payload,
+    required this.recoveryCode,
+    Set<String>? members,
+  }) : members = members ?? {};
+
+  final String identityId;
+  final String ownerId;
+  Map<String, dynamic> payload;
+  final String recoveryCode;
+  final Set<String> members;
+
+  bool visibleTo(String userId) =>
+      ownerId == userId || members.contains(userId);
+}
+
 class _FakeSupabaseHarness {
   _FakeSupabaseHarness(this._server, this.port);
 
@@ -462,13 +661,36 @@ class _FakeSupabaseHarness {
   Uri? lastDeleteUri;
   String? lastDeletePrefer;
   Map<String, dynamic>? lastProfileInsert;
-  final List<Map<String, dynamic>> profileRows = [];
+  final List<_ProfileRow> profileRows = [];
+  final Map<String, String> accessTokenToUserId = {
+    'access-token': 'user-1',
+    'new-access': 'new-user',
+    'access-user-2': 'user-2',
+  };
 
   static Future<_FakeSupabaseHarness> start() async {
     final server = await HttpServer.bind('127.0.0.1', 0);
     final harness = _FakeSupabaseHarness(server, server.port);
     server.listen(harness._handle);
     return harness;
+  }
+
+  void seedProfile({
+    required String identityId,
+    required String ownerId,
+    required Map<String, dynamic> payload,
+    required String recoveryCode,
+    Set<String>? members,
+  }) {
+    profileRows.add(
+      _ProfileRow(
+        identityId: identityId,
+        ownerId: ownerId,
+        payload: Map<String, dynamic>.from(payload),
+        recoveryCode: recoveryCode,
+        members: members,
+      ),
+    );
   }
 
   Future<({
@@ -478,6 +700,8 @@ class _FakeSupabaseHarness {
   })> buildCloud({
     required bool enabled,
     DateTime? sessionExpiresAt,
+    String userId = 'user-1',
+    String accessToken = 'access-token',
   }) async {
     final dir = Directory.systemTemp.createTempSync('amiro_fake_sb');
     final prefs = CloudBackupPreferences.inDirectory(dir);
@@ -488,14 +712,15 @@ class _FakeSupabaseHarness {
       legacyDirectory: dir,
       secureStorage: InMemorySecretStorage(),
     );
+    accessTokenToUserId[accessToken] = userId;
     final expires =
         sessionExpiresAt ??
         DateTime.now().add(const Duration(hours: 1));
     await secrets.writeSessionJson(
       jsonEncode({
-        'access_token': 'access-token',
+        'access_token': accessToken,
         'refresh_token': 'refresh-token',
-        'user_id': 'user-1',
+        'user_id': userId,
         'expires_at': expires.toUtc().toIso8601String(),
       }),
     );
@@ -516,26 +741,58 @@ class _FakeSupabaseHarness {
     await _server.close(force: true);
   }
 
+  String? _userIdFromRequest(HttpRequest request) {
+    final auth = request.headers.value('authorization');
+    if (auth == null || !auth.toLowerCase().startsWith('bearer ')) {
+      return null;
+    }
+    final token = auth.substring(7).trim();
+    return accessTokenToUserId[token];
+  }
+
+  Iterable<_ProfileRow> _visibleRows(String? userId) sync* {
+    if (userId == null) return;
+    for (final row in profileRows) {
+      if (row.visibleTo(userId)) yield row;
+    }
+  }
+
+  _ProfileRow? _rowByIdentity(String identityId) {
+    for (final row in profileRows) {
+      if (row.identityId == identityId) return row;
+    }
+    return null;
+  }
+
   Future<void> _handle(HttpRequest request) async {
     requestCount += 1;
     final path = request.uri.path;
+    final userId = _userIdFromRequest(request);
     if (path == '/rest/v1/profiles' && request.method == 'GET') {
       request.response.statusCode = 200;
-      if (request.uri.queryParameters['select'] == 'identity_id') {
-        if (profileRows.isEmpty) {
-          request.response.write('[]');
-        } else {
-          request.response.write(
-            jsonEncode([
-              for (final row in profileRows)
-                {'identity_id': row['identity_id']},
-            ]),
-          );
-        }
+      final select = request.uri.queryParameters['select'];
+      final identityEq = request.uri.queryParameters['identity_id'];
+      var visible = _visibleRows(userId).toList();
+      if (identityEq != null && identityEq.startsWith('eq.')) {
+        final id = identityEq.substring(3);
+        visible = visible.where((row) => row.identityId == id).toList();
+      }
+      if (select == 'identity_id') {
+        request.response.write(
+          jsonEncode([
+            for (final row in visible) {'identity_id': row.identityId},
+          ]),
+        );
+      } else if (select == 'owner_id') {
+        request.response.write(
+          jsonEncode([
+            for (final row in visible) {'owner_id': row.ownerId},
+          ]),
+        );
       } else {
         request.response.write(
           jsonEncode([
-            for (final row in profileRows) {'payload': row['payload']},
+            for (final row in visible) {'payload': row.payload},
           ]),
         );
       }
@@ -551,13 +808,54 @@ class _FakeSupabaseHarness {
         row = {};
       }
       lastProfileInsert = row;
-      profileRows.add(row);
-      request.response.statusCode = 201;
-      request.response.write('[]');
+      final identityId = row['identity_id'] as String?;
+      final ownerId = row['owner_id'] as String? ?? userId;
+      if (identityId != null && _rowByIdentity(identityId) != null) {
+        request.response.statusCode = 409;
+        request.response.write('{}');
+      } else if (identityId != null && ownerId != null) {
+        profileRows.add(
+          _ProfileRow(
+            identityId: identityId,
+            ownerId: ownerId,
+            payload: Map<String, dynamic>.from(
+              row['payload'] as Map? ?? {},
+            ),
+            recoveryCode: row['recovery_code'] as String? ?? '',
+          ),
+        );
+        request.response.statusCode = 201;
+        request.response.write('[]');
+      } else {
+        request.response.statusCode = 400;
+        request.response.write('{}');
+      }
     } else if (path == '/rest/v1/profiles' && request.method == 'PATCH') {
+      final identityEq = request.uri.queryParameters['identity_id'];
+      if (identityEq != null && identityEq.startsWith('eq.')) {
+        final id = identityEq.substring(3);
+        final row = _rowByIdentity(id);
+        if (row != null && userId != null && row.visibleTo(userId)) {
+          final body = await utf8.decoder.bind(request).join();
+          final decoded = jsonDecode(body);
+          if (decoded is Map && decoded['payload'] is Map) {
+            row.payload = Map<String, dynamic>.from(decoded['payload'] as Map);
+          }
+        }
+      }
       request.response.statusCode = 200;
       request.response.write('[]');
     } else if (path == '/rest/v1/profile_members' && request.method == 'POST') {
+      final body = await utf8.decoder.bind(request).join();
+      final decoded = jsonDecode(body);
+      if (decoded is Map) {
+        final identityId = decoded['identity_id'] as String?;
+        final memberId = decoded['user_id'] as String? ?? userId;
+        final row = identityId != null ? _rowByIdentity(identityId) : null;
+        if (row != null && memberId != null) {
+          row.members.add(memberId);
+        }
+      }
       request.response.statusCode = 201;
       request.response.write('[]');
     } else if (path == '/rest/v1/profiles' && request.method == 'DELETE') {
@@ -565,17 +863,16 @@ class _FakeSupabaseHarness {
       lastDeleteUri = request.uri;
       lastDeletePrefer = request.headers.value('prefer');
       final idFilter = request.uri.queryParameters['identity_id'];
-      final hadRow = profileRows.any(
-        (row) => idFilter == 'eq.${row['identity_id']}',
-      );
-      if (!deleteReturnsEmpty && hadRow) {
-        profileRows.removeWhere(
-          (row) => idFilter == 'eq.${row['identity_id']}',
-        );
+      final identityId = idFilter?.replaceFirst('eq.', '');
+      final row = identityId != null ? _rowByIdentity(identityId) : null;
+      final canDelete =
+          row != null && userId != null && row.ownerId == userId;
+      if (!deleteReturnsEmpty && canDelete) {
+        profileRows.remove(row);
         request.response.statusCode = 200;
         request.response.write(
           jsonEncode([
-            {'identity_id': idFilter?.replaceFirst('eq.', '') ?? 'deleted'},
+            {'identity_id': identityId},
           ]),
         );
       } else {
@@ -600,7 +897,28 @@ class _FakeSupabaseHarness {
       );
     } else if (path == '/rest/v1/rpc/join_profile') {
       request.response.statusCode = claimStatusCode;
-      request.response.write('null');
+      if (claimStatusCode >= 200 && claimStatusCode < 300) {
+        final body = await utf8.decoder.bind(request).join();
+        final decoded = jsonDecode(body);
+        final code = decoded is Map ? decoded['p_code'] as String? : null;
+        _ProfileRow? match;
+        if (code != null) {
+          for (final row in profileRows) {
+            if (row.recoveryCode == code.trim()) {
+              match = row;
+              break;
+            }
+          }
+        }
+        if (match != null && userId != null) {
+          match.members.add(userId);
+          request.response.write(jsonEncode(match.payload));
+        } else {
+          request.response.write('null');
+        }
+      } else {
+        request.response.write('null');
+      }
     } else {
       request.response.statusCode = 404;
     }

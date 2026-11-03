@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import 'secret_storage.dart';
 
 /// Supabase session tokens and the profile recovery code — never Auto Backup.
@@ -59,6 +61,10 @@ class ProfileSecretsStore {
 
   Future<void> writeCloudProfileOwnerId(String ownerId) =>
       _secure.write(_cloudOwnerKey, ownerId);
+
+  @visibleForTesting
+  Future<void> deleteCloudProfileOwnerIdForTest() =>
+      _secure.delete(_cloudOwnerKey);
 
   /// Clears Supabase session and recovery code after a successful cloud revoke.
   Future<void> clearCloudBackupCredentials() async {
