@@ -38,7 +38,9 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
       final app = TestApp();
-      await tester.pumpWidget(app.host(EncounterScreen(encounter: encounterFor())));
+      await tester.pumpWidget(
+        app.host(EncounterScreen(encounter: encounterFor())),
+      );
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
     }
@@ -48,6 +50,27 @@ void main() {
     ) async {
       await openNew(tester);
       expectCaption(tester, 'NEW AMIRO');
+    });
+
+    testWidgets('CONTACT uses the shared section caption style', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 2600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final app = TestApp();
+      await tester.pumpWidget(
+        app.host(
+          EncounterScreen(
+            encounter: encounterFor(
+              contact: const ContactCard(email: 'ada@example.com'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      expectCaption(tester, 'CONTACT');
     });
 
     testWidgets('MET BEFORE uses the shared section caption style', (
@@ -121,7 +144,11 @@ void main() {
           latestAvatarConfig: '{"id":"a","body":"body_superhero_male"}',
           observedCosmetics: const [rivieraOptics],
           observedCollections: const [
-            SeriesCompletion(seriesId: 'series_1', currentCount: 2, totalCount: 3),
+            SeriesCompletion(
+              seriesId: 'series_1',
+              currentCount: 2,
+              totalCount: 3,
+            ),
           ],
         ),
       );

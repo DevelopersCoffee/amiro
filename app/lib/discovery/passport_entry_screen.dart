@@ -9,6 +9,7 @@ import '../sharing/standouts.dart';
 import '../store/rarity_label_style.dart';
 import '../store/series_progress_row.dart';
 import '../theme/amiro_theme.dart';
+import '../theme/section_label.dart';
 import 'date_format.dart';
 import 'discovery_providers.dart';
 
@@ -69,10 +70,7 @@ class PassportEntryScreen extends ConsumerWidget {
       );
     }
 
-    final label = textTheme.labelSmall?.copyWith(
-      color: AmiroColors.textMuted,
-      letterSpacing: 2.4,
-    );
+    final caption = sectionLabelStyle(context);
     final standouts = standoutCosmetics(record.observedCosmetics);
     final series = progressFromCompletion(
       record.observedCollections,
@@ -112,7 +110,7 @@ class PassportEntryScreen extends ConsumerWidget {
           ),
           if (standouts.isNotEmpty) ...[
             const SizedBox(height: 24),
-            Text('STANDOUTS', style: label),
+            Text('STANDOUTS', style: caption),
             for (final (item, rarity) in standouts) ...[
               const SizedBox(height: 8),
               Row(
@@ -125,7 +123,7 @@ class PassportEntryScreen extends ConsumerWidget {
           ],
           if (series.isNotEmpty) ...[
             const SizedBox(height: 24),
-            Text('COLLECTIONS', style: label),
+            Text('COLLECTIONS', style: caption),
             for (final progress in series) ...[
               const SizedBox(height: 8),
               SeriesProgressRow(progress),
