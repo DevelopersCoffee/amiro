@@ -7,6 +7,7 @@ import '../sharing/own_encounter.dart';
 import '../sharing/standouts.dart';
 import '../store/rarity_label_style.dart';
 import '../theme/amiro_theme.dart';
+import '../theme/section_label.dart';
 
 /// YOU beside THEM: standout items and series progress, side by side.
 ///
@@ -25,10 +26,7 @@ class EncounterComparison extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final label = textTheme.labelSmall?.copyWith(
-      color: AmiroColors.textMuted,
-      letterSpacing: 2.4,
-    );
+    final caption = sectionLabelStyle(context);
 
     final myProgress = {
       for (final p in progressFromCompletion(
@@ -54,7 +52,7 @@ class EncounterComparison extends StatelessWidget {
             Expanded(
               child: _Column(
                 heading: 'YOU',
-                headingStyle: label,
+                headingStyle: caption,
                 payload: mine,
               ),
             ),
@@ -62,7 +60,7 @@ class EncounterComparison extends StatelessWidget {
             Expanded(
               child: _Column(
                 heading: 'THEM',
-                headingStyle: label,
+                headingStyle: caption,
                 payload: theirs,
               ),
             ),
@@ -70,7 +68,7 @@ class EncounterComparison extends StatelessWidget {
         ),
         if (seriesNumbers.isNotEmpty) ...[
           const SizedBox(height: 20),
-          Text('COLLECTIONS', style: label),
+          Text('COLLECTIONS', style: caption),
           for (final number in seriesNumbers) ...[
             const SizedBox(height: 8),
             Row(

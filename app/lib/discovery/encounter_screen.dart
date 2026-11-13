@@ -10,6 +10,7 @@ import '../sharing/own_encounter.dart';
 import '../sharing/remote_avatar_view.dart';
 import '../store/store_providers.dart';
 import '../theme/amiro_theme.dart';
+import '../theme/section_label.dart';
 import 'date_format.dart';
 import 'discovery_providers.dart';
 import 'encounter_comparison.dart';
@@ -111,19 +112,16 @@ class _EncounterScreenState extends ConsumerState<EncounterScreen> {
             purchasedIds: owned,
           );
     final textTheme = Theme.of(context).textTheme;
-    final label = textTheme.labelSmall?.copyWith(
-      color: AmiroColors.textMuted,
-      letterSpacing: 2.4,
-    );
+    final caption = sectionLabelStyle(context);
 
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
         switch (pending) {
-          NewEncounter() => Text('NEW AMIRO', style: label),
+          NewEncounter() => Text('NEW AMIRO', style: caption),
           KnownEncounter(:final previous) => Row(
             children: [
-              Text('MET BEFORE', style: label),
+              Text('MET BEFORE', style: caption),
               const SizedBox(width: 8),
               Text(
                 '${previous.encounterCount}\u00d7 \u00b7 first ${formatShortDate(previous.firstEncountered)}',
@@ -147,7 +145,7 @@ class _EncounterScreenState extends ConsumerState<EncounterScreen> {
         EncounterComparison(mine: mine, theirs: theirs),
         if (contact != null && _hasContactDetails(contact)) ...[
           const SizedBox(height: 24),
-          Text('CONTACT', style: label),
+          Text('CONTACT', style: caption),
           const SizedBox(height: 8),
           if (contact.email != null) Text('Email: ${contact.email}'),
           if (contact.mobile != null) Text('Mobile: ${contact.mobile}'),
