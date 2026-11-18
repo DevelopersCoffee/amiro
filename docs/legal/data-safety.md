@@ -1,7 +1,7 @@
 # Amiro — Play Console "Data safety" form, draft answers
 
 Fill the actual Play Console form from this. Re-check against the code
-before submitting — this reflects the app as of **2026-11-03**, after:
+before submitting — this reflects the app as of **2026-11-18**, after:
 
 - Real Play Billing via RevenueCat + Cloudflare Worker + Supabase entitlement
   audit (`workers/revenuecat-webhook/`,
@@ -47,8 +47,14 @@ user shares their card.
 
 ### App activity / App info and performance
 
-- None. No analytics SDKs. Optional local crash log file; HTTP upload only
-  when built with `AMIRO_CRASH_INGEST_URL` (empty in default release builds).
+- None for analytics. No analytics SDKs.
+- **Crash / diagnostics (optional, opt-in):** A JSON log may be written on
+  device (`crashes.jsonl`). Upload to our Cloudflare Worker runs only after
+  you turn on **Share crash reports** in Identity settings (off by default),
+  and only in builds made with `AMIRO_CRASH_INGEST_URL` (empty in default
+  store builds). Uploaded text is scrubbed on device and again on the server
+  (emails, phone numbers, URLs with query strings, file paths). No profile or
+  purchase fields are included.
 
 ### Device or other identifiers
 

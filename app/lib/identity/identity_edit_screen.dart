@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:identity_core/identity_core.dart';
 
 import '../avatar/avatar_defaults.dart';
+import '../crash/crash_providers.dart';
 import '../theme/amiro_card.dart';
 import '../theme/amiro_theme.dart';
 import '../theme/section_label.dart';
@@ -42,6 +43,8 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
   bool _applying = false;
   bool _cloudBackupEnabled = false;
   bool _cloudPrefsLoaded = false;
+  bool _crashUploadEnabled = false;
+  bool _crashPrefsLoaded = false;
   Timer? _saveTimer;
   Future<void> _saveQueue = Future<void>.value();
   String? _status;
@@ -72,6 +75,15 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
         setState(() {
           _cloudBackupEnabled = enabled;
           _cloudPrefsLoaded = true;
+        });
+      });
+    }
+    if (ref.read(crashIngestConfiguredProvider)) {
+      ref.read(crashUploadPreferencesProvider).isEnabled().then((enabled) {
+        if (!mounted) return;
+        setState(() {
+          _crashUploadEnabled = enabled;
+          _crashPrefsLoaded = true;
         });
       });
     }
@@ -189,6 +201,12 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
         },
       );
     }
+  }
+
+  Future<void> _setCrashUpload(bool enabled) async {
+    await ref.read(crashUploadPreferencesProvider).setEnabled(enabled);
+    if (!mounted) return;
+    setState(() => _crashUploadEnabled = enabled);
   }
 
   Future<void> _setCloudBackup(bool enabled) async {
@@ -435,6 +453,32 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
               ),
             ),
             const SizedBox(height: AmiroSpacing.md),
+          ],
+          if (ref.watch(crashIngestConfiguredProvider) && _crashPrefsLoaded) ...[
+            AmiroCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionLabel('CRASH REPORTS'),
+                  const SizedBox(height: AmiroSpacing.sm),
+                  Text(
+                    'Off by default. Turn on to send scrubbed error summaries '
+                    'so we can fix crashes. Your full log stays on this phone.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  SwitchListTile(
+                    key: const Key('crashUploadToggle'),
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Share crash reports'),
+                    value: _crashUploadEnabled,
+                    onChanged: (value) => unawaited(_setCrashUpload(value)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AmiroSpacing.md),
+          ],
+          if (cloud.supportsRestore && _cloudPrefsLoaded) ...[
             AmiroCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

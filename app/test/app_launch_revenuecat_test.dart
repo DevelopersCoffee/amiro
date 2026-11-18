@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:amiro_app/app.dart';
 import 'package:amiro_app/avatar/avatar_loader.dart';
+import 'package:amiro_app/crash/crash_upload_preferences.dart';
 import 'package:amiro_app/identity/cloud_backup_preferences.dart';
 import 'package:amiro_app/identity/profile_cloud.dart';
 import 'package:amiro_app/launch/provider_overrides.dart';
@@ -73,6 +74,7 @@ void main() {
         overrides: amiroLaunchProviderOverrides(
           identityRepository: InMemoryIdentityRepository(),
           cloudBackupPreferences: CloudBackupPreferences.inMemory(),
+          crashUploadPreferences: CrashUploadPreferences.inMemory(),
           profileCloud: const NoopProfileCloud(),
           avatarRenderer: FakeAvatarRenderer(),
           avatarRendererFactory: () async => FakeAvatarRenderer(),
@@ -114,6 +116,7 @@ void main() {
         ...amiroLaunchProviderOverrides(
           identityRepository: InMemoryIdentityRepository(),
           cloudBackupPreferences: CloudBackupPreferences.inMemory(),
+          crashUploadPreferences: CrashUploadPreferences.inMemory(),
           profileCloud: const NoopProfileCloud(),
           avatarRenderer: FakeAvatarRenderer(),
           avatarRendererFactory: () async => FakeAvatarRenderer(),

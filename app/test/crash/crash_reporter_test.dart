@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:amiro_app/crash/crash_reporter.dart';
+import 'package:amiro_app/crash/crash_upload_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -70,6 +71,86 @@ void main() {
 
     expect(bodies, hasLength(1));
     expect(jsonDecode(bodies.single)['message'], 'controlled');
+  });
+
+  test('consent-gated http sink stays quiet until opt-in', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final bodies = <String>[];
+    final sub = server.listen((request) async {
+      bodies.add(await utf8.decoder.bind(request).join());
+      request.response.statusCode = 200;
+      await request.response.close();
+    });
+    final prefs = CrashUploadPreferences.inMemory();
+    final reporter = CrashReporter(
+      sinks: [
+        ConsentGatedHttpCrashSink(
+          prefs,
+          HttpCrashSink(
+            Uri.parse('http://${server.address.host}:${server.port}/crash'),
+          ),
+        ),
+      ],
+    );
+
+    await reporter.record('secret dev@test.com', StackTrace.empty, 'flutter');
+    expect(bodies, isEmpty);
+
+    await prefs.setEnabled(true);
+    await reporter.record(
+      'secret dev@test.com https://x.com/a?b=c /tmp/a.dart',
+      StackTrace.current,
+      'flutter',
+    );
+    await sub.cancel();
+    await server.close();
+
+    expect(bodies, hasLength(1));
+    final decoded = jsonDecode(bodies.single) as Map<String, dynamic>;
+    expect(decoded['message'], contains('[redacted-email]'));
+    expect(decoded['message'], isNot(contains('dev@test.com')));
+    expect(decoded['message'], contains('[redacted-url]'));
+    expect(decoded['message'], contains('[redacted-path]'));
+  });
+
+  test('turning consent off stops the next upload', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    var posts = 0;
+    final sub = server.listen((request) async {
+      posts += 1;
+      await request.response.close();
+    });
+    final prefs = CrashUploadPreferences.inMemory(enabled: true);
+    final reporter = CrashReporter(
+      sinks: [
+        ConsentGatedHttpCrashSink(
+          prefs,
+          HttpCrashSink(
+            Uri.parse('http://${server.address.host}:${server.port}/crash'),
+          ),
+        ),
+      ],
+    );
+
+    await reporter.record('one', StackTrace.empty, 'platform');
+    expect(posts, 1);
+    await prefs.setEnabled(false);
+    await reporter.record('two', StackTrace.empty, 'platform');
+    await sub.cancel();
+    await server.close();
+
+    expect(posts, 1);
+  });
+
+  test('file sink keeps the unscrubbed message', () async {
+    final file = File(
+      '${Directory.systemTemp.path}/amiro-crash-raw-${DateTime.now().microsecondsSinceEpoch}.jsonl',
+    );
+    final reporter = CrashReporter(sinks: [FileCrashSink(file)]);
+    await reporter.record('dev@test.com', StackTrace.empty, 'flutter');
+    final line = jsonDecode((await file.readAsLines()).single) as Map;
+    expect(line['message'], contains('dev@test.com'));
+    await file.delete();
   });
 
   test('installCrashReporting records a FlutterError', () async {

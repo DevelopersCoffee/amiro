@@ -1,4 +1,9 @@
 import {
+  CRASH_MESSAGE_MAX,
+  CRASH_STACK_MAX,
+  scrubCrashPayload,
+} from './crash_scrub.ts';
+import {
   constantTimeEqual,
   verifyRevenueCatWebhookSignature,
 } from './security.ts';
@@ -75,13 +80,15 @@ export async function handleCrash(
     return new Response('Missing crash fields', { status: 400 });
   }
 
+  const scrubbed = scrubCrashPayload(body);
+
   const insert = await supabaseRequest(env, 'crash_reports', {
     method: 'POST',
     headers: { Prefer: 'return=minimal' },
     body: JSON.stringify([
       {
-        message: body.message.slice(0, 2000),
-        stack: (body.stack ?? '').slice(0, 8000),
+        message: (scrubbed.message ?? '').slice(0, CRASH_MESSAGE_MAX),
+        stack: (scrubbed.stack ?? '').slice(0, CRASH_STACK_MAX),
         source: body.source ?? 'unknown',
         app_version: body.appVersion,
         platform: body.platform ?? null,

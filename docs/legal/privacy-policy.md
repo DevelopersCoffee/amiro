@@ -1,6 +1,6 @@
 # Amiro Privacy Policy
 
-**Last updated:** 2026-11-03
+**Last updated:** 2026-11-18
 
 This policy describes what Amiro ("the App") does with your information.
 Amiro is local-first: your identity, avatar, and passport (people you've
@@ -102,6 +102,20 @@ What that involves:
 
 If you don't use the Store's paid items, none of the purchase network
 traffic applies to you — free cosmetics unlock without a purchase request.
+
+### Optional crash reports
+
+Some release builds can send error summaries to help us fix bugs:
+
+- Crashes are always logged locally on your device first.
+- **Upload is off by default.** In Identity settings you can turn on
+  **Share crash reports** to send scrubbed error text (message and stack) to
+  our Cloudflare Worker, which stores it in Supabase for engineering review.
+- We scrub likely personal details from that text on your phone and again on
+  the server (emails, phone numbers, URLs that include query strings, and
+  file paths). Your profile, passport, and purchase data are not included.
+- Turn the setting off any time — uploads stop immediately. Uninstalling
+  removes the local log.
 
 ## What the App does not do
 
