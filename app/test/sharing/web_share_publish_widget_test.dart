@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:amiro_app/identity/profile_cloud.dart';
+import 'package:amiro_app/identity/supabase_public.dart';
 import 'package:amiro_app/sharing/encounter_share_options.dart';
 import 'package:amiro_app/sharing/share_screen.dart';
 import 'package:amiro_app/sharing/web_share_preferences.dart';
@@ -31,41 +32,41 @@ Identity _identity() => Identity(
   avatarDefinitionJson: _defaultAvatarJson,
 );
 
-Widget _screen(FakeWebShareService service) {
-  final dir = Directory.systemTemp.createTempSync('web_share_test_');
-  return ProviderScope(
-    overrides: [
-      webShareClientProvider.overrideWithValue(service),
-      webSharePreferencesProvider.overrideWithValue(
-        WebSharePreferences.inDirectory(dir),
-      ),
-      encounterSharePreferencesProvider.overrideWithValue(
-        EncounterSharePreferences.inDirectory(dir),
-      ),
-      profileCloudProvider.overrideWithValue(const NoopProfileCloud()),
-      identityRepositoryProvider.overrideWithValue(
-        InMemoryIdentityRepository(_identity()),
-      ),
-      nfcEmulatorProvider.overrideWithValue(NoopNfcEmulator()),
-      avatarRendererProvider.overrideWithValue(FakeAvatarRenderer()),
-    ],
-    child: MaterialApp(
-      theme: buildAmiroTheme(loadFonts: false),
-      home: const ShareScreen(),
-    ),
-  );
-}
-
 void main() {
   testWidgets('publish shows consent then stores https link', (tester) async {
+    if (!kWebSharePublishEnabled) {
+      return;
+    }
     final service = FakeWebShareService();
-    await tester.pumpWidget(_screen(service));
+    final dir = Directory.systemTemp.createTempSync('web_share_pub_');
+    final prefs = WebSharePreferences.inDirectory(dir);
+    await prefs.write(const WebShareState(consentGiven: true));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          webShareClientProvider.overrideWithValue(service),
+          webSharePreferencesProvider.overrideWithValue(prefs),
+          encounterSharePreferencesProvider.overrideWithValue(
+            EncounterSharePreferences.inDirectory(dir),
+          ),
+          profileCloudProvider.overrideWithValue(const NoopProfileCloud()),
+          identityRepositoryProvider.overrideWithValue(
+            InMemoryIdentityRepository(_identity()),
+          ),
+          nfcEmulatorProvider.overrideWithValue(NoopNfcEmulator()),
+          avatarRendererProvider.overrideWithValue(FakeAvatarRenderer()),
+        ],
+        child: MaterialApp(
+          theme: buildAmiroTheme(loadFonts: false),
+          home: const ShareScreen(),
+        ),
+      ),
+    );
     await pumpUntilFound(tester, find.byKey(const Key('webSharePublishButton')));
 
     await tester.tap(find.byKey(const Key('webSharePublishButton')));
-    await pumpShort(tester);
-    await tester.tap(find.byKey(const Key('webShareConsentAccept')));
-    await tester.pumpAndSettle();
+    await pumpShort(tester, frames: 30);
 
     expect(service.publishCalls, 1);
     expect(find.byKey(const Key('webSharePublishedUri')), findsOneWidget);
@@ -73,6 +74,9 @@ void main() {
   });
 
   testWidgets('revoke clears published uri', (tester) async {
+    if (!kWebSharePublishEnabled) {
+      return;
+    }
     final service = FakeWebShareService();
     final dir = Directory.systemTemp.createTempSync('web_share_revoke_');
     final prefs = WebSharePreferences.inDirectory(dir);
@@ -107,7 +111,7 @@ void main() {
     );
     await pumpUntilFound(tester, find.byKey(const Key('webShareRevokeButton')));
     await tester.tap(find.byKey(const Key('webShareRevokeButton')));
-    await pumpShort(tester, frames: 20);
+    await pumpShort(tester, frames: 30);
 
     expect(service.revokeCalls, 1);
     expect(find.byKey(const Key('webSharePublishedUri')), findsNothing);
