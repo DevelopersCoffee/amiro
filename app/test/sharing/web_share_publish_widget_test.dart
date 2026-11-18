@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:identity_core/identity_core.dart';
 import 'package:nfc/nfc.dart';
 
+import 'package:amiro_app/avatar/avatar_loader.dart';
 import 'package:amiro_app/avatar/avatar_providers.dart';
 import 'package:amiro_app/identity/identity_providers.dart';
 import 'package:amiro_app/sharing/sharing_preferences_providers.dart';
@@ -59,6 +60,8 @@ Widget _screen(FakeWebShareService service) {
 }
 
 void main() {
+  setUp(resetAvatarLoadChainForTest);
+
   testWidgets('publish shows consent then stores https link', (tester) async {
     final service = FakeWebShareService();
     await tester.pumpWidget(_screen(service));
@@ -67,10 +70,7 @@ void main() {
     await tester.tap(find.byKey(const Key('webSharePublishButton')));
     await pumpShort(tester);
     await tester.tap(find.byKey(const Key('webShareConsentAccept')));
-    await pumpUntilFound(
-      tester,
-      find.byKey(const Key('webSharePublishedUri')),
-    );
+    await pumpShort(tester, frames: 30);
 
     expect(service.publishCalls, 1);
     expect(find.byKey(const Key('webSharePublishedUri')), findsOneWidget);
