@@ -222,7 +222,7 @@ String? parseWebShareRpcToken(int status, String body) {
   if (status < 200 || status >= 300) return null;
   try {
     final decoded = jsonDecode(body);
-    final Map<String, dynamic>? row;
+    Map<String, dynamic>? row;
     if (decoded is Map<String, dynamic>) {
       row = decoded;
     } else if (decoded is List && decoded.length == 1) {
@@ -231,7 +231,8 @@ String? parseWebShareRpcToken(int status, String body) {
         row = first;
       }
     }
-    final token = row?['token'];
+    if (row == null) return null;
+    final token = row['token'];
     if (token is String && token.length >= 22) {
       return token;
     }

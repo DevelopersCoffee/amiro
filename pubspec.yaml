@@ -39,7 +39,7 @@ melos:
 
   scripts:
     analyze:
-      run: melos exec -- flutter analyze --no-fatal-infos
+      run: melos exec --concurrency=1 -- flutter analyze --no-fatal-infos
       description: Run flutter analyze in every package.
 
     test:
