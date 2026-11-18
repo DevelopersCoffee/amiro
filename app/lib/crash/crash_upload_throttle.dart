@@ -1,5 +1,3 @@
-import 'package:meta/meta.dart' show visibleForTesting;
-
 /// Limits crash uploads to avoid tight-loop POST storms when opted in.
 class CrashUploadThrottle {
   CrashUploadThrottle({
@@ -41,7 +39,6 @@ class CrashUploadThrottle {
     _fingerprints.add(fingerprint);
   }
 
-  @visibleForTesting
   void reset() {
     _sessionCount = 0;
     _dailyCount = 0;
