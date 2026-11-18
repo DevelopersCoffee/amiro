@@ -532,7 +532,6 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
                         key: const Key('crashUploadToggle'),
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Share crash reports'),
-                        subtitle: const Text('Scrubbed error summaries only'),
                         value: _crashUploadEnabled,
                         onChanged: (value) => unawaited(_setCrashUpload(value)),
                       ),

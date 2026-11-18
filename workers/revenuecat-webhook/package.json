@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "deploy": "wrangler deploy",
+    "deploy:dry-run": "wrangler deploy --dry-run",
     "dev": "wrangler dev",
     "test": "node --experimental-strip-types --test test/*.test.mjs"
   },

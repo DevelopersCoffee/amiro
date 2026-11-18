@@ -54,13 +54,15 @@ user shares their card.
   profile content. Install-scoped random id, not linked to identity or
   RevenueCat. Builds need `AMIRO_ANALYTICS_INGEST_URL` (empty in default store
   builds). No third-party analytics SDKs.
-- **Crash / diagnostics (optional, opt-in):** A JSON log may be written on
-  device (`crashes.jsonl`). Upload to our Cloudflare Worker runs only after
-  you turn on **Share crash reports** in Privacy & diagnostics (off by default),
-  and only in builds made with `AMIRO_CRASH_INGEST_URL` (empty in default
-  store builds). Uploaded text is scrubbed on device and again on the server
-  (emails, phone numbers, URLs with query strings, file paths). No profile or
-  purchase fields are included.
+- **Crash logs (optional, opt-in):** Collected when the user turns on **Share
+  crash reports**, only in builds with `AMIRO_CRASH_INGEST_URL`. Shared with
+  our Supabase backend via Cloudflare Worker over HTTPS for app stability /
+  diagnostics. Not used for advertising. Fields: error type, scrubbed first
+  line of the error text (pattern-based; incidental words may remain),
+  allowlisted Dart stack frames, app version, platform. No profile, passport, or
+  purchase fields as structured columns. Server retention: **90 days**
+  (automatic purge when `pg_cron` is enabled — see Worker README). Cloudflare
+  applies per-IP rate limits; we do not store IP in `crash_reports`.
 
 ### Device or other identifiers
 
@@ -88,13 +90,14 @@ backup table; they do not include profile contact fields.
 
 - **Identity/profile sharing (QR/NFC):** peer-to-peer; no Developer's Coffee
   server in the path.
-- **Profile backup, purchases (Supabase/RevenueCat/Worker):** **Yes** — all
+- **Profile backup, purchases, optional crash upload (Supabase/RevenueCat/Worker):** **Yes** — all
   HTTPS/TLS.
 
 ## Do you provide a way for users to request that their data be deleted?
 
-**Partially.** Uninstalling removes local data. Cloud profile backup and
-purchase audit rows may remain until the user emails
+**Partially.** Uninstalling removes local data. Optional crash reports are
+not linked to your identity and are purged on the server after 90 days.
+Cloud profile backup and purchase audit rows may remain until the user emails
 coffee.devloper@gmail.com (see `docs/legal/privacy-policy.md`). An in-app
 "clear my data" control is not shipped yet (`IdentityRepository.clear()`
 exists in code but is not exposed in UI).

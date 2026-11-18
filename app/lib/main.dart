@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -16,6 +17,7 @@ import 'analytics/analytics_once.dart';
 import 'analytics/analytics_preferences.dart';
 import 'analytics/analytics_sink.dart';
 import 'crash/crash_reporter.dart';
+import 'crash/crash_upload_throttle.dart';
 import 'crash/crash_upload_preferences.dart';
 import 'identity/cloud_backup_preferences.dart';
 import 'identity/profile_secrets_store.dart';
@@ -37,13 +39,32 @@ void main() async {
   final crashSinks = <CrashSink>[
     FileCrashSink(File('${supportDir.path}/crashes.jsonl')),
   ];
+  final crashUploadThrottle = CrashUploadThrottle();
   if (ingestUrl.isNotEmpty) {
-    crashSinks.add(
-      ConsentGatedHttpCrashSink(
-        crashUploadPreferences,
-        HttpCrashSink(Uri.parse(ingestUrl)),
-      ),
-    );
+    final ingestUri = Uri.tryParse(ingestUrl);
+    if (ingestUri == null) {
+      debugPrint('AMIRO_CRASH_INGEST_URL is invalid; crash upload disabled.');
+    } else if (ingestUri.scheme == 'https') {
+      crashSinks.add(
+        ConsentGatedHttpCrashSink(
+          crashUploadPreferences,
+          crashUploadThrottle,
+          HttpCrashSink(ingestUri),
+        ),
+      );
+    } else if (!kReleaseMode) {
+      crashSinks.add(
+        ConsentGatedHttpCrashSink(
+          crashUploadPreferences,
+          crashUploadThrottle,
+          HttpCrashSink(ingestUri, allowInsecureHttp: true),
+        ),
+      );
+    } else {
+      debugPrint(
+        'AMIRO_CRASH_INGEST_URL must use https in release builds; crash upload disabled.',
+      );
+    }
   }
   installCrashReporting(
     CrashReporter(
