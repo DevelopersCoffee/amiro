@@ -403,7 +403,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                                 .save(webState.copyWith(useHttpsForQr: value))
                             : null,
                       ),
-                      if (webState.isPublished && webClient != null)
+                      if (webState.isPublished)
                         SelectableText(
                           webClient.buildPublicUri(webState.activeToken!),
                           key: const Key('webSharePublishedUri'),

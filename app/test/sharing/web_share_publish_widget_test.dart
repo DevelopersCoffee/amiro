@@ -16,8 +16,6 @@ import 'package:amiro_app/avatar/avatar_providers.dart';
 import 'package:amiro_app/identity/identity_providers.dart';
 import 'package:amiro_app/sharing/sharing_preferences_providers.dart';
 import 'package:amiro_app/sharing/sharing_providers.dart';
-import 'package:amiro_app/store/store_providers.dart';
-
 import '../avatar/fake_avatar_renderer.dart';
 import '../identity/in_memory_identity_repository.dart';
 import '../pump_helpers.dart';
