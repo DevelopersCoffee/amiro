@@ -9,6 +9,10 @@ before submitting — this reflects the app as of **2026-11-18**, after:
 - Optional profile backup/restore to Supabase (#43,
   `app/lib/identity/supabase_profile_cloud.dart`,
   `supabase/migrations/20261016180000_create_profiles.sql`).
+- Opt-in **web recipient profile** (#55/#80): publish stores display name,
+  public contact fields, avatar PNG, and optional cosmetic summary in
+  `web_share_profiles`; HTML is served from `workers/web-profile/` on
+  `id.amiro.app`. Off by default in store builds (`AMIRO_WEB_SHARE_PUBLISH_ENABLED`).
 
 If data handling changes again, update both this file and the live form
 together.
@@ -34,6 +38,7 @@ wording.
 | Email address | Yes | Yes, if marked public on share; optional Supabase backup | Local; optional HTTPS backup | App functionality | Yes (field optional) |
 | Phone number | Yes | Yes, if marked public on share; optional Supabase backup | Local; optional HTTPS backup | App functionality | Yes |
 | Other user IDs (username, social handles) | Yes | Yes, if marked public on share; optional Supabase backup | Local; optional HTTPS backup | App functionality | Yes |
+| Web profile (HTTPS link) | Yes, if user publishes | Yes (public URL on `id.amiro.app`) | Supabase + Cloudflare Worker | App functionality (share link) | Yes (publish is opt-in; UI gated in store builds) |
 
 Avatar definition JSON (cosmetic choices) follows the same pattern: local
 always; included in optional Supabase backup, not in QR/NFC unless the
@@ -95,11 +100,13 @@ backup table; they do not include profile contact fields.
 
 ## Do you provide a way for users to request that their data be deleted?
 
-**Partially.** Uninstalling removes local data. Optional crash reports are
-not linked to your identity and are purged on the server after 90 days.
-Cloud profile backup and purchase audit rows may remain until the user emails
-coffee.devloper@gmail.com (see `docs/legal/privacy-policy.md`). An in-app
-"clear my data" control is not shipped yet (`IdentityRepository.clear()`
+**Partially.** Uninstalling removes local data. Revoking cloud profile backup
+deletes backup rows and all `web_share_profiles` rows for that Supabase user
+(see `SupabaseProfileCloud.revokeBackup`). Optional crash reports are not
+linked to your identity and are purged on the server after 90 days. Purchase
+audit rows may remain until the user emails coffee.devloper@gmail.com (see
+`docs/legal/privacy-policy.md`). An in-app "clear my data" control is not
+shipped yet (`IdentityRepository.clear()`
 exists in code but is not exposed in UI).
 
 ## Data safety summary line (shown on the store listing)

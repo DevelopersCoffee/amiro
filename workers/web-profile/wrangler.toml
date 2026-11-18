@@ -1,10 +1,14 @@
 name = "amiro-web-profile"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
+workers_dev = false
 
-# Secrets (set with `wrangler secret put <NAME>`):
-#   SUPABASE_URL              e.g. https://xxxx.supabase.co
+# Deploy on id.amiro.app (custom domain route in Cloudflare dashboard).
+# Secrets — dedicated to this Worker (do not reuse revenuecat-webhook values):
+#   SUPABASE_URL
 #   SUPABASE_SERVICE_ROLE_KEY
 # Optional:
-#   PLAY_STORE_URL            defaults to Play listing for com.developerscoffee.amiro_app
-#   RATE_LIMIT_PER_MINUTE     default 60
+#   PLAY_STORE_URL
+#
+# Rate limiting: configure a Cloudflare Rate Limiting rule on GET /u/*
+# (see workers/web-profile/README.md).

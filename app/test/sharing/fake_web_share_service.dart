@@ -10,7 +10,7 @@ import 'package:sharing/sharing.dart';
 class FakeWebShareService implements WebShareService {
   FakeWebShareService({
     this.canPublish = true,
-    this.publishToken = 'testtokenabcdefghij',
+    this.publishToken = 'testtokenabcdefghijklmnopqrst',
   });
 
   @override
@@ -28,7 +28,6 @@ class FakeWebShareService implements WebShareService {
     required Set<String> purchasedIds,
     required EncounterShareOptions shareOptions,
     Uint8List? avatarPng,
-    String? existingToken,
   }) async {
     publishCalls += 1;
     return WebSharePublishResult.success(publishToken);
@@ -42,16 +41,10 @@ class FakeWebShareService implements WebShareService {
     required EncounterShareOptions shareOptions,
     required String existingToken,
     Uint8List? avatarPng,
-  }) {
+  }) async {
     publishToken = generateWebShareToken();
-    return publish(
-      identity: identity,
-      definition: definition,
-      purchasedIds: purchasedIds,
-      shareOptions: shareOptions,
-      existingToken: existingToken,
-      avatarPng: avatarPng,
-    );
+    publishCalls += 1;
+    return WebSharePublishResult.success(publishToken);
   }
 
   @override

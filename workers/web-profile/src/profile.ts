@@ -2,7 +2,6 @@ export interface Env {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   PLAY_STORE_URL?: string;
-  RATE_LIMIT_PER_MINUTE?: string;
 }
 
 export interface WebShareRow {
@@ -16,7 +15,8 @@ export interface WebShareRow {
   revoked_at: string | null;
 }
 
-const tokenPattern = /^[A-Za-z0-9_-]{16,64}$/;
+/** 128-bit base64url tokens are 22 chars without padding (#50). */
+const tokenPattern = /^[A-Za-z0-9_-]{22,64}$/;
 
 export function parseTokenFromPath(pathname: string): string | null {
   const match = pathname.match(/^\/u\/([A-Za-z0-9_-]+)(?:\/avatar)?\/?$/);
@@ -51,6 +51,12 @@ export async function fetchProfile(
   if (rows.length === 0) return 'missing';
   const row = rows[0];
   if (row.revoked_at) return 'revoked';
+  if (!row.display_name || row.display_name.trim().length === 0) {
+    return 'revoked';
+  }
+  if (!row.avatar_png || row.avatar_png === '\\x') {
+    return 'revoked';
+  }
   return row;
 }
 

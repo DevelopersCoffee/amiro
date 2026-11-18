@@ -153,9 +153,17 @@ traffic applies to you — free cosmetics unlock without a purchase request.</p>
   <li>No third-party analytics or advertising SDKs.</li>
   <li>No selling of your data.</li>
   <li>No location data is collected.</li>
-  <li>Sharing and passport data are not uploaded to our servers (only the
-  optional profile backup and purchase audit paths described above use
-  the network).</li>
+  <li>Passport data is not uploaded to our servers.</li>
+  <li><strong>Opt-in web profile</strong> (<code>https://id.amiro.app/u/…</code>):
+  only if you publish from Share settings (hidden in store builds until
+  explicitly enabled). Published name, public contact fields, avatar PNG, and
+  optional cosmetic summary are stored in Supabase and served by our Cloudflare
+  Worker. Revoking wipes those fields server-side and the link returns gone
+  (410).</li>
+  <li>Other sharing (QR/NFC <code>amiro://encounter</code>) stays device-to-device
+  unless you choose the HTTPS link on QR/NFC after publishing.</li>
+  <li>Optional profile backup and purchase audit still use the network as
+  described above.</li>
 </ul>
 
 <h2>Your control over your data</h2>
