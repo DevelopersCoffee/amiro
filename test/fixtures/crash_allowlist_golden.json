@@ -3,7 +3,7 @@
     {
       "id": "jwt_recovery_display",
       "input": "FormatException: {\"access_token\":\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.sig\",\"recovery_code\":\"3f9a1c0be2d74e8f9a0b1c2d3e4f5a6b\",\"displayName\":\"Priya Sharma\"}",
-      "expected": "FormatException: {\"access_token\":\"[redacted-jwt]\",\"recovery_code\":\"[redacted-hex]\",\"displayName\":\"Priya Sharma\"}"
+      "expected": "FormatException: {\"access_token\":\"[redacted-jwt]\",\"recovery_code\":\"[redacted-hex32]\",\"displayName\":\"Priya Sharma\"}"
     },
     {
       "id": "uuid_in_message",
@@ -29,6 +29,16 @@
       "id": "unix_path",
       "input": "Failed to read /home/user/.config/amiro/secrets.json",
       "expected": "Failed to read [redacted-path]"
+    },
+    {
+      "id": "hex32_identity",
+      "input": "identity mismatch for a1b2c3d4e5f67890123456789abcdef0",
+      "expected": "identity mismatch for [redacted-hex32]"
+    },
+    {
+      "id": "google_play_purchase_token",
+      "input": "BillingClient: sync failed token GPA.1234-5678-9012-34567",
+      "expected": "BillingClient: sync failed token [redacted-play-purchase]"
     }
   ],
   "stackFilter": {
