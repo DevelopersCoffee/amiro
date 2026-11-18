@@ -61,7 +61,7 @@ void main() {
     });
 
     test('resolves https web share to opaque token only', () {
-      const token = 'abcdefghijklmnopqrstuv';
+      const token = 'abcdefghijklmnopqrstuvwxy';
       final uri = buildWebShareUri(token);
       final result = scanResultFromCapture(capture(uri));
       expect(result, isA<WebShareTokenLink>());

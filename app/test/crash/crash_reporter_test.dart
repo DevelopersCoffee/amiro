@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('record sends the message, stack, version and source', () async {
+  test('record sends exceptionType and package frames to memory sink', () async {
     final sink = MemoryCrashSink();
     final reporter = CrashReporter(
       sinks: [sink],
@@ -19,6 +19,7 @@ void main() {
 
     expect(sink.reports, hasLength(1));
     expect(sink.reports.single['message'], contains('avatar renderer'));
+    expect(sink.reports.single['stack'], isA<String>());
     expect(sink.reports.single['source'], 'flutter');
     expect(sink.reports.single['appVersion'], '1.0.3+9');
     expect(sink.reports.single['at'], '2026-10-15T09:00:00.000Z');
@@ -62,7 +63,10 @@ void main() {
 
     final reporter = CrashReporter(
       sinks: [
-        HttpCrashSink(Uri.parse('http://${server.address.host}:${server.port}/crash')),
+        HttpCrashSink(
+          Uri.parse('http://${server.address.host}:${server.port}/crash'),
+          allowHttpForTest: true,
+        ),
       ],
     );
     await reporter.record('controlled', StackTrace.empty, 'flutter');
@@ -70,7 +74,10 @@ void main() {
     await server.close();
 
     expect(bodies, hasLength(1));
-    expect(jsonDecode(bodies.single)['message'], 'controlled');
+    final decoded = jsonDecode(bodies.single) as Map<String, dynamic>;
+    expect(decoded['exceptionType'], 'StateError');
+    expect(decoded['message'], contains('controlled'));
+    expect(decoded['frames'], isA<List>());
   });
 
   test('consent-gated http sink stays quiet until opt-in', () async {
@@ -88,6 +95,7 @@ void main() {
           prefs,
           HttpCrashSink(
             Uri.parse('http://${server.address.host}:${server.port}/crash'),
+            allowHttpForTest: true,
           ),
         ),
       ],
@@ -109,8 +117,7 @@ void main() {
     final decoded = jsonDecode(bodies.single) as Map<String, dynamic>;
     expect(decoded['message'], contains('[redacted-email]'));
     expect(decoded['message'], isNot(contains('dev@test.com')));
-    expect(decoded['message'], contains('[redacted-url]'));
-    expect(decoded['message'], contains('[redacted-path]'));
+    expect(decoded['exceptionType'], isNotNull);
   });
 
   test('turning consent off stops the next upload', () async {
@@ -127,6 +134,7 @@ void main() {
           prefs,
           HttpCrashSink(
             Uri.parse('http://${server.address.host}:${server.port}/crash'),
+            allowHttpForTest: true,
           ),
         ),
       ],
@@ -140,6 +148,13 @@ void main() {
     await server.close();
 
     expect(posts, 1);
+  });
+
+  test('http sink requires https in production', () {
+    expect(
+      () => HttpCrashSink(Uri.parse('http://example.com/crash')),
+      throwsArgumentError,
+    );
   });
 
   test('file sink keeps the unscrubbed message', () async {

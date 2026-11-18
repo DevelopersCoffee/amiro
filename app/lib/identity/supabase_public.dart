@@ -14,3 +14,9 @@ const webSharePublicHost = String.fromEnvironment(
 /// JSON profile fetch for in-app https scans (same host as [webSharePublicHost]).
 String webShareProfileJsonUrl(String token) =>
     'https://$webSharePublicHost/u/$token';
+
+/// Kill-switch until Worker + migration are deployed (issue #55 / S&T).
+const kWebSharePublishEnabled = bool.fromEnvironment(
+  'AMIRO_WEB_SHARE_PUBLISH_ENABLED',
+  defaultValue: false,
+);

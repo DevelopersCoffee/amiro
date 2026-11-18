@@ -1,7 +1,6 @@
 import {
-  CRASH_MESSAGE_MAX,
-  CRASH_STACK_MAX,
-  scrubCrashPayload,
+  CRASH_BODY_MAX_BYTES,
+  parseCrashUpload,
 } from './crash_scrub.ts';
 import {
   constantTimeEqual,
@@ -56,50 +55,48 @@ export async function handleCrash(
   url: URL,
 ): Promise<Response> {
   if (request.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
+    return new Response('Not allowed', { status: 405 });
   }
   const token = url.pathname.replace(/^\/crash\//, '');
   if (!env.CRASH_PATH_TOKEN || !constantTimeEqual(token, env.CRASH_PATH_TOKEN)) {
     return new Response('Not found', { status: 404 });
   }
 
-  let body: {
-    message?: string;
-    stack?: string;
-    source?: string;
-    appVersion?: string;
-    platform?: string;
-    at?: string;
-  };
-  try {
-    body = await request.json();
-  } catch {
-    return new Response('Invalid JSON', { status: 400 });
-  }
-  if (!body.message || !body.appVersion) {
-    return new Response('Missing crash fields', { status: 400 });
+  const rawBytes = new Uint8Array(await request.arrayBuffer());
+  if (rawBytes.byteLength > CRASH_BODY_MAX_BYTES) {
+    return new Response('Payload too large', { status: 413 });
   }
 
-  const scrubbed = scrubCrashPayload(body);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(new TextDecoder().decode(rawBytes));
+  } catch {
+    return new Response('Invalid request', { status: 400 });
+  }
+
+  const upload = parseCrashUpload(parsed);
+  if (!upload) {
+    return new Response('Invalid request', { status: 400 });
+  }
+
+  const stackText = upload.frames.join('\n');
 
   const insert = await supabaseRequest(env, 'crash_reports', {
     method: 'POST',
     headers: { Prefer: 'return=minimal' },
     body: JSON.stringify([
       {
-        message: (scrubbed.message ?? '').slice(0, CRASH_MESSAGE_MAX),
-        stack: (scrubbed.stack ?? '').slice(0, CRASH_STACK_MAX),
-        source: body.source ?? 'unknown',
-        app_version: body.appVersion,
-        platform: body.platform ?? null,
-        occurred_at: body.at ?? new Date().toISOString(),
+        message: `${upload.exceptionType}: ${upload.message}`,
+        stack: stackText,
+        source: upload.source,
+        app_version: upload.appVersion,
+        platform: upload.platform,
+        occurred_at: new Date().toISOString(),
       },
     ]),
   });
   if (!insert.ok) {
-    return new Response(`Supabase crash insert failed: ${await insert.text()}`, {
-      status: 502,
-    });
+    return new Response('Upstream error', { status: 502 });
   }
   return new Response('ok', { status: 200 });
 }

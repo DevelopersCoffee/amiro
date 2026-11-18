@@ -14,6 +14,7 @@ import '../avatar/avatar_loader.dart';
 import '../avatar/avatar_providers.dart';
 import '../avatar/avatar_viewport_placeholder.dart';
 import '../identity/identity_providers.dart';
+import '../identity/supabase_public.dart';
 import '../store/store_providers.dart';
 import '../theme/amiro_card.dart';
 import '../theme/empty_state.dart';
@@ -372,7 +373,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                 ),
                 ),
               ),
-              if (webClient != null) ...[
+              if (webClient != null && kWebSharePublishEnabled) ...[
                 const SizedBox(height: 16),
                 WebShareStrangerPreview(
                   identity: shown,

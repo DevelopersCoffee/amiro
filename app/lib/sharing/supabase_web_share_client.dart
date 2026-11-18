@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:avatar_core/avatar_core.dart';
 import 'package:identity_core/identity_core.dart';
 import 'package:sharing/sharing.dart';
@@ -97,23 +98,24 @@ class SupabaseWebShareClient implements WebShareService {
 
     try {
       final session = await _cloud.userSessionForDataPlane();
-      final body = jsonEncode({
-        'token': token,
-        'owner_id': session.userId,
-        'identity_id': identity.id,
-        'display_name': identity.displayName,
-        'public_contact': contact.toJson(),
-        'card_extras': extras,
-        'avatar_png': _byteaHex(png),
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      });
+      final updatedAt = DateTime.now().toUtc().toIso8601String();
+      final body = jsonEncode(buildPublishMergePatch(
+        token: token,
+        ownerId: session.userId,
+        identityId: identity.id,
+        displayName: identity.displayName,
+        publicContact: contact.toJson(),
+        cardExtras: extras,
+        avatarHex: _byteaHex(png),
+        updatedAt: updatedAt,
+      ));
       if (existingToken != null && existingToken.isNotEmpty) {
         await revoke(token: existingToken);
       }
       final response = await _cloud.sendAuthenticated(
         method: 'POST',
         uri: _cloud.restTable('web_share_profiles').replace(
-          queryParameters: {'on_conflict': 'identity_id'},
+          queryParameters: {'on_conflict': 'owner_id'},
         ),
         accessToken: session.accessToken,
         extraHeaders: const {'Prefer': 'resolution=merge-duplicates'},
@@ -122,9 +124,10 @@ class SupabaseWebShareClient implements WebShareService {
       if (response.status >= 200 && response.status < 300) {
         return WebSharePublishResult.success(token);
       }
-      return await _patchByIdentity(
-        identity: identity,
+      return await _patchByOwner(
+        ownerId: session.userId,
         token: token,
+        identityId: identity.id,
         contact: contact,
         extras: extras,
         png: png,
@@ -154,9 +157,10 @@ class SupabaseWebShareClient implements WebShareService {
     );
   }
 
-  Future<WebSharePublishResult> _patchByIdentity({
-    required Identity identity,
+  Future<WebSharePublishResult> _patchByOwner({
+    required String ownerId,
     required String token,
+    required String identityId,
     required ContactCard contact,
     required Map<String, dynamic> extras,
     required Uint8List png,
@@ -166,11 +170,12 @@ class SupabaseWebShareClient implements WebShareService {
     final response = await _cloud.sendAuthenticated(
       method: 'PATCH',
       uri: _cloud.restTable('web_share_profiles').replace(
-        queryParameters: {'identity_id': 'eq.${identity.id}'},
+        queryParameters: {'owner_id': 'eq.$ownerId'},
       ),
       accessToken: session.accessToken,
       body: jsonEncode({
         'token': token,
+        'identity_id': identityId,
         'display_name': displayName,
         'public_contact': contact.toJson(),
         'card_extras': extras,
@@ -197,7 +202,7 @@ class SupabaseWebShareClient implements WebShareService {
           queryParameters: {'token': 'eq.$token'},
         ),
         accessToken: session.accessToken,
-        body: jsonEncode({'revoked_at': now, 'updated_at': now}),
+        body: jsonEncode(buildRevokeTombstonePatch(now)),
       );
       return response.status >= 200 && response.status < 300;
     } catch (_) {
@@ -213,4 +218,40 @@ class SupabaseWebShareClient implements WebShareService {
 String _byteaHex(Uint8List bytes) {
   final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   return '\\x$hex';
+}
+
+@visibleForTesting
+Map<String, dynamic> buildRevokeTombstonePatch(String revokedAtIso) {
+  return {
+    'revoked_at': revokedAtIso,
+    'updated_at': revokedAtIso,
+    'display_name': '',
+    'public_contact': <String, dynamic>{},
+    'card_extras': <String, dynamic>{},
+    'avatar_png': '\\x',
+  };
+}
+
+@visibleForTesting
+Map<String, dynamic> buildPublishMergePatch({
+  required String token,
+  required String ownerId,
+  required String identityId,
+  required String displayName,
+  required Map<String, dynamic> publicContact,
+  required Map<String, dynamic> cardExtras,
+  required String avatarHex,
+  required String updatedAt,
+}) {
+  return {
+    'token': token,
+    'owner_id': ownerId,
+    'identity_id': identityId,
+    'display_name': displayName,
+    'public_contact': publicContact,
+    'card_extras': cardExtras,
+    'avatar_png': avatarHex,
+    'revoked_at': null,
+    'updated_at': updatedAt,
+  };
 }

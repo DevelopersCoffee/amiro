@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import 'crash_payload.dart';
 import 'crash_scrub.dart';
 import 'crash_upload_preferences.dart';
 
@@ -41,17 +42,27 @@ class FileCrashSink implements CrashSink {
 /// POSTs the report as JSON. The URL is a build-time secret
 /// (`--dart-define=AMIRO_CRASH_INGEST_URL=...`); it is not stored in git.
 class HttpCrashSink implements CrashSink {
-  HttpCrashSink(this.uri, {HttpClient? client}) : _client = client ?? HttpClient();
+  HttpCrashSink(
+    this.uri, {
+    HttpClient? client,
+    this.allowHttpForTest = false,
+  }) : _client = client ?? HttpClient() {
+    if (!allowHttpForTest && uri.scheme != 'https') {
+      throw ArgumentError('crash ingest URL must use https');
+    }
+    _client.connectionTimeout = const Duration(seconds: 8);
+  }
 
   final Uri uri;
   final HttpClient _client;
+  final bool allowHttpForTest;
 
   @override
   Future<void> send(Map<String, Object?> report) async {
     final request = await _client.postUrl(uri);
     request.headers.contentType = ContentType.json;
     request.write(jsonEncode(report));
-    final response = await request.close();
+    final response = await request.close().timeout(const Duration(seconds: 12));
     await response.drain<void>();
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw HttpException('crash ingest ${response.statusCode}', uri: uri);
@@ -69,7 +80,20 @@ class ConsentGatedHttpCrashSink implements CrashSink {
   @override
   Future<void> send(Map<String, Object?> report) async {
     if (!await preferences.isEnabled()) return;
-    await inner.send(scrubCrashReport(report));
+    final scrubbed = <String, Object?>{
+      ...report,
+      if (report['message'] is String)
+        'message': scrubCrashMessage(report['message']! as String),
+      if (report['frames'] is List)
+        'frames': [
+          for (final f in report['frames']! as List)
+            if (f is String) scrubCrashMessage(f, crashFrameLineMax),
+        ],
+      if (report['exceptionType'] is String)
+        'exceptionType':
+            scrubCrashMessage(report['exceptionType']! as String, 128),
+    };
+    await inner.send(scrubbed);
   }
 }
 
@@ -85,7 +109,7 @@ class CrashReporter {
   final DateTime Function() _clock;
 
   Future<void> record(Object error, StackTrace stack, String source) async {
-    final report = <String, Object?>{
+    final localReport = <String, Object?>{
       'message': error.toString(),
       'stack': stack.toString(),
       'source': source,
@@ -93,9 +117,20 @@ class CrashReporter {
       'platform': Platform.operatingSystem,
       'at': _clock().toUtc().toIso8601String(),
     };
+    final upload = buildCrashUploadPayload(
+      error: error,
+      stack: stack,
+      source: source,
+      appVersion: appVersion,
+      platform: Platform.operatingSystem,
+    );
     for (final sink in sinks) {
       try {
-        await sink.send(report);
+        if (sink is ConsentGatedHttpCrashSink || sink is HttpCrashSink) {
+          await sink.send(upload);
+        } else {
+          await sink.send(localReport);
+        }
       } catch (_) {
         // A sink failure must not replace the original crash.
       }
