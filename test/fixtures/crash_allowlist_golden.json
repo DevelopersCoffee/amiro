@@ -1,0 +1,45 @@
+{
+  "secretRedaction": [
+    {
+      "id": "jwt_recovery_display",
+      "input": "FormatException: {\"access_token\":\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.sig\",\"recovery_code\":\"3f9a1c0be2d74e8f9a0b1c2d3e4f5a6b\",\"displayName\":\"Priya Sharma\"}",
+      "expected": "FormatException: {\"access_token\":\"[redacted-jwt]\",\"recovery_code\":\"[redacted-hex]\",\"displayName\":\"Priya Sharma\"}"
+    },
+    {
+      "id": "uuid_in_message",
+      "input": "Bad state: no identity 8c1f2d3e-4b5a-6c7d-8e9f-0a1b2c3d4e5f",
+      "expected": "Bad state: no identity [redacted-uuid]"
+    },
+    {
+      "id": "bearer_token",
+      "input": "Authorization: Bearer sk_live_abcdef1234567890",
+      "expected": "Authorization: [redacted-bearer]"
+    },
+    {
+      "id": "share_link_token",
+      "input": "https://id.amiro.app/u/AbCdEf0123456789xyzTOKEN",
+      "expected": "https://id.amiro.app/u/[redacted-base64url]"
+    },
+    {
+      "id": "email_and_phone",
+      "input": "reach me at dev@example.co or +1 (555) 867-5309",
+      "expected": "reach me at [redacted-email] or [redacted-phone]"
+    },
+    {
+      "id": "unix_path",
+      "input": "Failed to read /home/user/.config/amiro/secrets.json",
+      "expected": "Failed to read [redacted-path]"
+    }
+  ],
+  "stackFilter": {
+    "input": "#0      main (package:amiro_app/main.dart:61:9)\n#1      build (package:flutter/src/widgets/framework.dart:1:1)\nfoo bar\n#2      _invoke (dart:async/zone.dart:100:1)\n",
+    "expected": "#0      main (package:amiro_app/main.dart:61:9)\n#1      build (package:flutter/src/widgets/framework.dart:1:1)\n#2      _invoke (dart:async/zone.dart:100:1)"
+  },
+  "fullReport": {
+    "runtimeType": "StateError",
+    "message": "StateError: controlled",
+    "stack": "#0      main (package:amiro_app/main.dart:61:9)\nnoise line without frame\n",
+    "expectedMessage": "StateError: controlled",
+    "expectedStack": "#0      main (package:amiro_app/main.dart:61:9)"
+  }
+}

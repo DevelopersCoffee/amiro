@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -12,6 +13,7 @@ import 'package:discovery/discovery.dart';
 
 import 'app.dart';
 import 'crash/crash_reporter.dart';
+import 'crash/crash_upload_throttle.dart';
 import 'crash/crash_upload_preferences.dart';
 import 'identity/cloud_backup_preferences.dart';
 import 'identity/profile_secrets_store.dart';
@@ -33,11 +35,16 @@ void main() async {
   final crashSinks = <CrashSink>[
     FileCrashSink(File('${supportDir.path}/crashes.jsonl')),
   ];
+  final crashUploadThrottle = CrashUploadThrottle();
   if (ingestUrl.isNotEmpty) {
     crashSinks.add(
       ConsentGatedHttpCrashSink(
         crashUploadPreferences,
-        HttpCrashSink(Uri.parse(ingestUrl)),
+        crashUploadThrottle,
+        HttpCrashSink(
+          Uri.parse(ingestUrl),
+          allowInsecureHttp: !kReleaseMode,
+        ),
       ),
     );
   }

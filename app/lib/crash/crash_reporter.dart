@@ -3,8 +3,9 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
-import 'crash_scrub.dart';
+import 'crash_allowlist.dart';
 import 'crash_upload_preferences.dart';
+import 'crash_upload_throttle.dart';
 
 /// Where a captured crash is delivered. Implementations must not throw;
 /// [CrashReporter] already swallows sink failures so a broken reporter
@@ -38,12 +39,22 @@ class FileCrashSink implements CrashSink {
   }
 }
 
-/// POSTs the report as JSON. The URL is a build-time secret
+/// POSTs the report as JSON. The URL is a build-time define
 /// (`--dart-define=AMIRO_CRASH_INGEST_URL=...`); it is not stored in git.
 class HttpCrashSink implements CrashSink {
-  HttpCrashSink(this.uri, {HttpClient? client}) : _client = client ?? HttpClient();
+  HttpCrashSink(
+    this.uri, {
+    HttpClient? client,
+    this.allowInsecureHttp = false,
+  }) : _client = client ?? HttpClient() {
+    if (!allowInsecureHttp && uri.scheme != 'https') {
+      throw ArgumentError('Crash ingest URL must use https');
+    }
+    _client.connectionTimeout = const Duration(seconds: 10);
+  }
 
   final Uri uri;
+  final bool allowInsecureHttp;
   final HttpClient _client;
 
   @override
@@ -59,17 +70,28 @@ class HttpCrashSink implements CrashSink {
   }
 }
 
-/// Skips the network unless the user opted in; scrubs message and stack first.
+/// Skips the network unless the user opted in; scrubs and throttles before upload.
 class ConsentGatedHttpCrashSink implements CrashSink {
-  ConsentGatedHttpCrashSink(this.preferences, this.inner);
+  ConsentGatedHttpCrashSink(
+    this.preferences,
+    this.throttle,
+    this.inner,
+  );
 
   final CrashUploadPreferences preferences;
+  final CrashUploadThrottle throttle;
   final HttpCrashSink inner;
 
   @override
   Future<void> send(Map<String, Object?> report) async {
     if (!await preferences.isEnabled()) return;
-    await inner.send(scrubCrashReport(report));
+    final fingerprint = report['fingerprint'] as String? ?? '';
+    if (!throttle.shouldUpload(fingerprint)) return;
+    final upload = Map<String, Object?>.from(scrubCrashReport(report))
+      ..remove('fingerprint')
+      ..remove('at');
+    await inner.send(upload);
+    throttle.recordUpload(fingerprint);
   }
 }
 
@@ -85,13 +107,16 @@ class CrashReporter {
   final DateTime Function() _clock;
 
   Future<void> record(Object error, StackTrace stack, String source) async {
+    final fingerprint = crashFingerprint(error, stack);
     final report = <String, Object?>{
       'message': error.toString(),
       'stack': stack.toString(),
+      'runtimeType': error.runtimeType.toString(),
       'source': source,
       'appVersion': appVersion,
       'platform': Platform.operatingSystem,
       'at': _clock().toUtc().toIso8601String(),
+      'fingerprint': fingerprint,
     };
     for (final sink in sinks) {
       try {

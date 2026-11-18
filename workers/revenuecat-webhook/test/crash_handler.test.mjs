@@ -1,47 +1,118 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { handleCrash } from '../src/index.ts';
+import { handleCrash } from '../src/crash_handler.ts';
 
 const baseEnv = {
-  WEBHOOK_PATH_TOKEN: 'path-token',
   SUPABASE_URL: 'https://example.supabase.co',
   SUPABASE_SERVICE_ROLE_KEY: 'service-key',
   CRASH_PATH_TOKEN: 'crash-token',
 };
 
-test('handleCrash scrubs and size-caps payload before Supabase insert', async () => {
-  let body;
+const validPayload = {
+  runtimeType: 'StateError',
+  message: 'StateError: hello',
+  stack: '#0      main (package:amiro_app/main.dart:1:9)\n',
+  appVersion: '1.0.6+12',
+  source: 'flutter',
+  platform: 'android',
+};
+
+function crashRequest(body, init = {}) {
+  return new Request('https://example.com/crash/crash-token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...init.headers,
+    },
+    body: typeof body === 'string' ? body : JSON.stringify(body),
+    ...init,
+  });
+}
+
+test('handleCrash scrubs allowlisted payload before insert', async () => {
+  let rows;
   const env = { ...baseEnv };
-  const payload = {
-    message: `dev@test.com ${'x'.repeat(3000)}`,
-    stack: `/home/a.dart ${'y'.repeat(9000)}`,
-    appVersion: '1.0.6+12',
-    source: 'flutter',
-  };
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (_url, init) => {
-    assert.match(String(_url), /crash_reports/);
-    body = JSON.parse(init.body);
+    rows = JSON.parse(init.body);
     return new Response('ok', { status: 201 });
   };
   try {
     const response = await handleCrash(
-      new Request('https://example.com/crash/crash-token', {
-        method: 'POST',
-        body: JSON.stringify(payload),
+      crashRequest({
+        ...validPayload,
+        message:
+          'StateError: token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig',
       }),
       env,
       new URL('https://example.com/crash/crash-token'),
     );
-
     assert.equal(response.status, 200);
-    assert.equal(body.length, 1);
-    assert.ok(!String(body[0].message).includes('dev@test.com'));
-    assert.ok(body[0].message.includes('[redacted-email]'));
-    assert.ok(body[0].message.length <= 2000);
-    assert.ok(body[0].stack.length <= 8000);
-    assert.ok(body[0].stack.includes('[redacted-path]'));
+    assert.equal(rows.length, 1);
+    assert.ok(rows[0].message.includes('[redacted-jwt]'));
+    assert.ok(rows[0].stack.includes('package:amiro_app'));
+    assert.equal(rows[0].occurred_at != null, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('handleCrash returns 415 for non-JSON content type', async () => {
+  const response = await handleCrash(
+    crashRequest('hello', {
+      headers: { 'Content-Type': 'text/plain' },
+    }),
+    baseEnv,
+    new URL('https://example.com/crash/crash-token'),
+  );
+  assert.equal(response.status, 415);
+});
+
+test('handleCrash returns 400 for null JSON body', async () => {
+  const response = await handleCrash(
+    crashRequest('null'),
+    baseEnv,
+    new URL('https://example.com/crash/crash-token'),
+  );
+  assert.equal(response.status, 400);
+});
+
+test('handleCrash returns 400 for non-string message', async () => {
+  const response = await handleCrash(
+    crashRequest({ message: 42, appVersion: '1.0.6+12', source: 'flutter' }),
+    baseEnv,
+    new URL('https://example.com/crash/crash-token'),
+  );
+  assert.equal(response.status, 400);
+});
+
+test('handleCrash returns 413 when Content-Length exceeds cap', async () => {
+  const response = await handleCrash(
+    crashRequest(JSON.stringify(validPayload), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': '20000',
+      },
+    }),
+    baseEnv,
+    new URL('https://example.com/crash/crash-token'),
+  );
+  assert.equal(response.status, 413);
+});
+
+test('handleCrash returns generic 502 when Supabase fails', async () => {
+  const env = { ...baseEnv };
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('secret detail', { status: 500 });
+  try {
+    const response = await handleCrash(
+      crashRequest(validPayload),
+      env,
+      new URL('https://example.com/crash/crash-token'),
+    );
+    assert.equal(response.status, 502);
+    assert.equal(await response.text(), 'Ingest unavailable');
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -49,10 +120,7 @@ test('handleCrash scrubs and size-caps payload before Supabase insert', async ()
 
 test('handleCrash rejects missing crash token', async () => {
   const response = await handleCrash(
-    new Request('https://example.com/crash/wrong', {
-      method: 'POST',
-      body: JSON.stringify({ message: 'x', appVersion: '1' }),
-    }),
+    crashRequest(validPayload),
     baseEnv,
     new URL('https://example.com/crash/wrong'),
   );

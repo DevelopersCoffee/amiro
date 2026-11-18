@@ -32,7 +32,9 @@ class CrashUploadPreferences {
   Future<void> setEnabled(bool enabled) async {
     if (_file.path.isEmpty) return;
     await _file.parent.create(recursive: true);
-    await _file.writeAsString(jsonEncode({'enabled': enabled}));
+    final tmp = File('${_file.path}.tmp');
+    await tmp.writeAsString(jsonEncode({'enabled': enabled}));
+    await tmp.rename(_file.path);
   }
 }
 

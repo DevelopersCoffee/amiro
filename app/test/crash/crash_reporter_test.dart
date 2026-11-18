@@ -3,8 +3,24 @@ import 'dart:io';
 
 import 'package:amiro_app/crash/crash_reporter.dart';
 import 'package:amiro_app/crash/crash_upload_preferences.dart';
+import 'package:amiro_app/crash/crash_upload_throttle.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+HttpCrashSink _loopbackSink(Uri uri) =>
+    HttpCrashSink(uri, allowInsecureHttp: true);
+
+ConsentGatedHttpCrashSink _gatedSink({
+  required CrashUploadPreferences prefs,
+  required HttpCrashSink inner,
+  CrashUploadThrottle? throttle,
+}) {
+  return ConsentGatedHttpCrashSink(
+    prefs,
+    throttle ?? CrashUploadThrottle(),
+    inner,
+  );
+}
 
 void main() {
   test('record sends the message, stack, version and source', () async {
@@ -62,7 +78,9 @@ void main() {
 
     final reporter = CrashReporter(
       sinks: [
-        HttpCrashSink(Uri.parse('http://${server.address.host}:${server.port}/crash')),
+        _loopbackSink(
+          Uri.parse('http://${server.address.host}:${server.port}/crash'),
+        ),
       ],
     );
     await reporter.record('controlled', StackTrace.empty, 'flutter');
@@ -71,6 +89,13 @@ void main() {
 
     expect(bodies, hasLength(1));
     expect(jsonDecode(bodies.single)['message'], 'controlled');
+  });
+
+  test('http sink rejects non-https without allowInsecureHttp', () {
+    expect(
+      () => HttpCrashSink(Uri.parse('http://example.com/crash')),
+      throwsArgumentError,
+    );
   });
 
   test('consent-gated http sink stays quiet until opt-in', () async {
@@ -84,22 +109,26 @@ void main() {
     final prefs = CrashUploadPreferences.inMemory();
     final reporter = CrashReporter(
       sinks: [
-        ConsentGatedHttpCrashSink(
-          prefs,
-          HttpCrashSink(
+        _gatedSink(
+          prefs: prefs,
+          inner: _loopbackSink(
             Uri.parse('http://${server.address.host}:${server.port}/crash'),
           ),
         ),
       ],
     );
 
-    await reporter.record('secret dev@test.com', StackTrace.empty, 'flutter');
+    await reporter.record(
+      StateError('eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig'),
+      StackTrace.empty,
+      'flutter',
+    );
     expect(bodies, isEmpty);
 
     await prefs.setEnabled(true);
     await reporter.record(
-      'secret dev@test.com https://x.com/a?b=c /tmp/a.dart',
-      StackTrace.current,
+      StateError('eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig'),
+      StackTrace.empty,
       'flutter',
     );
     await sub.cancel();
@@ -107,10 +136,37 @@ void main() {
 
     expect(bodies, hasLength(1));
     final decoded = jsonDecode(bodies.single) as Map<String, dynamic>;
-    expect(decoded['message'], contains('[redacted-email]'));
-    expect(decoded['message'], isNot(contains('dev@test.com')));
-    expect(decoded['message'], contains('[redacted-url]'));
-    expect(decoded['message'], contains('[redacted-path]'));
+    expect(decoded['message'], contains('[redacted-jwt]'));
+    expect(decoded['message'], isNot(contains('eyJzdWIiOiIxIn0')));
+  });
+
+  test('a crash recorded before opt-in is not uploaded after opt-in', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    var posts = 0;
+    final sub = server.listen((request) async {
+      posts += 1;
+      await request.response.close();
+    });
+    final prefs = CrashUploadPreferences.inMemory();
+    final reporter = CrashReporter(
+      sinks: [
+        _gatedSink(
+          prefs: prefs,
+          inner: _loopbackSink(
+            Uri.parse('http://${server.address.host}:${server.port}/crash'),
+          ),
+        ),
+      ],
+    );
+
+    await reporter.record(StateError('before'), StackTrace.empty, 'flutter');
+    expect(posts, 0);
+    await prefs.setEnabled(true);
+    await reporter.record(StateError('after'), StackTrace.empty, 'flutter');
+    await sub.cancel();
+    await server.close();
+
+    expect(posts, 1);
   });
 
   test('turning consent off stops the next upload', () async {
@@ -123,9 +179,9 @@ void main() {
     final prefs = CrashUploadPreferences.inMemory(enabled: true);
     final reporter = CrashReporter(
       sinks: [
-        ConsentGatedHttpCrashSink(
-          prefs,
-          HttpCrashSink(
+        _gatedSink(
+          prefs: prefs,
+          inner: _loopbackSink(
             Uri.parse('http://${server.address.host}:${server.port}/crash'),
           ),
         ),
@@ -136,6 +192,33 @@ void main() {
     expect(posts, 1);
     await prefs.setEnabled(false);
     await reporter.record('two', StackTrace.empty, 'platform');
+    await sub.cancel();
+    await server.close();
+
+    expect(posts, 1);
+  });
+
+  test('throttle dedupes identical fingerprint', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    var posts = 0;
+    final sub = server.listen((request) async {
+      posts += 1;
+      await request.response.close();
+    });
+    final prefs = CrashUploadPreferences.inMemory(enabled: true);
+    final reporter = CrashReporter(
+      sinks: [
+        _gatedSink(
+          prefs: prefs,
+          inner: _loopbackSink(
+            Uri.parse('http://${server.address.host}:${server.port}/crash'),
+          ),
+        ),
+      ],
+    );
+
+    await reporter.record(StateError('dup'), StackTrace.empty, 'flutter');
+    await reporter.record(StateError('dup'), StackTrace.empty, 'flutter');
     await sub.cancel();
     await server.close();
 

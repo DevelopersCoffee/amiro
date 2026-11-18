@@ -23,4 +23,13 @@ void main() {
     await prefs.setEnabled(false);
     expect(await prefs.isEnabled(), isFalse);
   });
+
+  test('inDirectory persists enabled across a new instance', () async {
+    final dir = await Directory.systemTemp.createTemp('amiro-crash-prefs-rt');
+    final first = CrashUploadPreferences.inDirectory(dir);
+    await first.setEnabled(true);
+    final second = CrashUploadPreferences.inDirectory(dir);
+    expect(await second.isEnabled(), isTrue);
+    await dir.delete(recursive: true);
+  });
 }
