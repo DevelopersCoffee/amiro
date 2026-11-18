@@ -140,14 +140,16 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
   }) async {
     final client = ref.read(webShareClientProvider);
     if (client == null || !client.canPublish) return;
-    final state = ref.read(webShareStateProvider).value ?? WebShareState.empty;
+    var state = ref.read(webShareStateProvider).value ?? WebShareState.empty;
     if (!state.consentGiven) {
       final accepted = await showWebShareConsentDialog(context);
       if (accepted != true || !mounted) return;
       await ref
           .read(webShareStateProvider.notifier)
           .save(state.copyWith(consentGiven: true));
+      state = ref.read(webShareStateProvider).value ?? state;
     }
+    if (!mounted) return;
     setState(() => _webBusy = true);
     final result = await client.publish(
       identity: identity,
@@ -392,16 +394,19 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                         style: Theme.of(context).textTheme.labelMedium,
                       ),
                       const SizedBox(height: 12),
-                      SwitchListTile(
-                        key: const Key('webShareHttpsQrToggle'),
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Use https link on QR & NFC'),
-                        value: webState.useHttpsForQr && webState.isPublished,
-                        onChanged: webState.isPublished
-                            ? (value) => ref
-                                .read(webShareStateProvider.notifier)
-                                .save(webState.copyWith(useHttpsForQr: value))
-                            : null,
+                      Material(
+                        color: Colors.transparent,
+                        child: SwitchListTile(
+                          key: const Key('webShareHttpsQrToggle'),
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Use https link on QR & NFC'),
+                          value: webState.useHttpsForQr && webState.isPublished,
+                          onChanged: webState.isPublished
+                              ? (value) => ref
+                                  .read(webShareStateProvider.notifier)
+                                  .save(webState.copyWith(useHttpsForQr: value))
+                              : null,
+                        ),
                       ),
                       if (webState.isPublished)
                         SelectableText(

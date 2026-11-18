@@ -69,6 +69,14 @@ npm install
 npx wrangler deploy
 ```
 
+## Restore behavior (manual)
+
+For Amiro, RevenueCat **Project settings → General → Restore behavior** must be
+**Keep with original App User ID** so a second Amiro identity on the same Play
+account cannot take ownership of another profile's cosmetics. The Android app
+logs in with each profile's `identity.id` before purchase or restore. Device
+proof steps: `docs/qa/restore-purchases-device.md`.
+
 ## RevenueCat project reference
 
 RevenueCat project `Amiro` (`proj9768d0fc`), set up via the `rc` CLI:

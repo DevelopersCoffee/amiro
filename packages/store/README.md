@@ -17,3 +17,9 @@ Billing purchase sheet through RevenueCat, and ownership is read from
 RevenueCat's active entitlements — platform-native purchase APIs only, no
 custom payment system, per the PRD's Monetization section. iOS has no
 store credentials yet, so it reports nothing owned and refuses purchases.
+
+**Restore:** `restore()` returns [RestoreOutcome] (`restored`, `nothingToRestore`,
+or `unavailable`). The app binds RevenueCat's App User ID to Amiro
+`identity.id` via `Purchases.logIn`. Owners must set RevenueCat **Restore
+behavior** to **Keep with original App User ID** (see
+`docs/qa/restore-purchases-device.md`).

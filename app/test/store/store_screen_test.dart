@@ -240,6 +240,25 @@ void main() {
     },
   );
 
+  testWidgets('offline logIn shows a retry message, not identity setup', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 2600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final entitlements = _OfflineEntitlementStore();
+    await tester.pumpWidget(
+      _screen(FakeAvatarRenderer(), entitlementStore: entitlements),
+    );
+    await pumpStoreReady(tester);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Buy \$2.99'));
+    await pumpUntilFound(tester, find.text("You're offline. Try again."));
+
+    expect(find.text("You're offline. Try again."), findsOneWidget);
+    expect(find.textContaining('Set up your identity'), findsNothing);
+  });
+
   testWidgets('a purchase failure surfaces an error, not a silent no-op', (
     tester,
   ) async {
@@ -283,6 +302,71 @@ void main() {
     },
   );
 
+  testWidgets('restore with nothing on the account says so', (tester) async {
+    tester.view.physicalSize = const Size(800, 2600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      _screen(FakeAvatarRenderer(), entitlementStore: _EmptyRestoreStore()),
+    );
+    await pumpStoreReady(tester);
+
+    await tester.tap(find.text('Restore purchases'));
+    await pumpUntilFound(
+      tester,
+      find.text('No purchases to restore for this account'),
+    );
+
+    expect(
+      find.text('No purchases to restore for this account'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'cross-user restore on the same Play account is rejected clearly',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 2600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        _screen(FakeAvatarRenderer(), entitlementStore: _CrossUserRestoreStore()),
+      );
+      await pumpStoreReady(tester);
+
+      await tester.tap(find.text('Restore purchases'));
+      await pumpUntilFound(tester, find.textContaining('another Amiro identity'));
+
+      expect(find.textContaining('another Amiro identity'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'after restore, a newly owned priced item can be previewed on the avatar',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 2600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final renderer = FakeAvatarRenderer();
+      final entitlements = _RestorableEntitlementStore(
+        owned: {'riviera_optics'},
+      );
+      await tester.pumpWidget(
+        _screen(renderer, entitlementStore: entitlements),
+      );
+      await pumpStoreReady(tester);
+      expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
+
+      await tester.tap(find.text('Restore purchases'));
+      await pumpUntilFound(tester, find.text('Purchases restored'));
+      expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsNothing);
+
+      await tester.tap(find.text('Riviera Optics'));
+      await pumpShort(tester, frames: 10);
+      expect(renderer.calls, contains('updateSlot:glasses:glasses_realistic'));
+    },
+  );
+
   testWidgets('a failed restore says so and leaves the Store usable', (
     tester,
   ) async {
@@ -299,9 +383,15 @@ void main() {
     await pumpStoreReady(tester);
 
     await tester.tap(find.text('Restore purchases'));
-    await pumpUntilFound(tester, find.textContaining('Restore failed'));
+    await pumpUntilFound(
+      tester,
+      find.text('Restore failed. Try again or check your connection.'),
+    );
 
-    expect(find.textContaining('Restore failed'), findsOneWidget);
+    expect(
+      find.text('Restore failed. Try again or check your connection.'),
+      findsOneWidget,
+    );
     expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
   });
 
@@ -413,7 +503,15 @@ void main() {
       await entitlements.grant(item.id);
     }
     await tester.pumpWidget(
-      _screen(FakeAvatarRenderer(), entitlementStore: entitlements),
+      _screen(
+        FakeAvatarRenderer(),
+        entitlementStore: entitlements,
+        identity: const Identity(
+          id: 'series-owner',
+          displayName: 'Owner',
+          username: 'owner',
+        ),
+      ),
     );
     await pumpStoreReady(tester);
 
@@ -567,7 +665,22 @@ class _CancellingEntitlementStore implements EntitlementStore {
   }
 
   @override
-  Future<void> restore() async {}
+  Future<RestoreOutcome> restore() async =>
+      const RestoreOutcome.nothingToRestore();
+}
+
+class _OfflineEntitlementStore implements EntitlementStore {
+  @override
+  Future<Set<String>> ownedCosmeticIds() async => const {};
+
+  @override
+  Future<void> grant(String cosmeticId) {
+    throw const RevenueCatOfflineException();
+  }
+
+  @override
+  Future<RestoreOutcome> restore() async =>
+      const RestoreOutcome.nothingToRestore();
 }
 
 /// Simulates a real purchase failure (network error, billing unavailable).
@@ -583,7 +696,8 @@ class _FailingEntitlementStore implements EntitlementStore {
   }
 
   @override
-  Future<void> restore() async {}
+  Future<RestoreOutcome> restore() async =>
+      const RestoreOutcome.nothingToRestore();
 }
 
 /// Models a store whose purchases only surface after an explicit restore,
@@ -606,9 +720,39 @@ class _RestorableEntitlementStore implements EntitlementStore {
   Future<void> grant(String cosmeticId) async {}
 
   @override
-  Future<void> restore() async {
+  Future<RestoreOutcome> restore() async {
     restoreCalls++;
     if (failRestore) throw Exception('billing unavailable');
+    final gained = _remote.difference(_visible);
     _visible.addAll(_remote);
+    if (gained.isEmpty) return const RestoreOutcome.nothingToRestore();
+    return RestoreOutcome.restored(gained);
   }
+}
+
+/// Same Play account, different Amiro identity — RevenueCat blocks the restore.
+class _CrossUserRestoreStore implements EntitlementStore {
+  @override
+  Future<Set<String>> ownedCosmeticIds() async => const {};
+
+  @override
+  Future<void> grant(String cosmeticId) async {}
+
+  @override
+  Future<RestoreOutcome> restore() async {
+    throw const RestoreOwnershipConflictException();
+  }
+}
+
+/// Restore succeeds but the store account has no Amiro purchases.
+class _EmptyRestoreStore implements EntitlementStore {
+  @override
+  Future<Set<String>> ownedCosmeticIds() async => const {};
+
+  @override
+  Future<void> grant(String cosmeticId) async {}
+
+  @override
+  Future<RestoreOutcome> restore() async =>
+      const RestoreOutcome.nothingToRestore();
 }

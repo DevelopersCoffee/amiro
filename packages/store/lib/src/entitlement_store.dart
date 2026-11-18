@@ -1,3 +1,7 @@
+import 'restore_outcome.dart';
+
+export 'restore_outcome.dart';
+
 /// Tracks which cosmetic ids the current user has purchased.
 ///
 /// `grant` is what a real payments integration calls after a verified
@@ -7,8 +11,10 @@ abstract class EntitlementStore {
   Future<void> grant(String cosmeticId);
 
   /// Re-attaches purchases the user's store account already owns (after a
-  /// reinstall or a new phone). Call [ownedCosmeticIds] afterwards.
-  Future<void> restore();
+  /// reinstall or a new phone). On success returns [RestoreOutcome]; throws on
+  /// hard failures and [RestoreOwnershipConflictException] when another Amiro
+  /// identity owns the Play receipt.
+  Future<RestoreOutcome> restore();
 }
 
 /// Thrown by [EntitlementStore.grant] when the user backs out of the
@@ -33,5 +39,6 @@ class InMemoryEntitlementStore implements EntitlementStore {
   }
 
   @override
-  Future<void> restore() async {}
+  Future<RestoreOutcome> restore() async =>
+      const RestoreOutcome.nothingToRestore();
 }

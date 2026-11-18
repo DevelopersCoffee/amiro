@@ -26,7 +26,9 @@ remains manual and is not fully exercised.
 
 - Two-device NFC tap-to-tap and real QR scan against a physical code (see
   `docs/architecture/overview.md` §11).
-- Live Play Billing / RevenueCat purchase sheets and receipt edge cases.
+- Live Play Billing / RevenueCat purchase sheets and receipt edge cases (manual
+  script: `docs/qa/restore-purchases-device.md`; automated restore outcomes in
+  `packages/store` and `app/test/store/`).
 - iOS store, NFC emulate, and full renderer parity on Apple hardware.
 - Profile cloud backup against a live Supabase project (`identity` PR #43).
 - PRD web fallback when the app is not installed (`https://id.amiro.app/...`).
