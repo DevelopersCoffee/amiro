@@ -31,10 +31,12 @@ the token (no query, no `#` fragment).
 
 ## Owner controls
 
-- **Publish** upserts the row for the signed-in owner (`owner_id` is unique).
-- **Revoke** wipes PII columns, sets `revoked_at`, and keeps a tombstone so the
-  URL still returns 410.
-- **Rotate** issues a new token and clears `revoked_at` on upsert.
+- **Publish** calls `web_share_publish` (server mints token on first insert,
+  in-place update when an active `(owner_id, identity_id)` row exists).
+- **Revoke** calls `web_share_revoke`, wipes PII, sets `revoked_at`, keeps a
+  tombstone row (410).
+- **Rotate** calls `web_share_rotate`: tombstones the old token row, inserts a
+  new active row with a fresh server token (old URL stays 410).
 
 Play builds ship with web publish UI hidden until
 `AMIRO_WEB_SHARE_PUBLISH_ENABLED=true` is set at compile time **and** the

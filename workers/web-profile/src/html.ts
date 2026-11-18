@@ -1,4 +1,9 @@
 import type { WebShareRow } from './profile.ts';
+import {
+  buildPublicProfileView,
+  filterPublicContact,
+  filterCardExtras,
+} from './public_profile.ts';
 
 const playStoreDefault =
   'https://play.google.com/store/apps/details?id=com.developerscoffee.amiro_app';
@@ -21,6 +26,7 @@ function contactRows(contact: Record<string, string>): string {
       : escapeHtml(value);
     parts.push(`<div class="field"><span class="label">${label}</span>${inner}</div>`);
   };
+  add('Username', 'username');
   add('Bio', 'bio');
   add('Phone', 'mobile', (v) => `tel:${v}`);
   add('Email', 'email', (v) => `mailto:${v}`);
@@ -38,11 +44,12 @@ export function renderProfileHtml(
   playStoreUrl: string,
 ): string {
   const name = escapeHtml(row.display_name);
-  const equipped = row.card_extras?.equippedCosmetics ?? [];
+  const extras = filterCardExtras(row.card_extras);
+  const equipped = extras?.equippedCosmetics ?? [];
   const cosmetics = equipped
     .map((c) => `<li>${escapeHtml(c.name)}${c.rarity ? ` · ${escapeHtml(c.rarity)}` : ''}</li>`)
     .join('');
-  const contact = contactRows(row.public_contact ?? {});
+  const contact = contactRows(filterPublicContact(row.public_contact));
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -146,10 +153,5 @@ export function resolvePlayStoreUrl(env: { PLAY_STORE_URL?: string }): string {
 }
 
 export function profileJson(token: string, row: WebShareRow) {
-  return {
-    displayName: row.display_name,
-    publicContact: row.public_contact,
-    cardExtras: row.card_extras,
-    avatarUrl: `/u/${token}/avatar`,
-  };
+  return buildPublicProfileView(token, row);
 }

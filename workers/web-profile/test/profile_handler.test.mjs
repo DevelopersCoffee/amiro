@@ -47,7 +47,8 @@ test('GET profile uses private no-store and CSP', async () => {
     handleProfileRequest(request, env, new URL(request.url)),
   );
   assert.equal(response.status, 200);
-  assert.equal(response.headers.get('Cache-Control'), 'private, no-store');
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.equal(response.headers.get('Vary'), 'Accept');
   assert.equal(response.headers.get('Referrer-Policy'), 'no-referrer');
   assert.equal(response.headers.get('X-Content-Type-Options'), 'nosniff');
   assert.match(
@@ -64,7 +65,8 @@ test('revoked token returns 410 with no-store', async () => {
     () => worker.fetch(request, env),
   );
   assert.equal(response.status, 410);
-  assert.equal(response.headers.get('Cache-Control'), 'private, no-store');
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.equal(response.headers.get('Vary'), 'Accept');
 });
 
 test('tombstone row (wiped PII) returns 410', async () => {
@@ -90,11 +92,30 @@ test('short token in URL returns 404', async () => {
   assert.equal(response.status, 404);
 });
 
-test('avatar response uses private no-store and image/png', async () => {
+test('JSON profile uses same allowlist fields', async () => {
+  const env = { ...baseEnv };
+  const request = new Request(`https://id.amiro.app/u/${token}`, {
+    headers: { Accept: 'application/json' },
+  });
+  const response = await withMockFetch(
+    [{
+      ...activeRow,
+      public_contact: { bio: 'Engineer', leak: 'secret' },
+    }],
+    () => handleProfileRequest(request, env, new URL(request.url)),
+  );
+  const json = await response.json();
+  assert.equal(json.displayName, 'Uday');
+  assert.equal(json.publicContact.bio, 'Engineer');
+  assert.equal(json.publicContact.leak, undefined);
+});
+
+test('avatar response uses no-store and image/png', async () => {
   const env = { ...baseEnv };
   const request = new Request(`https://id.amiro.app/u/${token}/avatar`);
   const response = await withMockFetch([activeRow], () => worker.fetch(request, env));
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('Content-Type'), 'image/png');
-  assert.equal(response.headers.get('Cache-Control'), 'private, no-store');
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.equal(response.headers.get('Vary'), 'Accept');
 });

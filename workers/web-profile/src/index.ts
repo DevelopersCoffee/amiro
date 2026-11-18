@@ -6,7 +6,7 @@ import {
 } from './profile.ts';
 import { isValidPng } from './avatar_validate.ts';
 import { profileJson, renderProfileHtml, resolvePlayStoreUrl } from './html.ts';
-import { responseSecurityHeaders, PRIVATE_NO_STORE } from './security_headers.ts';
+import { responseSecurityHeaders, NO_STORE_CACHE } from './security_headers.ts';
 
 function notFound(): Response {
   return new Response('Not found', {
@@ -107,4 +107,4 @@ export default {
   },
 };
 
-export { PRIVATE_NO_STORE };
+export { NO_STORE_CACHE };

@@ -20,7 +20,6 @@ abstract class WebShareService {
     required Set<String> purchasedIds,
     required EncounterShareOptions shareOptions,
     Uint8List? avatarPng,
-    String? existingToken,
   });
   Future<WebSharePublishResult> rotate({
     required Identity identity,
@@ -59,7 +58,45 @@ class SupabaseWebShareClient implements WebShareService {
     required Set<String> purchasedIds,
     required EncounterShareOptions shareOptions,
     Uint8List? avatarPng,
-    String? existingToken,
+  }) async {
+    return _mutateProfile(
+      rpcName: 'web_share_publish',
+      identity: identity,
+      definition: definition,
+      purchasedIds: purchasedIds,
+      shareOptions: shareOptions,
+      avatarPng: avatarPng,
+    );
+  }
+
+  @override
+  Future<WebSharePublishResult> rotate({
+    required Identity identity,
+    required AvatarDefinition? definition,
+    required Set<String> purchasedIds,
+    required EncounterShareOptions shareOptions,
+    required String existingToken,
+    Uint8List? avatarPng,
+  }) async {
+    return _mutateProfile(
+      rpcName: 'web_share_rotate',
+      identity: identity,
+      definition: definition,
+      purchasedIds: purchasedIds,
+      shareOptions: shareOptions,
+      avatarPng: avatarPng,
+      oldToken: existingToken,
+    );
+  }
+
+  Future<WebSharePublishResult> _mutateProfile({
+    required String rpcName,
+    required Identity identity,
+    required AvatarDefinition? definition,
+    required Set<String> purchasedIds,
+    required EncounterShareOptions shareOptions,
+    Uint8List? avatarPng,
+    String? oldToken,
   }) async {
     if (!canPublish) {
       return const WebSharePublishResult.failure('Web share is not configured');
@@ -74,12 +111,47 @@ class SupabaseWebShareClient implements WebShareService {
       return const WebSharePublishResult.failure('Avatar not ready');
     }
 
-    final token = generateWebShareToken();
-    final contact = ContactCard.fromIdentity(identity);
+    final contact =
+        filterWebSharePublicContact(ContactCard.fromIdentity(identity).toJson());
     final png = stripAvatarMetadata(
       avatarPng ?? buildFallbackWebShareAvatar(identity.displayName),
     );
-    final extras = <String, dynamic>{
+    final extras = filterWebShareCardExtras(_cardExtras(payload, shareOptions));
+
+    try {
+      final session = await _cloud.userSessionForDataPlane();
+      final body = jsonEncode(buildWebShareRpcBody(
+        identityId: identity.id,
+        displayName: identity.displayName,
+        publicContact: contact,
+        cardExtras: extras,
+        avatarHex: _byteaHex(png),
+        oldToken: oldToken,
+      ));
+      final response = await _cloud.sendAuthenticated(
+        method: 'POST',
+        uri: _cloud.restRpc(rpcName),
+        accessToken: session.accessToken,
+        extraHeaders: const {'Prefer': 'return=representation'},
+        body: body,
+      );
+      final token = parseWebShareRpcToken(response.status, response.body);
+      if (token != null) {
+        return WebSharePublishResult.success(token);
+      }
+      return WebSharePublishResult.failure(
+        'Publish failed (${response.status})',
+      );
+    } catch (_) {
+      return const WebSharePublishResult.failure('Publish failed');
+    }
+  }
+
+  Map<String, dynamic> _cardExtras(
+    AmiroSharingPayload payload,
+    EncounterShareOptions shareOptions,
+  ) {
+    return {
       if (shareOptions.includeEquippedCosmetics)
         'equippedCosmetics': payload.equippedCosmetics
             .map((c) => {'name': c.name, 'rarity': c.rarity})
@@ -95,99 +167,6 @@ class SupabaseWebShareClient implements WebShareService {
             )
             .toList(),
     };
-
-    try {
-      final session = await _cloud.userSessionForDataPlane();
-      final updatedAt = DateTime.now().toUtc().toIso8601String();
-      final body = jsonEncode(buildPublishMergePatch(
-        token: token,
-        ownerId: session.userId,
-        identityId: identity.id,
-        displayName: identity.displayName,
-        publicContact: contact.toJson(),
-        cardExtras: extras,
-        avatarHex: _byteaHex(png),
-        updatedAt: updatedAt,
-      ));
-      if (existingToken != null && existingToken.isNotEmpty) {
-        await revoke(token: existingToken);
-      }
-      final response = await _cloud.sendAuthenticated(
-        method: 'POST',
-        uri: _cloud.restTable('web_share_profiles').replace(
-          queryParameters: {'on_conflict': 'owner_id'},
-        ),
-        accessToken: session.accessToken,
-        extraHeaders: const {'Prefer': 'resolution=merge-duplicates'},
-        body: body,
-      );
-      if (response.status >= 200 && response.status < 300) {
-        return WebSharePublishResult.success(token);
-      }
-      return await _patchByOwner(
-        ownerId: session.userId,
-        token: token,
-        identityId: identity.id,
-        contact: contact,
-        extras: extras,
-        png: png,
-        displayName: identity.displayName,
-      );
-    } catch (_) {
-      return const WebSharePublishResult.failure('Publish failed');
-    }
-  }
-
-  @override
-  Future<WebSharePublishResult> rotate({
-    required Identity identity,
-    required AvatarDefinition? definition,
-    required Set<String> purchasedIds,
-    required EncounterShareOptions shareOptions,
-    required String existingToken,
-    Uint8List? avatarPng,
-  }) {
-    return publish(
-      identity: identity,
-      definition: definition,
-      purchasedIds: purchasedIds,
-      shareOptions: shareOptions,
-      avatarPng: avatarPng,
-      existingToken: existingToken,
-    );
-  }
-
-  Future<WebSharePublishResult> _patchByOwner({
-    required String ownerId,
-    required String token,
-    required String identityId,
-    required ContactCard contact,
-    required Map<String, dynamic> extras,
-    required Uint8List png,
-    required String displayName,
-  }) async {
-    final session = await _cloud.userSessionForDataPlane();
-    final response = await _cloud.sendAuthenticated(
-      method: 'PATCH',
-      uri: _cloud.restTable('web_share_profiles').replace(
-        queryParameters: {'owner_id': 'eq.$ownerId'},
-      ),
-      accessToken: session.accessToken,
-      body: jsonEncode({
-        'token': token,
-        'identity_id': identityId,
-        'display_name': displayName,
-        'public_contact': contact.toJson(),
-        'card_extras': extras,
-        'avatar_png': _byteaHex(png),
-        'revoked_at': null,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      }),
-    );
-    if (response.status >= 200 && response.status < 300) {
-      return WebSharePublishResult.success(token);
-    }
-    return WebSharePublishResult.failure('Publish failed (${response.status})');
   }
 
   @override
@@ -195,16 +174,14 @@ class SupabaseWebShareClient implements WebShareService {
     if (!canPublish) return false;
     try {
       final session = await _cloud.userSessionForDataPlane();
-      final now = DateTime.now().toUtc().toIso8601String();
       final response = await _cloud.sendAuthenticated(
-        method: 'PATCH',
-        uri: _cloud.restTable('web_share_profiles').replace(
-          queryParameters: {'token': 'eq.$token'},
-        ),
+        method: 'POST',
+        uri: _cloud.restRpc('web_share_revoke'),
         accessToken: session.accessToken,
-        body: jsonEncode(buildRevokeTombstonePatch(now)),
+        extraHeaders: const {'Prefer': 'return=representation'},
+        body: jsonEncode({'p_token': token}),
       );
-      return response.status >= 200 && response.status < 300;
+      return parseWebShareRpcToken(response.status, response.body) != null;
     } catch (_) {
       return false;
     }
@@ -221,6 +198,48 @@ String _byteaHex(Uint8List bytes) {
 }
 
 @visibleForTesting
+Map<String, dynamic> buildWebShareRpcBody({
+  required String identityId,
+  required String displayName,
+  required Map<String, dynamic> publicContact,
+  required Map<String, dynamic> cardExtras,
+  required String avatarHex,
+  String? oldToken,
+}) {
+  return {
+    'p_identity_id': identityId,
+    'p_display_name': displayName,
+    'p_public_contact': publicContact,
+    'p_card_extras': cardExtras,
+    'p_avatar_png': avatarHex,
+    if (oldToken != null) 'p_old_token': oldToken,
+  };
+}
+
+@visibleForTesting
+String? parseWebShareRpcToken(int status, String body) {
+  if (status == 204 || body.isEmpty) return null;
+  if (status < 200 || status >= 300) return null;
+  try {
+    final decoded = jsonDecode(body);
+    final Map<String, dynamic>? row;
+    if (decoded is Map<String, dynamic>) {
+      row = decoded;
+    } else if (decoded is List && decoded.length == 1) {
+      final first = decoded.first;
+      if (first is Map<String, dynamic>) {
+        row = first;
+      }
+    }
+    final token = row?['token'];
+    if (token is String && token.length >= 22) {
+      return token;
+    }
+  } catch (_) {}
+  return null;
+}
+
+@visibleForTesting
 Map<String, dynamic> buildRevokeTombstonePatch(String revokedAtIso) {
   return {
     'revoked_at': revokedAtIso,
@@ -229,29 +248,5 @@ Map<String, dynamic> buildRevokeTombstonePatch(String revokedAtIso) {
     'public_contact': <String, dynamic>{},
     'card_extras': <String, dynamic>{},
     'avatar_png': '\\x',
-  };
-}
-
-@visibleForTesting
-Map<String, dynamic> buildPublishMergePatch({
-  required String token,
-  required String ownerId,
-  required String identityId,
-  required String displayName,
-  required Map<String, dynamic> publicContact,
-  required Map<String, dynamic> cardExtras,
-  required String avatarHex,
-  required String updatedAt,
-}) {
-  return {
-    'token': token,
-    'owner_id': ownerId,
-    'identity_id': identityId,
-    'display_name': displayName,
-    'public_contact': publicContact,
-    'card_extras': cardExtras,
-    'avatar_png': avatarHex,
-    'revoked_at': null,
-    'updated_at': updatedAt,
   };
 }

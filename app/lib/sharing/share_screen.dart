@@ -155,7 +155,6 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
       definition: definition,
       purchasedIds: owned,
       shareOptions: shareOptions,
-      existingToken: state.activeToken,
     );
     if (!mounted) return;
     setState(() => _webBusy = false);

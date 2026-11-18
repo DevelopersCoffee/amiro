@@ -28,7 +28,9 @@ Alternatively use the Workers Rate Limiting API binding when namespace IDs are p
 
 ## Migrations
 
-Apply `20261118120000_web_share_profiles.sql` and `20261118140000_web_share_security_hardening.sql` before first publish.
+Apply `20261118120000_web_share_profiles.sql`,
+`20261118140000_web_share_security_hardening.sql`, and
+`20261118150000_web_share_rpc.sql` before first publish.
 
 ## App kill-switch
 

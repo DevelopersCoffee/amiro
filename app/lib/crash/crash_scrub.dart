@@ -21,7 +21,7 @@ String scrubCrashMessage(String input, [int max = crashMessageMax]) {
     RegExp(r'\b\+?\d[\d\s().-]{6,14}\d\b'): '[redacted-phone]',
     RegExp(r'\bhttps?:\/\/[^\s"<>#]+', caseSensitive: false): '[redacted-url]',
     RegExp(r'#[^\s"<>]+'): '#[redacted]',
-    RegExp(r'([?&][^= \t\r\n"\']+=)([^&\s"<>]+)'): r'$1[redacted]',
+    RegExp(r"([?&][^= \t\r\n\"']+=)([^&\s\"<>]+)"): r'$1[redacted]',
   };
   for (final entry in patterns.entries) {
     text = text.replaceAll(entry.key, entry.value);

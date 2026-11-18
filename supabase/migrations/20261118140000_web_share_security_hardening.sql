@@ -1,9 +1,11 @@
 -- Post-merge hardening (#80 / Security & Trust).
 
 drop index if exists public.web_share_profiles_identity_unique;
+drop index if exists public.web_share_profiles_owner_unique;
 
-create unique index if not exists web_share_profiles_owner_unique
-  on public.web_share_profiles (owner_id);
+create unique index if not exists web_share_profiles_active_owner_identity
+  on public.web_share_profiles (owner_id, identity_id)
+  where revoked_at is null;
 
 alter table public.web_share_profiles
   drop constraint if exists web_share_token_format;

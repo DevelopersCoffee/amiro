@@ -123,9 +123,16 @@ Some release builds can send error summaries to help us fix bugs:
 - No analytics or advertising SDKs.
 - No selling of your data.
 - No location data is collected.
-- Sharing and passport data are not uploaded to our servers (only the
-  optional profile backup and purchase audit paths described above use
-  the network).
+- Passport data is not uploaded to our servers.
+- **Opt-in web profile** (`https://id.amiro.app/u/…`): only if you publish
+  from Share settings (hidden in store builds until explicitly enabled).
+  Published name, public contact fields, avatar PNG, and optional cosmetic
+  summary are stored in Supabase and served by our Cloudflare Worker.
+  Revoking wipes those fields server-side and the link returns gone (410).
+- Other sharing (QR/NFC `amiro://encounter`) stays device-to-device unless
+  you choose the HTTPS link on QR/NFC after publishing.
+- Optional profile backup and purchase audit still use the network as
+  described above.
 
 ## Your control over your data
 
