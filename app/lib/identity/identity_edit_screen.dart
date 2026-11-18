@@ -466,12 +466,15 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
                     'so we can fix crashes. Your full log stays on this phone.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  SwitchListTile(
-                    key: const Key('crashUploadToggle'),
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Share crash reports'),
-                    value: _crashUploadEnabled,
-                    onChanged: (value) => unawaited(_setCrashUpload(value)),
+                  Material(
+                    color: Colors.transparent,
+                    child: SwitchListTile(
+                      key: const Key('crashUploadToggle'),
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Share crash reports'),
+                      value: _crashUploadEnabled,
+                      onChanged: (value) => unawaited(_setCrashUpload(value)),
+                    ),
                   ),
                 ],
               ),
