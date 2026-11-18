@@ -6,6 +6,7 @@ import 'package:nfc/nfc.dart';
 
 import '../avatar/avatar_providers.dart';
 import '../discovery/discovery_providers.dart';
+import '../crash/crash_providers.dart';
 import '../crash/crash_upload_preferences.dart';
 import '../identity/cloud_backup_preferences.dart';
 import '../identity/identity_providers.dart';
