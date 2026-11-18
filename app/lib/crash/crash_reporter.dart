@@ -92,12 +92,11 @@ class ConsentGatedHttpCrashSink implements CrashSink {
   Future<void> send(Map<String, Object?> report) async {
     if (!await preferences.isEnabled()) return;
     final fingerprint = report['fingerprint'] as String? ?? '';
-    if (!throttle.shouldUpload(fingerprint)) return;
+    if (!throttle.tryReserveUploadSlot(fingerprint)) return;
     final upload = Map<String, Object?>.from(scrubCrashReport(report))
       ..remove('fingerprint')
       ..remove('at');
     await inner.send(upload);
-    throttle.recordUpload(fingerprint);
   }
 }
 

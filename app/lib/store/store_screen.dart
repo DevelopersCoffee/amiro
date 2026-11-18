@@ -300,7 +300,10 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _entitlementsRequested || !widget.isActive) return;
       _entitlementsRequested = true;
-      ref.read(ownedCosmeticsProvider.notifier).ensureLoaded();
+      ref
+          .read(ownedCosmeticsProvider.notifier)
+          .ensureLoaded()
+          .catchError((Object _) {});
       unawaited(
         ref
             .read(analyticsFunnelProvider)
@@ -334,23 +337,76 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
       await ref.read(ownedCosmeticsProvider.notifier).purchase(item.id);
     } on PurchaseCancelledException {
       // User backed out of the native sheet — nothing to report.
-    } catch (e) {
+    } on RevenueCatOfflineException {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('Purchase failed: $e')));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('You\'re offline. Try again.'),
+        ),
+      );
+    } on RevenueCatIdentityRequiredException {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Set up your identity before buying cosmetics.'),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Purchase failed. Try again or check your connection.'),
+        ),
+      );
     }
   }
 
   Future<void> _restore() async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(ownedCosmeticsProvider.notifier).restore();
+      final outcome = await ref.read(ownedCosmeticsProvider.notifier).restore();
+      if (!mounted) return;
+      final message = switch (outcome) {
+        RestoreHadPurchases(:final newlyOwned) =>
+          newlyOwned.length == 1
+              ? 'Purchases restored'
+              : 'Purchases restored (${newlyOwned.length})',
+        RestoreNothingToRestore() => 'No purchases to restore for this account',
+        RestoreUnavailable() => 'Restore is not available on this device',
+      };
+      messenger.showSnackBar(SnackBar(content: Text(message)));
+    } on RestoreOwnershipConflictException {
       if (!mounted) return;
       messenger.showSnackBar(
-        const SnackBar(content: Text('Purchases restored')),
+        const SnackBar(
+          content: Text(
+            'These purchases belong to another Amiro identity. '
+            'Open the profile that bought them, or sign into that identity '
+            'from Identity settings.',
+          ),
+        ),
       );
-    } catch (e) {
+    } on RevenueCatOfflineException {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('Restore failed: $e')));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('You\'re offline. Try again.'),
+        ),
+      );
+    } on RevenueCatIdentityRequiredException {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Set up your identity before restoring purchases.'),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Restore failed. Try again or check your connection.'),
+        ),
+      );
     }
   }
 

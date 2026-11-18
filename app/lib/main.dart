@@ -18,6 +18,7 @@ import 'analytics/analytics_preferences.dart';
 import 'analytics/analytics_sink.dart';
 import 'crash/crash_reporter.dart';
 import 'crash/crash_upload_throttle.dart';
+import 'crash/crash_upload_throttle_store.dart';
 import 'crash/crash_upload_preferences.dart';
 import 'identity/cloud_backup_preferences.dart';
 import 'identity/profile_secrets_store.dart';
@@ -39,7 +40,9 @@ void main() async {
   final crashSinks = <CrashSink>[
     FileCrashSink(File('${supportDir.path}/crashes.jsonl')),
   ];
-  final crashUploadThrottle = CrashUploadThrottle();
+  final crashUploadThrottle = CrashUploadThrottle(
+    store: CrashUploadThrottleStore.inDirectory(supportDir),
+  );
   if (ingestUrl.isNotEmpty) {
     final ingestUri = Uri.tryParse(ingestUrl);
     if (ingestUri == null) {
