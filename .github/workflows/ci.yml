@@ -67,6 +67,9 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npx --no-install tsc --noEmit
+      - name: wrangler deploy dry-run (revenuecat-webhook)
+        if: matrix.worker_dir == 'workers/revenuecat-webhook'
+        run: npm run deploy:dry-run
 
   rust:
     runs-on: ubuntu-latest

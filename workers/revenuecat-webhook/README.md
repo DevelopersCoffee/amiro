@@ -25,6 +25,26 @@ Play Billing purchase
      (revenuecat_events: full event log; entitlement_grants: current state)
 ```
 
+## Crash report ingest (`POST /crash/<token>`)
+
+Optional opt-in crash uploads from the Flutter app (see
+`docs/protocols/crash-report-data.md`). Configure:
+
+- `CRASH_PATH_TOKEN` — **public, not a secret.** It is compiled into release
+  builds via `--dart-define=AMIRO_CRASH_INGEST_URL=https://…/crash/<token>`;
+  anyone with the APK can extract it. It only reduces drive-by spam together
+  with rate limiting. Rotate by deploying a new token with `wrangler secret put
+  CRASH_PATH_TOKEN`, updating the dart-define, and shipping a new app build.
+- `CRASH_RATE_LIMITER` — required binding in `wrangler.toml` (10 requests /
+  minute **per client IP** via Cloudflare Rate Limiting). If the binding is
+  missing at runtime, crash ingest returns **503** (fail closed).
+
+**Retention:** `supabase/migrations/20261118130000_crash_reports_retention.sql`
+schedules a `pg_cron` job to delete rows older than 90 days. Supabase must have
+the `pg_cron` extension enabled for your project (`create extension if not exists
+pg_cron with schema extensions` in the migration). If cron is unavailable, rows
+remain until you run an equivalent purge manually.
+
 ## Secrets
 
 Set with `wrangler secret put <NAME>` (never commit these):
