@@ -93,11 +93,12 @@ Widget _shareHarness({
   );
 }
 
-Future<void> _pumpThroughWebShareAction(
+Future<WebShareState> _pumpThroughWebShareAction(
   WidgetTester tester,
   FakeWebShareService service, {
   required bool expectPublished,
 }) async {
+  final shareScreen = find.byType(ShareScreen);
   for (var i = 0; i < 120; i++) {
     await tester.pump(const Duration(milliseconds: 50));
     final consent = find.byKey(const Key('webShareConsentAccept'));
@@ -105,14 +106,14 @@ Future<void> _pumpThroughWebShareAction(
       await tester.tap(consent);
       await tester.pump();
     }
-    final published =
-        find.byKey(const Key('webSharePublishedUri')).evaluate().isNotEmpty;
+    final container = ProviderScope.containerOf(tester.element(shareScreen));
+    final state = container.read(webShareStateProvider).value;
     if (expectPublished) {
-      if (service.publishCalls >= 1 && published) {
-        return;
+      if (state != null && state.isPublished) {
+        return state;
       }
-    } else if (service.revokeCalls >= 1 && !published) {
-      return;
+    } else if (state != null && !state.isPublished) {
+      return state;
     }
   }
   fail(
@@ -155,10 +156,16 @@ void main() {
 
     await tester.ensureVisible(find.byKey(const Key('webSharePublishButton')));
     await tester.tap(find.byKey(const Key('webSharePublishButton')));
-    await _pumpThroughWebShareAction(tester, service, expectPublished: true);
+    final publishedState = await _pumpThroughWebShareAction(
+      tester,
+      service,
+      expectPublished: true,
+    );
 
     expect(service.publishCalls, 1);
-    expect(find.byKey(const Key('webSharePublishedUri')), findsOneWidget);
+    expect(publishedState.activeToken, isNotEmpty);
+    expect(publishedState.useHttpsForQr, isTrue);
+    await pumpUntilFound(tester, find.byKey(const Key('webSharePublishedUri')));
     expect(find.textContaining('https://'), findsWidgets);
   });
 
@@ -191,9 +198,14 @@ void main() {
     await pumpUntilFound(tester, find.byKey(const Key('webShareRevokeButton')));
     await tester.ensureVisible(find.byKey(const Key('webShareRevokeButton')));
     await tester.tap(find.byKey(const Key('webShareRevokeButton')));
-    await _pumpThroughWebShareAction(tester, service, expectPublished: false);
+    final revokedState = await _pumpThroughWebShareAction(
+      tester,
+      service,
+      expectPublished: false,
+    );
 
     expect(service.revokeCalls, 1);
+    expect(revokedState.activeToken, isNull);
     expect(find.byKey(const Key('webSharePublishedUri')), findsNothing);
   });
 }
