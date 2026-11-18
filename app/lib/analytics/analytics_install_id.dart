@@ -41,7 +41,7 @@ class AnalyticsInstallIdStore {
   }
 
   Future<String?> _readId() async {
-    if (!_file.path.isEmpty && await _file.exists()) {
+    if (_file.path.isNotEmpty && await _file.exists()) {
       try {
         final decoded = jsonDecode(await _file.readAsString());
         if (decoded is Map && decoded['id'] is String) {

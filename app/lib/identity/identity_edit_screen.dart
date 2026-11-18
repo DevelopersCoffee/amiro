@@ -83,27 +83,21 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
         });
       });
     }
-    final telemetryConfigured =
-        ref.read(crashIngestConfiguredProvider) ||
-        ref.read(analyticsIngestConfiguredProvider);
-    if (telemetryConfigured) {
-      Future.wait([
-        if (ref.read(crashIngestConfiguredProvider))
-          ref.read(crashUploadPreferencesProvider).isEnabled(),
-        if (ref.read(analyticsIngestConfiguredProvider))
-          ref.read(analyticsPreferencesProvider).isEnabled(),
-      ]).then((values) {
+    if (ref.read(crashIngestConfiguredProvider)) {
+      ref.read(crashUploadPreferencesProvider).isEnabled().then((enabled) {
         if (!mounted) return;
-        var i = 0;
         setState(() {
-          if (ref.read(crashIngestConfiguredProvider)) {
-            _crashUploadEnabled = values[i++] as bool;
-            _crashPrefsLoaded = true;
-          }
-          if (ref.read(analyticsIngestConfiguredProvider)) {
-            _analyticsEnabled = values[i] as bool;
-            _analyticsPrefsLoaded = true;
-          }
+          _crashUploadEnabled = enabled;
+          _crashPrefsLoaded = true;
+        });
+      });
+    }
+    if (ref.read(analyticsIngestConfiguredProvider)) {
+      ref.read(analyticsPreferencesProvider).isEnabled().then((enabled) {
+        if (!mounted) return;
+        setState(() {
+          _analyticsEnabled = enabled;
+          _analyticsPrefsLoaded = true;
         });
       });
     }
