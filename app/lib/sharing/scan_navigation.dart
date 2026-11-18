@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import '../discovery/encounter_screen.dart';
 import 'scan_result.dart';
 import 'shared_profile_screen.dart';
+import 'web_share_receive_screen.dart';
 
 /// The screen a resolved scan should open, or null when it isn't a usable
 /// Amiro card. Shared by the QR scanner, NFC receive and deep links so they
@@ -11,6 +12,7 @@ Widget? screenForScan(ScanResult result) {
   return switch (result) {
     EncounterLink(:final encounter) => EncounterScreen(encounter: encounter),
     LegacyProfileLink(:final profile) => SharedProfileScreen(profile: profile),
+    WebShareTokenLink(:final token) => WebShareReceiveScreen(token: token),
     InvalidAmiroLink() || NotAmiroLink() => null,
   };
 }

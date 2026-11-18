@@ -30,12 +30,22 @@ final class InvalidAmiroLink extends ScanResult {
   const InvalidAmiroLink(this.error);
 }
 
+/// HTTPS web profile with opaque token only (no payload in the URL).
+final class WebShareTokenLink extends ScanResult {
+  final String token;
+
+  const WebShareTokenLink(this.token);
+}
+
 /// Not an Amiro link at all.
 final class NotAmiroLink extends ScanResult {
   const NotAmiroLink();
 }
 
 ScanResult resolveScannedText(String raw) {
+  final webToken = parseWebShareToken(raw);
+  if (webToken != null) return WebShareTokenLink(webToken);
+
   if (!raw.startsWith('amiro://')) return const NotAmiroLink();
 
   if (raw.startsWith('amiro://encounter')) {

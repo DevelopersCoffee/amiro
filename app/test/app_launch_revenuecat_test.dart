@@ -7,6 +7,7 @@ import 'package:amiro_app/identity/cloud_backup_preferences.dart';
 import 'package:amiro_app/identity/profile_cloud.dart';
 import 'package:amiro_app/launch/provider_overrides.dart';
 import 'package:amiro_app/sharing/encounter_share_options.dart';
+import 'package:amiro_app/sharing/web_share_preferences.dart';
 import 'package:amiro_app/store/store_providers.dart';
 import 'package:amiro_app/store/store_screen.dart';
 import 'package:discovery/discovery.dart';
@@ -82,6 +83,9 @@ void main() {
           encounterSharePreferences: EncounterSharePreferences.inDirectory(
             widgetTestSupportDir,
           ),
+          webSharePreferences: WebSharePreferences.inDirectory(
+            widgetTestSupportDir,
+          ),
           nfcEmulator: NoopNfcEmulator(),
           nfcReader: _SilentNfcReader(),
         ),
@@ -124,6 +128,7 @@ void main() {
           encounterSharePreferences: EncounterSharePreferences.inDirectory(
             supportDir,
           ),
+          webSharePreferences: WebSharePreferences.inDirectory(supportDir),
           nfcEmulator: NoopNfcEmulator(),
           nfcReader: _SilentNfcReader(),
         ),

@@ -51,9 +51,14 @@ jobs:
 
   worker:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        worker_dir:
+          - workers/revenuecat-webhook
+          - workers/web-profile
     defaults:
       run:
-        working-directory: workers/revenuecat-webhook
+        working-directory: ${{ matrix.worker_dir }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:avatar_core/avatar_core.dart';
 import 'package:avatar_renderer/avatar_renderer.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:identity_core/identity_core.dart';
 
@@ -24,6 +25,11 @@ import 'qr_scan_screen.dart';
 import 'encounter_share_options.dart';
 import 'sharing_preferences_providers.dart';
 import 'sharing_providers.dart';
+import 'supabase_web_share_client.dart';
+import 'web_share_consent_dialog.dart';
+import 'web_share_preferences.dart';
+import 'web_share_preview.dart';
+import 'web_share_providers.dart';
 
 class ShareScreen extends ConsumerStatefulWidget {
   const ShareScreen({super.key});
@@ -42,6 +48,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
 
   bool _didInit = false;
   bool _avatarReady = false;
+  bool _webBusy = false;
 
   @override
   void initState() {
@@ -125,6 +132,111 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
     setState(() => _emulating = !_emulating);
   }
 
+  Future<void> _publishWebShare({
+    required Identity identity,
+    required AvatarDefinition definition,
+    required Set<String> owned,
+    required EncounterShareOptions shareOptions,
+  }) async {
+    final client = ref.read(webShareClientProvider);
+    if (client == null || !client.canPublish) return;
+    final state = ref.read(webShareStateProvider).value ?? WebShareState.empty;
+    if (!state.consentGiven) {
+      final accepted = await showWebShareConsentDialog(context);
+      if (accepted != true || !mounted) return;
+      await ref
+          .read(webShareStateProvider.notifier)
+          .save(state.copyWith(consentGiven: true));
+    }
+    setState(() => _webBusy = true);
+    final result = await client.publish(
+      identity: identity,
+      definition: definition,
+      purchasedIds: owned,
+      shareOptions: shareOptions,
+      existingToken: state.activeToken,
+    );
+    if (!mounted) return;
+    setState(() => _webBusy = false);
+    if (!result.ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.error ?? 'Publish failed')),
+      );
+      return;
+    }
+    await ref.read(webShareStateProvider.notifier).save(
+          WebShareState(
+            consentGiven: true,
+            activeToken: result.token,
+            useHttpsForQr: true,
+          ),
+        );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Web profile published')),
+    );
+  }
+
+  Future<void> _revokeWebShare() async {
+    final client = ref.read(webShareClientProvider);
+    final state = ref.read(webShareStateProvider).value ?? WebShareState.empty;
+    final token = state.activeToken;
+    if (client == null || token == null) return;
+    setState(() => _webBusy = true);
+    final ok = await client.revoke(token: token);
+    if (!mounted) return;
+    setState(() => _webBusy = false);
+    if (ok) {
+      await ref.read(webShareStateProvider.notifier).save(
+            state.copyWith(clearToken: true, useHttpsForQr: false),
+          );
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? 'Web link revoked' : 'Revoke failed')),
+    );
+  }
+
+  Future<void> _rotateWebShare({
+    required Identity identity,
+    required AvatarDefinition definition,
+    required Set<String> owned,
+    required EncounterShareOptions shareOptions,
+  }) async {
+    final client = ref.read(webShareClientProvider);
+    final state = ref.read(webShareStateProvider).value ?? WebShareState.empty;
+    final existing = state.activeToken;
+    if (client == null || existing == null) return;
+    setState(() => _webBusy = true);
+    final result = await client.rotate(
+      identity: identity,
+      definition: definition,
+      purchasedIds: owned,
+      shareOptions: shareOptions,
+      existingToken: existing,
+    );
+    if (!mounted) return;
+    setState(() => _webBusy = false);
+    if (!result.ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.error ?? 'Rotate failed')),
+      );
+      return;
+    }
+    await ref.read(webShareStateProvider.notifier).save(
+          state.copyWith(activeToken: result.token, useHttpsForQr: true),
+        );
+  }
+
+  void _copyWebLink(WebShareService? client, WebShareState state) {
+    final token = state.activeToken;
+    if (client == null || token == null) return;
+    Clipboard.setData(ClipboardData(text: client.buildPublicUri(token)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Link copied')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final identityAsync = ref.watch(currentIdentityProvider);
@@ -135,6 +247,9 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
         EncounterShareOptions.defaults;
     final renderer = ref.watch(avatarRendererProvider);
     final scene = ref.watch(avatarSceneDefinitionProvider);
+    final webStateAsync = ref.watch(webShareStateProvider);
+    final webState = webStateAsync.value ?? WebShareState.empty;
+    final webClient = ref.watch(webShareClientProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -199,13 +314,18 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
               hint: 'This look cannot be put on a card yet.',
             );
           }
-          // One link feeds both the QR code and the NFC tag.
-          final shareUri = buildOwnEncounterUri(
+          final encounterUri = buildOwnEncounterUri(
             identity: shown,
             definition: definition,
             purchasedIds: owned,
             shareOptions: shareOptions,
           );
+          final shareUri =
+              webState.isPublished &&
+                  webState.useHttpsForQr &&
+                  webClient != null
+              ? webClient.buildPublicUri(webState.activeToken!)
+              : encounterUri;
 
           return ListView(
             padding: const EdgeInsets.all(24),
@@ -252,6 +372,91 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                 ),
                 ),
               ),
+              if (webClient != null) ...[
+                const SizedBox(height: 16),
+                WebShareStrangerPreview(
+                  identity: shown,
+                  displayName: shown.displayName,
+                ),
+                const SizedBox(height: 16),
+                AmiroCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SectionLabel('WEB LINK'),
+                      const SizedBox(height: 8),
+                      Text(
+                        webState.isPublished
+                            ? 'Recipients without Amiro can open your profile in a browser.'
+                            : 'Publish an https link strangers can open without the app.',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
+                      const SizedBox(height: 12),
+                      SwitchListTile(
+                        key: const Key('webShareHttpsQrToggle'),
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Use https link on QR & NFC'),
+                        value: webState.useHttpsForQr && webState.isPublished,
+                        onChanged: webState.isPublished
+                            ? (value) => ref
+                                .read(webShareStateProvider.notifier)
+                                .save(webState.copyWith(useHttpsForQr: value))
+                            : null,
+                      ),
+                      if (webState.isPublished)
+                        SelectableText(
+                          webClient.buildPublicUri(webState.activeToken!),
+                          key: const Key('webSharePublishedUri'),
+                        ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          FilledButton(
+                            key: const Key('webSharePublishButton'),
+                            onPressed: _webBusy || !webClient.canPublish
+                                ? null
+                                : () => _publishWebShare(
+                                      identity: shown,
+                                      definition: definition,
+                                      owned: owned,
+                                      shareOptions: shareOptions,
+                                    ),
+                            child: Text(
+                              webState.isPublished ? 'Update web profile' : 'Publish',
+                            ),
+                          ),
+                          if (webState.isPublished) ...[
+                            OutlinedButton(
+                              key: const Key('webShareRevokeButton'),
+                              onPressed: _webBusy ? null : _revokeWebShare,
+                              child: const Text('Revoke'),
+                            ),
+                            OutlinedButton(
+                              key: const Key('webShareRotateButton'),
+                              onPressed: _webBusy
+                                  ? null
+                                  : () => _rotateWebShare(
+                                        identity: shown,
+                                        definition: definition,
+                                        owned: owned,
+                                        shareOptions: shareOptions,
+                                      ),
+                              child: const Text('Rotate link'),
+                            ),
+                            TextButton(
+                              key: const Key('webShareCopyButton'),
+                              onPressed: () => _copyWebLink(webClient, webState),
+                              child: const Text('Copy link'),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               IdentityCard(
                 payload: payload,

@@ -14,6 +14,8 @@ import '../identity/profile_cloud.dart';
 import '../sharing/encounter_share_options.dart';
 import '../sharing/sharing_preferences_providers.dart';
 import '../sharing/sharing_providers.dart';
+import '../sharing/web_share_preferences.dart';
+import '../sharing/web_share_providers.dart';
 
 /// Provider overrides used at cold start in `main.dart`. Tests use the same
 /// wiring so launch behavior matches production.
@@ -26,6 +28,7 @@ List<Override> amiroLaunchProviderOverrides({
   required Future<AvatarRenderer> Function() avatarRendererFactory,
   required DiscoveryRepository discoveryRepository,
   required EncounterSharePreferences encounterSharePreferences,
+  required WebSharePreferences webSharePreferences,
   required NfcEmulator nfcEmulator,
   required NfcReader nfcReader,
 }) {
@@ -36,6 +39,7 @@ List<Override> amiroLaunchProviderOverrides({
     encounterSharePreferencesProvider.overrideWithValue(
       encounterSharePreferences,
     ),
+    webSharePreferencesProvider.overrideWithValue(webSharePreferences),
     profileCloudProvider.overrideWithValue(profileCloud),
     avatarRendererProvider.overrideWithValue(avatarRenderer),
     avatarRendererFactoryProvider.overrideWithValue(avatarRendererFactory),
