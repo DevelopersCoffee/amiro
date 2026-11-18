@@ -16,6 +16,7 @@ import 'package:amiro_app/avatar/avatar_providers.dart';
 import 'package:amiro_app/identity/identity_providers.dart';
 import 'package:amiro_app/sharing/sharing_preferences_providers.dart';
 import 'package:amiro_app/sharing/sharing_providers.dart';
+import '../analytics/analytics_test_overrides.dart';
 import '../avatar/fake_avatar_renderer.dart';
 import '../identity/in_memory_identity_repository.dart';
 import '../pump_helpers.dart';
@@ -48,6 +49,7 @@ Widget _screen(FakeWebShareService service) {
       ),
       nfcEmulatorProvider.overrideWithValue(NoopNfcEmulator()),
       avatarRendererProvider.overrideWithValue(FakeAvatarRenderer()),
+      ...analyticsTestOverrides(),
     ],
     child: MaterialApp(
       theme: buildAmiroTheme(loadFonts: false),
@@ -60,6 +62,7 @@ void main() {
   testWidgets('publish shows consent then stores https link', (tester) async {
     final service = FakeWebShareService();
     await tester.pumpWidget(_screen(service));
+    await pumpAfterAvatarLoad(tester);
     await pumpUntilFound(tester, find.byKey(const Key('webSharePublishButton')));
 
     await tester.tap(find.byKey(const Key('webSharePublishButton')));
@@ -98,6 +101,7 @@ void main() {
           ),
           nfcEmulatorProvider.overrideWithValue(NoopNfcEmulator()),
           avatarRendererProvider.overrideWithValue(FakeAvatarRenderer()),
+          ...analyticsTestOverrides(),
         ],
         child: MaterialApp(
           theme: buildAmiroTheme(loadFonts: false),
@@ -105,6 +109,7 @@ void main() {
         ),
       ),
     );
+    await pumpAfterAvatarLoad(tester);
     await pumpUntilFound(tester, find.byKey(const Key('webShareRevokeButton')));
     await tester.tap(find.byKey(const Key('webShareRevokeButton')));
     await pumpShort(tester, frames: 20);
