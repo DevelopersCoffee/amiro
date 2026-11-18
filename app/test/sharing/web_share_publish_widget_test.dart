@@ -62,8 +62,9 @@ void main() {
   setUp(resetAvatarLoadChainForTest);
 
   // TODO(#81): FakeWebShareService override + publish async; fails on CI (main too).
-  @Skip('Web profile publish widget; fix on sharing PR #81')
-  testWidgets('publish shows consent then stores https link', (tester) async {
+  testWidgets(
+    'publish shows consent then stores https link',
+    (tester) async {
     final service = FakeWebShareService();
     await tester.pumpWidget(_screen(service));
     await pumpAfterAvatarLoad(tester);
