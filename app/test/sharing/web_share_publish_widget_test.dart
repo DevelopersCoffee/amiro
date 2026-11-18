@@ -21,6 +21,8 @@ import '../identity/in_memory_identity_repository.dart';
 import '../pump_helpers.dart';
 import 'fake_web_share_service.dart';
 
+import 'package:amiro_app/avatar/avatar_loader.dart';
+
 const _defaultAvatarJson =
     '{"id":"default","body":"body_superhero_male","hair":"hair_simple_parted"}';
 
@@ -57,13 +59,16 @@ Widget _screen(FakeWebShareService service) {
 }
 
 void main() {
+  setUp(resetAvatarLoadChainForTest);
+
   testWidgets('publish shows consent then stores https link', (tester) async {
     final service = FakeWebShareService();
     await tester.pumpWidget(_screen(service));
+    await pumpAfterAvatarLoad(tester);
     await pumpUntilFound(tester, find.byKey(const Key('webSharePublishButton')));
 
     await tester.tap(find.byKey(const Key('webSharePublishButton')));
-    await pumpShort(tester);
+    await pumpUntilFound(tester, find.byKey(const Key('webShareConsentAccept')));
     await tester.tap(find.byKey(const Key('webShareConsentAccept')));
     await pumpUntilFound(tester, find.byKey(const Key('webSharePublishedUri')));
 
@@ -105,6 +110,7 @@ void main() {
         ),
       ),
     );
+    await pumpAfterAvatarLoad(tester);
     await pumpUntilFound(tester, find.byKey(const Key('webShareRevokeButton')));
     await tester.tap(find.byKey(const Key('webShareRevokeButton')));
     await pumpUntilFound(tester, find.text('Web link revoked'));
