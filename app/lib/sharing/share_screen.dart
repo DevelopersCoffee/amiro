@@ -380,7 +380,9 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                 ),
                 const SizedBox(height: 16),
                 AmiroCard(
-                  child: Column(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SectionLabel('WEB LINK'),
@@ -454,6 +456,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                         ],
                       ),
                     ],
+                  ),
                   ),
                 ),
               ],

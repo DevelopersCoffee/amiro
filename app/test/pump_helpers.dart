@@ -22,6 +22,22 @@ Future<void> pumpUntilFound(
   fail('pumpUntilFound timed out waiting for $finder');
 }
 
+/// Pumps until [finder] no longer matches (e.g. after async UI updates).
+Future<void> pumpUntilAbsent(
+  WidgetTester tester,
+  Finder finder, {
+  Duration step = const Duration(milliseconds: 50),
+  int maxPumps = 120,
+}) async {
+  for (var i = 0; i < maxPumps; i++) {
+    await tester.pump(step);
+    if (finder.evaluate().isEmpty) {
+      return;
+    }
+  }
+  fail('pumpUntilAbsent timed out waiting for $finder to disappear');
+}
+
 Future<bool> _avatarLoadChainIdleNow(WidgetTester tester) async {
   var idle = false;
   await tester.runAsync(() async {
