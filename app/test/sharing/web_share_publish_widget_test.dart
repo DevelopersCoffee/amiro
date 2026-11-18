@@ -40,6 +40,7 @@ void main() {
     if (!kWebSharePublishEnabled) {
       return;
     }
+    useTallTestViewport(tester);
     final service = FakeWebShareService();
     final dir = Directory.systemTemp.createTempSync('web_share_pub_');
     final prefs = WebSharePreferences.inDirectory(dir);
@@ -114,6 +115,7 @@ void main() {
         ),
       ),
     );
+    await pumpAfterAvatarLoad(tester);
     await pumpUntilFound(tester, find.byKey(const Key('webShareRevokeButton')));
     await tester.tap(find.byKey(const Key('webShareRevokeButton')));
     await pumpShort(tester, frames: 30);
