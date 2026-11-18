@@ -1,41 +1,76 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 import 'package:store/store.dart';
+
+Map<String, dynamic> _catalogEntitlement(String key, String productId) => {
+      'identifier': key,
+      'isActive': true,
+      'willRenew': false,
+      'latestPurchaseDate': '2026-10-01T00:00:00Z',
+      'originalPurchaseDate': '2026-10-01T00:00:00Z',
+      'productIdentifier': productId,
+      'isSandbox': true,
+      'ownershipType': 'PURCHASED',
+      'store': 'PLAY_STORE',
+      'periodType': 'NORMAL',
+    };
+
+Map<String, dynamic> _customerInfoJson(Map<String, dynamic> activeEntitlements) {
+  return <String, dynamic>{
+    'entitlements': {
+      'all': activeEntitlements,
+      'active': activeEntitlements,
+      'verification': 'NOT_REQUESTED',
+    },
+    'allPurchasedProductIdentifiers': [],
+    'activeSubscriptions': [],
+    'latestExpirationDate': null,
+    'firstSeen': '2026-10-01T00:00:00Z',
+    'originalAppUserId': 'test',
+    'requestDate': '2026-10-01T00:00:00Z',
+    'allExpirationDates': {},
+    'allPurchaseDates': {},
+    'originalApplicationVersion': null,
+    'originalPurchaseDate': null,
+    'managementURL': null,
+    'nonSubscriptionTransactions': [],
+    'subscriptionsByProductIdentifier': {},
+  };
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   const channel = MethodChannel('purchases_flutter');
   final calls = <MethodCall>[];
-
+  Map<String, dynamic> activeEntitlements = {};
+  String? boundAppUserId;
   setUp(() {
     calls.clear();
+    activeEntitlements = {};
+    boundAppUserId = null;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
           calls.add(call);
+          if (call.method == 'setupPurchases') return null;
+          if (call.method == 'getAppUserID') {
+            return boundAppUserId ?? r'$RCAnonymousID:test';
+          }
+          if (call.method == 'logIn') {
+            boundAppUserId = call.arguments['appUserID'] as String;
+            return {
+              'customerInfo': _customerInfoJson(activeEntitlements),
+              'created': false,
+            };
+          }
+          if (call.method == 'getCustomerInfo') {
+            return _customerInfoJson(activeEntitlements);
+          }
           if (call.method == 'getProductInfo') return <dynamic>[];
           if (call.method == 'restorePurchases') {
-            return <String, dynamic>{
-              'entitlements': {
-                'all': {},
-                'active': {},
-                'verification': 'NOT_REQUESTED',
-              },
-              'allPurchasedProductIdentifiers': [],
-              'activeSubscriptions': [],
-              'latestExpirationDate': null,
-              'firstSeen': '2026-10-01T00:00:00Z',
-              'originalAppUserId': 'test',
-              'requestDate': '2026-10-01T00:00:00Z',
-              'allExpirationDates': {},
-              'allPurchaseDates': {},
-              'originalApplicationVersion': null,
-              'originalPurchaseDate': null,
-              'managementURL': null,
-              'nonSubscriptionTransactions': [],
-              'subscriptionsByProductIdentifier': {},
-            };
+            return _customerInfoJson(activeEntitlements);
           }
           return null;
         });
@@ -58,19 +93,94 @@ void main() {
     expect(lookup.arguments['type'], 'nonSubscription');
   });
 
-  test('restore asks the SDK to restore purchases', () async {
+  test('bindAmiroIdentity logs into RevenueCat before restore', () async {
     final store = RevenueCatEntitlementStore(isAndroid: true);
-
+    await store.bindAmiroIdentity('amiro-identity-1');
     await store.restore();
 
+    expect(
+      calls.where((c) => c.method == 'logIn').single.arguments['appUserID'],
+      'amiro-identity-1',
+    );
     expect(calls.map((c) => c.method), contains('restorePurchases'));
   });
 
-  test('off Android, restore is a quiet no-op', () async {
+  test('restore reports nothingToRestore when entitlements stay empty', () async {
+    final store = RevenueCatEntitlementStore(isAndroid: true);
+
+    final outcome = await store.restore();
+
+    expect(outcome, isA<RestoreNothingToRestore>());
+  });
+
+  test('restore reports restored when new entitlements appear', () async {
+    final store = RevenueCatEntitlementStore(isAndroid: true);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          calls.add(call);
+          if (call.method == 'setupPurchases') return null;
+          if (call.method == 'getAppUserID') {
+            return boundAppUserId ?? r'$RCAnonymousID:test';
+          }
+          if (call.method == 'logIn') {
+            boundAppUserId = call.arguments['appUserID'] as String;
+            return {
+              'customerInfo': _customerInfoJson({}),
+              'created': false,
+            };
+          }
+          if (call.method == 'getCustomerInfo') {
+            return _customerInfoJson({});
+          }
+          if (call.method == 'restorePurchases') {
+            return _customerInfoJson({
+              'cosmetic_riviera_optics': _catalogEntitlement(
+                'cosmetic_riviera_optics',
+                'amiro_riviera_optics',
+              ),
+            });
+          }
+          return null;
+        });
+
+    final outcome = await store.restore();
+
+    expect(outcome, isA<RestoreHadPurchases>());
+    final restored = outcome as RestoreHadPurchases;
+    expect(restored.newlyOwned, contains('riviera_optics'));
+  });
+
+  test('restore maps receipt conflict to RestoreOwnershipConflictException',
+      () async {
+    final store = RevenueCatEntitlementStore(isAndroid: true);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          if (call.method == 'setupPurchases') return null;
+          if (call.method == 'getCustomerInfo') {
+            return _customerInfoJson({});
+          }
+          if (call.method == 'getAppUserID') return 'user-a';
+          if (call.method == 'restorePurchases') {
+            throw PlatformException(
+              code: '${PurchasesErrorCode.receiptAlreadyInUseError.index}',
+              message: 'Receipt already in use',
+            );
+          }
+          return null;
+        });
+
+    await expectLater(
+      store.restore(),
+      throwsA(isA<RestoreOwnershipConflictException>()),
+    );
+  });
+
+  test('off Android, restore is unavailable', () async {
     final store = RevenueCatEntitlementStore(isAndroid: false);
 
-    await store.restore();
+    final outcome = await store.restore();
 
+    expect(outcome, isA<RestoreUnavailable>());
     expect(calls, isEmpty);
   });
 

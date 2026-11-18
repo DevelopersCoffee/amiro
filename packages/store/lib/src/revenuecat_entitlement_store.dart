@@ -14,13 +14,29 @@ import 'revenuecat_keys.dart';
 class RevenueCatEntitlementStore implements EntitlementStore {
   final bool _isAndroid;
   bool _configured = false;
+  String? _boundAmiroIdentityId;
 
   /// True after [Purchases.configure] succeeded on this instance.
   bool get isConfigured => _configured;
 
+  /// Last Amiro identity id passed to [bindAmiroIdentity], if any.
+  String? get boundAmiroIdentityId => _boundAmiroIdentityId;
+
   /// [isAndroid] defaults to the real platform; tests pass it explicitly.
   RevenueCatEntitlementStore({bool? isAndroid})
     : _isAndroid = isAndroid ?? Platform.isAndroid;
+
+  /// Ties RevenueCat's App User ID to this device's Amiro identity so
+  /// restore cannot silently adopt another profile's entitlements when the
+  /// project is set to **Keep with original App User ID** (see
+  /// `docs/qa/restore-purchases-device.md`).
+  Future<void> bindAmiroIdentity(String identityId) async {
+    if (identityId.isEmpty) return;
+    _boundAmiroIdentityId = identityId;
+    if (_configured) {
+      await _ensureLoggedInAsIdentity();
+    }
+  }
 
   /// Configuring is idempotent and safe to call from every constructor —
   /// nothing purchase-related can happen before this resolves.
@@ -35,16 +51,23 @@ class RevenueCatEntitlementStore implements EntitlementStore {
     }
     await Purchases.configure(PurchasesConfiguration(revenueCatAndroidApiKey));
     _configured = true;
+    await _ensureLoggedInAsIdentity();
     return true;
+  }
+
+  Future<void> _ensureLoggedInAsIdentity() async {
+    final id = _boundAmiroIdentityId;
+    if (id == null || id.isEmpty) return;
+    final current = await Purchases.appUserID;
+    if (current != id) {
+      await Purchases.logIn(id);
+    }
   }
 
   static String _entitlementKey(String cosmeticId) => 'cosmetic_$cosmeticId';
   static String _storeProductId(String cosmeticId) => 'amiro_$cosmeticId';
 
-  @override
-  Future<Set<String>> ownedCosmeticIds() async {
-    if (!await _ensureConfigured()) return const {};
-    final info = await Purchases.getCustomerInfo();
+  Set<String> _ownedFromCustomerInfo(CustomerInfo info) {
     return cosmeticCatalog
         .where(
           (item) =>
@@ -55,9 +78,36 @@ class RevenueCatEntitlementStore implements EntitlementStore {
   }
 
   @override
-  Future<void> restore() async {
-    if (!await _ensureConfigured()) return;
-    await Purchases.restorePurchases();
+  Future<Set<String>> ownedCosmeticIds() async {
+    if (!await _ensureConfigured()) return const {};
+    await _ensureLoggedInAsIdentity();
+    final info = await Purchases.getCustomerInfo();
+    return _ownedFromCustomerInfo(info);
+  }
+
+  @override
+  Future<RestoreOutcome> restore() async {
+    if (!await _ensureConfigured()) {
+      return const RestoreOutcome.unavailable();
+    }
+    await _ensureLoggedInAsIdentity();
+    final before = await ownedCosmeticIds();
+    try {
+      final info = await Purchases.restorePurchases();
+      final after = _ownedFromCustomerInfo(info);
+      final gained = after.difference(before);
+      if (gained.isNotEmpty) {
+        return RestoreOutcome.restored(gained);
+      }
+      return const RestoreOutcome.nothingToRestore();
+    } on PlatformException catch (e) {
+      final code = PurchasesErrorHelper.getErrorCode(e);
+      if (code == PurchasesErrorCode.receiptAlreadyInUseError ||
+          code == PurchasesErrorCode.receiptInUseByOtherSubscriberError) {
+        throw const RestoreOwnershipConflictException();
+      }
+      rethrow;
+    }
   }
 
   /// RevenueCat's id for this install. The same Google account on another
@@ -65,6 +115,7 @@ class RevenueCatEntitlementStore implements EntitlementStore {
   /// join key stored next to the profile in Supabase.
   Future<String?> appUserId() async {
     if (!await _ensureConfigured()) return null;
+    await _ensureLoggedInAsIdentity();
     return Purchases.appUserID;
   }
 
@@ -76,6 +127,7 @@ class RevenueCatEntitlementStore implements EntitlementStore {
         'credentials are configured in RevenueCat.',
       );
     }
+    await _ensureLoggedInAsIdentity();
     final storeId = _storeProductId(cosmeticId);
     // Catalog items are Play one-time products; getProducts looks up
     // subscriptions unless told otherwise and would find nothing.
@@ -91,6 +143,12 @@ class RevenueCatEntitlementStore implements EntitlementStore {
       if (PurchasesErrorHelper.getErrorCode(e) ==
           PurchasesErrorCode.purchaseCancelledError) {
         throw const PurchaseCancelledException();
+      }
+      if (PurchasesErrorHelper.getErrorCode(e) ==
+              PurchasesErrorCode.receiptAlreadyInUseError ||
+          PurchasesErrorHelper.getErrorCode(e) ==
+              PurchasesErrorCode.receiptInUseByOtherSubscriberError) {
+        throw const RestoreOwnershipConflictException();
       }
       rethrow;
     }
