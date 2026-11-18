@@ -6,6 +6,7 @@ import 'package:amiro_app/sharing/encounter_share_options.dart';
 import 'package:amiro_app/sharing/share_screen.dart';
 import 'package:amiro_app/sharing/web_share_preferences.dart';
 import 'package:amiro_app/sharing/web_share_providers.dart';
+import 'package:amiro_app/store/store_providers.dart';
 import 'package:amiro_app/theme/amiro_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:identity_core/identity_core.dart';
 import 'package:nfc/nfc.dart';
 import 'package:avatar_core/avatar_core.dart';
+import 'package:store/store.dart';
 
 import 'package:amiro_app/avatar/avatar_loader.dart';
 import 'package:amiro_app/avatar/avatar_providers.dart';
@@ -33,12 +35,25 @@ const _cardDefinition = AvatarDefinition(
   hair: 'hair_simple_parted',
 );
 
+const _publishedToken = 'testtokenabcdefghijklmnopqrst';
+
 Identity _identity() => Identity(
   id: 'id-1',
   displayName: 'Uday',
   username: 'uday',
   avatarDefinitionJson: _defaultAvatarJson,
 );
+
+/// Supplies initial web-share prefs synchronously so a tap on Publish never
+/// opens the consent dialog while [webShareStateProvider] is still loading.
+class TestWebShareStateNotifier extends WebShareStateNotifier {
+  TestWebShareStateNotifier(this._initial);
+
+  final WebShareState _initial;
+
+  @override
+  Future<WebShareState> build() => Future.value(_initial);
+}
 
 Future<FakeAvatarRenderer> _loadedRenderer() async {
   final renderer = FakeAvatarRenderer();
@@ -51,11 +66,15 @@ Widget _shareHarness({
   required WebSharePreferences prefs,
   required Directory dir,
   required FakeAvatarRenderer renderer,
+  required WebShareState initialWebShareState,
 }) {
   return ProviderScope(
     overrides: [
       webShareClientProvider.overrideWithValue(service),
       webSharePreferencesProvider.overrideWithValue(prefs),
+      webShareStateProvider.overrideWith(
+        () => TestWebShareStateNotifier(initialWebShareState),
+      ),
       encounterSharePreferencesProvider.overrideWithValue(
         EncounterSharePreferences.inDirectory(dir),
       ),
@@ -65,6 +84,7 @@ Widget _shareHarness({
       ),
       nfcEmulatorProvider.overrideWithValue(NoopNfcEmulator()),
       avatarRendererProvider.overrideWithValue(renderer),
+      entitlementStoreProvider.overrideWithValue(InMemoryEntitlementStore()),
     ],
     child: MaterialApp(
       theme: buildAmiroTheme(loadFonts: false),
@@ -80,12 +100,13 @@ void main() {
     if (!kWebSharePublishEnabled) {
       return;
     }
-    useTallTestViewport(tester);
+    tester.view.physicalSize = const Size(800, 2600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     final renderer = await _loadedRenderer();
     final service = FakeWebShareService();
     final dir = Directory.systemTemp.createTempSync('web_share_pub_');
     final prefs = WebSharePreferences.inDirectory(dir);
-    await prefs.write(const WebShareState(consentGiven: true));
 
     await tester.pumpWidget(
       _shareHarness(
@@ -93,8 +114,10 @@ void main() {
         prefs: prefs,
         dir: dir,
         renderer: renderer,
+        initialWebShareState: const WebShareState(consentGiven: true),
       ),
     );
+    await pumpUntilFound(tester, find.byKey(const Key('shareQrCode')));
     await pumpUntilFound(tester, find.byKey(const Key('webSharePublishButton')));
 
     await tester.tap(find.byKey(const Key('webSharePublishButton')));
@@ -109,18 +132,13 @@ void main() {
     if (!kWebSharePublishEnabled) {
       return;
     }
-    useTallTestViewport(tester);
+    tester.view.physicalSize = const Size(800, 2600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     final renderer = await _loadedRenderer();
     final service = FakeWebShareService();
     final dir = Directory.systemTemp.createTempSync('web_share_revoke_');
     final prefs = WebSharePreferences.inDirectory(dir);
-    await prefs.write(
-      const WebShareState(
-        consentGiven: true,
-        activeToken: 'testtokenabcdefghijklmnopqrst',
-        useHttpsForQr: true,
-      ),
-    );
 
     await tester.pumpWidget(
       _shareHarness(
@@ -128,8 +146,14 @@ void main() {
         prefs: prefs,
         dir: dir,
         renderer: renderer,
+        initialWebShareState: const WebShareState(
+          consentGiven: true,
+          activeToken: _publishedToken,
+          useHttpsForQr: true,
+        ),
       ),
     );
+    await pumpUntilFound(tester, find.byKey(const Key('shareQrCode')));
     await pumpUntilFound(tester, find.byKey(const Key('webShareRevokeButton')));
     await tester.tap(find.byKey(const Key('webShareRevokeButton')));
     await pumpShort(tester, frames: 30);
