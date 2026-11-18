@@ -1,13 +1,24 @@
+import 'crash_upload_throttle_store.dart';
+
 /// Limits crash uploads to avoid tight-loop POST storms when opted in.
+///
+/// [tryReserveUploadSlot] reserves quota synchronously before any network I/O.
+/// Failed uploads still count toward session/daily caps. Duplicate fingerprints
+/// do not consume additional slots.
 class CrashUploadThrottle {
   CrashUploadThrottle({
     this.maxPerSession = 5,
     this.maxPerDay = 20,
+    CrashUploadThrottleStore? store,
     DateTime Function()? clock,
-  }) : _clock = clock ?? DateTime.now;
+  })  : _store = store ?? CrashUploadThrottleStore.ephemeral(),
+        _clock = clock ?? DateTime.now {
+    _rehydrateDaily();
+  }
 
   final int maxPerSession;
   final int maxPerDay;
+  final CrashUploadThrottleStore _store;
   final DateTime Function() _clock;
 
   int _sessionCount = 0;
@@ -15,28 +26,39 @@ class CrashUploadThrottle {
   String? _dayKey;
   final Set<String> _fingerprints = {};
 
-  void _rollDay() {
+  void _rehydrateDaily() {
+    final (persistedDay, persistedCount) = _store.loadSync();
+    final today = _currentDayKey();
+    if (persistedDay == today) {
+      _dayKey = persistedDay;
+      _dailyCount = persistedCount;
+    }
+  }
+
+  String _currentDayKey() {
     final now = _clock().toUtc();
-    final key = '${now.year}-${now.month}-${now.day}';
+    return '${now.year}-${now.month}-${now.day}';
+  }
+
+  void _rollDay() {
+    final key = _currentDayKey();
     if (_dayKey != key) {
       _dayKey = key;
       _dailyCount = 0;
     }
   }
 
-  bool shouldUpload(String fingerprint) {
+  /// Reserves one upload attempt slot when under caps and not a duplicate fp.
+  bool tryReserveUploadSlot(String fingerprint) {
     _rollDay();
+    if (_fingerprints.contains(fingerprint)) return false;
     if (_sessionCount >= maxPerSession) return false;
     if (_dailyCount >= maxPerDay) return false;
-    if (_fingerprints.contains(fingerprint)) return false;
-    return true;
-  }
-
-  void recordUpload(String fingerprint) {
-    _rollDay();
     _sessionCount += 1;
     _dailyCount += 1;
     _fingerprints.add(fingerprint);
+    _store.saveSync(_dayKey!, _dailyCount);
+    return true;
   }
 
   void reset() {
@@ -44,5 +66,6 @@ class CrashUploadThrottle {
     _dailyCount = 0;
     _dayKey = null;
     _fingerprints.clear();
+    _store.saveSync(_currentDayKey(), 0);
   }
 }

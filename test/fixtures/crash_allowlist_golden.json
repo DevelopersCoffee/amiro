@@ -79,6 +79,11 @@
       "id": "google_play_purchase_underscore",
       "input": "Billing GPA.1234_5678-ABCD-EFGH-9012",
       "expected": "Billing [redacted-play-purchase]"
+    },
+    {
+      "id": "purchase_token_key_value_dots",
+      "input": "Play billing purchaseToken=abc.def.ghi segment",
+      "expected": "Play billing purchaseToken=[redacted-play-token] segment"
     }
   ],
   "stackFilter": {

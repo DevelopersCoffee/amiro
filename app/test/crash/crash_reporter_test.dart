@@ -198,6 +198,43 @@ void main() {
     expect(posts, 1);
   });
 
+  test('throttle reserves before network; 503 responses still consume cap', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    var posts = 0;
+    final sub = server.listen((request) async {
+      posts += 1;
+      request.response.statusCode = 503;
+      await request.response.close();
+    });
+    final prefs = CrashUploadPreferences.inMemory(enabled: true);
+    final throttle = CrashUploadThrottle(maxPerSession: 5, maxPerDay: 100);
+    final reporter = CrashReporter(
+      sinks: [
+        _gatedSink(
+          prefs: prefs,
+          throttle: throttle,
+          inner: _loopbackSink(
+            Uri.parse('http://${server.address.host}:${server.port}/crash'),
+          ),
+        ),
+      ],
+    );
+
+    for (var i = 0; i < 30; i++) {
+      await reporter.record(
+        StateError('err-$i'),
+        StackTrace.fromString(
+          '#0 main (package:amiro_app/main.dart:$i:9)\n',
+        ),
+        'flutter',
+      );
+    }
+    await sub.cancel();
+    await server.close();
+
+    expect(posts, 5);
+  });
+
   test('throttle dedupes identical fingerprint', () async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     var posts = 0;

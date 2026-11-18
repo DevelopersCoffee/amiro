@@ -52,7 +52,7 @@ user shares their card.
   crash reports**, only in builds with `AMIRO_CRASH_INGEST_URL`. Shared with
   our Supabase backend via Cloudflare Worker over HTTPS for app stability /
   diagnostics. Not used for advertising. Fields: error type, scrubbed first
-  line of the error text (pattern-based; incidental words may remain),
+  line of the error text (scrubbed; may contain incidental text),
   allowlisted Dart stack frames, app version, platform. No profile, passport, or
   purchase fields as structured columns. Server retention: **90 days**
   (automatic purge when `pg_cron` is enabled — see Worker README). Cloudflare
