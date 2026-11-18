@@ -21,6 +21,7 @@ import 'package:amiro_app/avatar/avatar_providers.dart';
 import 'package:amiro_app/identity/identity_providers.dart';
 import 'package:amiro_app/sharing/sharing_preferences_providers.dart';
 import 'package:amiro_app/sharing/sharing_providers.dart';
+import '../analytics/analytics_test_overrides.dart';
 import '../avatar/fake_avatar_renderer.dart';
 import '../identity/in_memory_identity_repository.dart';
 import '../pump_helpers.dart';
@@ -88,6 +89,7 @@ Widget _shareHarness({
       nfcEmulatorProvider.overrideWithValue(NoopNfcEmulator()),
       avatarRendererProvider.overrideWithValue(renderer),
       entitlementStoreProvider.overrideWithValue(InMemoryEntitlementStore()),
+      ...analyticsTestOverrides(),
     ],
     child: MaterialApp(
       theme: buildAmiroTheme(loadFonts: false),

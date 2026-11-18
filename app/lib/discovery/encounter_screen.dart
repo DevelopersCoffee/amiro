@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:discovery/discovery.dart';
 import 'package:sharing/sharing.dart';
 
+import '../analytics/analytics_funnel.dart';
 import '../avatar/avatar_providers.dart';
 import '../identity/identity_providers.dart';
 import '../sharing/own_encounter.dart';
@@ -68,6 +71,7 @@ class _EncounterScreenState extends ConsumerState<EncounterScreen> {
       return;
     }
     ref.invalidate(encounterRecordsProvider);
+    unawaited(ref.read(analyticsFunnelProvider).afterEncounterSave());
     messenger.showSnackBar(
       const SnackBar(content: Text('Saved to your passport')),
     );

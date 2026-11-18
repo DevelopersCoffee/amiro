@@ -10,6 +10,7 @@ import 'package:identity_core/identity_core.dart';
 
 import 'package:nfc/nfc.dart';
 
+import '../analytics/analytics_funnel.dart';
 import '../avatar/avatar_loader.dart';
 import '../avatar/avatar_providers.dart';
 import '../avatar/avatar_viewport_placeholder.dart';
@@ -130,7 +131,11 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
       return;
     }
     if (!mounted) return;
+    final wasEmulating = _emulating;
     setState(() => _emulating = !_emulating);
+    if (!wasEmulating) {
+      unawaited(ref.read(analyticsFunnelProvider).tryFirstShare());
+    }
   }
 
   Future<void> _publishWebShare({
@@ -176,6 +181,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
           ),
         );
     if (!mounted) return;
+    unawaited(ref.read(analyticsFunnelProvider).tryFirstShare());
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Web profile published')),
     );
@@ -240,6 +246,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
     final token = state.activeToken;
     if (client == null || token == null) return;
     Clipboard.setData(ClipboardData(text: client.buildPublicUri(token)));
+    unawaited(ref.read(analyticsFunnelProvider).tryInviteSent());
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Link copied')),
     );

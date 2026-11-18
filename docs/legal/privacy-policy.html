@@ -20,9 +20,10 @@
 <p>This policy describes what Amiro ("the App") does with your information.
 Amiro is local-first: your identity, avatar, and passport (people you've
 met) live on your device by default. There is no email-and-password Amiro
-account, and no analytics or advertising SDK in the App. The App does use
-the network for (1) optional profile backup/restore and (2) verifying
-real-money Store purchases — see those sections below. Sharing with another
+account, and no third-party analytics or advertising SDK in the App. The App
+does use the network for (1) optional profile backup/restore, (2) verifying
+real-money Store purchases, and (3) optional, consent-gated diagnostics —
+see those sections below. Sharing with another
 person (QR/NFC) still goes directly device-to-device and does not pass
 through our servers.</p>
 
@@ -133,10 +134,23 @@ traffic applies to you — free cosmetics unlock without a purchase request.</p>
   removes the local log. See <code>docs/protocols/crash-report-data.md</code>.</li>
 </ul>
 
+<h3>Optional product analytics</h3>
+<p>You can help us understand whether setup, sharing, and the Store are working:</p>
+<ul>
+  <li><strong>Off by default.</strong> In Identity settings, <strong>Privacy &amp; diagnostics → Product
+  analytics</strong> sends a small set of anonymous counts (for example, setup
+  finished, first share, purchase completed).</li>
+  <li>Events include only coarse day, app version, platform, and a random
+  install-scoped id we regenerate when you turn analytics off.</li>
+  <li>No names, contacts, avatar data, encounter details, share links, or prices.</li>
+  <li>Data goes to our Cloudflare Worker → Supabase with server-side allow-lists.
+  We do not store your IP or browser User-Agent with analytics rows.</li>
+</ul>
+
 <h2>What the App does not do</h2>
 <ul>
   <li>No traditional account (no email sign-up, no password login).</li>
-  <li>No analytics or advertising SDKs.</li>
+  <li>No third-party analytics or advertising SDKs.</li>
   <li>No selling of your data.</li>
   <li>No location data is collected.</li>
   <li>Passport data is not uploaded to our servers.</li>

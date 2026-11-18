@@ -5,7 +5,10 @@ writes them to Supabase. See `TODOS.md` #15 for the full picture of what's
 wired up and what's still pending (Play Console products, RC↔Play service
 account link, iOS).
 
-The Flutter app never calls this Worker. Entitlements on-device come from
+The Flutter app normally does not call the RevenueCat webhook path. It may
+POST optional, consent-gated **crash** and **analytics** batches to
+`/crash/<CRASH_PATH_TOKEN>` and `/analytics/<ANALYTICS_PATH_TOKEN>` when
+release builds set the matching `--dart-define` URLs. Entitlements on-device come from
 the RevenueCat SDK's `CustomerInfo` cache
 (`packages/store/lib/src/revenuecat_entitlement_store.dart`). Since #43 the
 app **does** talk to the same Supabase project for optional **profile**
@@ -54,6 +57,8 @@ Set with `wrangler secret put <NAME>` (never commit these):
   Regenerate with `openssl rand -hex 16` if it's ever exposed, then update
   the webhook URL in RevenueCat (`rc webhooks update <id> --url ...`).
 - `SUPABASE_URL` — `https://<project-ref>.supabase.co`.
+- `CRASH_PATH_TOKEN` — random token for scrubbed crash POSTs (see #79).
+- `ANALYTICS_PATH_TOKEN` — random token for funnel analytics POSTs (#53/#54).
 - `SUPABASE_SERVICE_ROLE_KEY` — from `supabase projects api-keys
   --project-ref <ref>`. This bypasses Row Level Security — treat it like
   a root DB password. The migration

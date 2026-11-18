@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:avatar_core/avatar_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:store/store.dart';
 
 import '../avatar/avatar_defaults.dart';
+import '../analytics/analytics_funnel.dart';
 import '../avatar/avatar_loader.dart';
 import '../avatar/avatar_providers.dart';
 import '../avatar/avatar_viewport_placeholder.dart';
@@ -301,6 +304,11 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
           .read(ownedCosmeticsProvider.notifier)
           .ensureLoaded()
           .catchError((Object _) {});
+      unawaited(
+        ref
+            .read(analyticsFunnelProvider)
+            .tryPaywallShown(surface: 'store_tab'),
+      );
     });
   }
 
@@ -322,6 +330,9 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
   // duplicating that confirmation in-app.
   Future<void> _buy(CosmeticListing item) async {
     final messenger = ScaffoldMessenger.of(context);
+    unawaited(
+      ref.read(analyticsFunnelProvider).tryPaywallShown(surface: 'store_item'),
+    );
     try {
       await ref.read(ownedCosmeticsProvider.notifier).purchase(item.id);
     } on PurchaseCancelledException {

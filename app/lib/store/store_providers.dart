@@ -5,6 +5,7 @@ import 'package:identity_core/identity_core.dart';
 
 import 'package:store/store.dart';
 
+import '../analytics/analytics_funnel.dart';
 import '../identity/identity_providers.dart';
 import 'revenue_cat_activation.dart';
 
@@ -113,6 +114,7 @@ class OwnedCosmeticsNotifier extends AsyncNotifier<Set<String>> {
     final store = ref.read(entitlementStoreProvider);
     await store.grant(cosmeticId);
     state = AsyncData(await store.ownedCosmeticIds());
+    unawaited(ref.read(analyticsFunnelProvider).tryPurchase(cosmeticId));
   }
 }
 

@@ -16,6 +16,7 @@ import 'package:amiro_app/theme/amiro_theme.dart';
 
 import 'package:amiro_app/avatar/avatar_loader.dart';
 
+import '../analytics/analytics_test_overrides.dart';
 import '../avatar/fake_avatar_renderer.dart';
 import '../identity/in_memory_identity_repository.dart';
 import '../pump_helpers.dart';
@@ -58,6 +59,7 @@ Widget _screen(
       ),
       if (entitlementStore != null)
         entitlementStoreProvider.overrideWithValue(entitlementStore),
+      ...analyticsTestOverrides(),
     ],
     child: MaterialApp(
       theme: buildAmiroTheme(loadFonts: false),

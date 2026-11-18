@@ -12,6 +12,10 @@ import 'package:nfc/nfc.dart';
 import 'package:discovery/discovery.dart';
 
 import 'app.dart';
+import 'analytics/analytics_install_id.dart';
+import 'analytics/analytics_once.dart';
+import 'analytics/analytics_preferences.dart';
+import 'analytics/analytics_sink.dart';
 import 'crash/crash_reporter.dart';
 import 'crash/crash_upload_throttle.dart';
 import 'crash/crash_upload_throttle_store.dart';
@@ -92,6 +96,15 @@ void main() async {
   final encounterSharePreferences =
       EncounterSharePreferences.inDirectory(supportDir);
   final webSharePreferences = WebSharePreferences.inDirectory(supportDir);
+  final analyticsPreferences = AnalyticsPreferences.inDirectory(supportDir);
+  final analyticsInstallId = AnalyticsInstallIdStore.inDirectory(supportDir);
+  final analyticsOnce = AnalyticsOnceStore.inDirectory(supportDir);
+  final analyticsIngestUrl =
+      const String.fromEnvironment('AMIRO_ANALYTICS_INGEST_URL');
+  final analyticsSinks = <AnalyticsSink>[];
+  if (analyticsIngestUrl.isNotEmpty) {
+    analyticsSinks.add(HttpAnalyticsSink(Uri.parse(analyticsIngestUrl)));
+  }
 
   // Engine construction lives behind `avatar_renderer`'s own factory: per the
   // spec's global constraint, nothing outside `packages/avatar_renderer` may
@@ -107,6 +120,10 @@ void main() async {
         identityRepository: repository,
         cloudBackupPreferences: backupPreferences,
         crashUploadPreferences: crashUploadPreferences,
+        analyticsPreferences: analyticsPreferences,
+        analyticsInstallIdStore: analyticsInstallId,
+        analyticsOnceStore: analyticsOnce,
+        analyticsSinks: analyticsSinks,
         profileCloud: profileCloud,
         avatarRenderer: avatarRenderer,
         avatarRendererFactory: ThermionAvatarRenderer.create,

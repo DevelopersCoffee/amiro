@@ -7,6 +7,8 @@ compatibility_date = "2026-09-01"
 #   CRASH_PATH_TOKEN     public URL gate for POST /crash/<token> (not a secret;
 #                        compiled into the app via --dart-define). Rotate by
 #                        deploying a new token and shipping a new app build.
+#   ANALYTICS_PATH_TOKEN random token for POST /analytics/<token> (secret;
+#                        set with wrangler secret put, not compiled into the app)
 #   SUPABASE_URL         e.g. https://srvhqmfjqmxxvrdctbtf.supabase.co
 #   SUPABASE_SERVICE_ROLE_KEY
 

@@ -5,9 +5,10 @@
 This policy describes what Amiro ("the App") does with your information.
 Amiro is local-first: your identity, avatar, and passport (people you've
 met) live on your device by default. There is no email-and-password Amiro
-account, and no analytics or advertising SDK in the App. The App does use
-the network for (1) optional profile backup/restore and (2) verifying
-real-money Store purchases — see those sections below. Sharing with another
+account, and no third-party analytics or advertising SDK in the App. The App
+does use the network for (1) optional profile backup/restore, (2) verifying
+real-money Store purchases, and (3) optional, consent-gated diagnostics —
+see those sections below. Sharing with another
 person (QR/NFC) still goes directly device-to-device and does not pass
 through our servers.
 
@@ -123,10 +124,25 @@ Some release builds can send error summaries to help us fix bugs:
 - Turn the setting off any time — uploads stop immediately. Uninstalling
   removes the local log. See `docs/protocols/crash-report-data.md`.
 
+### Optional product analytics
+
+You can help us understand whether setup, sharing, and the Store are working:
+
+- **Off by default.** In Identity settings, **Privacy & diagnostics → Product
+  analytics** sends a small set of anonymous counts (for example, setup
+  finished, first share, purchase completed).
+- Events include only coarse day, app version, platform, and a random
+  install-scoped id we regenerate when you turn analytics off. See
+  `docs/analytics/event-inventory.md`.
+- No names, contacts, avatar data, encounter details, share links, or prices.
+- Data goes to the same Cloudflare Worker → Supabase path as crash reports,
+  with server-side allow-lists. We do not store your IP or browser User-Agent
+  with analytics rows.
+
 ## What the App does not do
 
 - No traditional account (no email sign-up, no password login).
-- No analytics or advertising SDKs.
+- No third-party analytics or advertising SDKs.
 - No selling of your data.
 - No location data is collected.
 - Passport data is not uploaded to our servers.
