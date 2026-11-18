@@ -57,8 +57,14 @@ class HttpCrashSink implements CrashSink {
   final bool allowInsecureHttp;
   final HttpClient _client;
 
+  static const Duration _uploadTimeout = Duration(seconds: 15);
+
   @override
   Future<void> send(Map<String, Object?> report) async {
+    await _post(report).timeout(_uploadTimeout);
+  }
+
+  Future<void> _post(Map<String, Object?> report) async {
     final request = await _client.postUrl(uri);
     request.headers.contentType = ContentType.json;
     request.write(jsonEncode(report));

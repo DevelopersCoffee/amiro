@@ -51,11 +51,12 @@ user shares their card.
 - **Crash logs (optional, opt-in):** Collected when the user turns on **Share
   crash reports**, only in builds with `AMIRO_CRASH_INGEST_URL`. Shared with
   our Supabase backend via Cloudflare Worker over HTTPS for app stability /
-  diagnostics. Not used for advertising. Fields: error type, short scrubbed
-  message, allowlisted Dart stack frames, app version, platform. No profile,
-  passport, or purchase fields. Server retention: **90 days** (automatic
-  purge). Cloudflare may see IP for rate limiting; we do not store IP in
-  `crash_reports`.
+  diagnostics. Not used for advertising. Fields: error type, scrubbed first
+  line of the error text (pattern-based; incidental words may remain),
+  allowlisted Dart stack frames, app version, platform. No profile, passport, or
+  purchase fields as structured columns. Server retention: **90 days**
+  (automatic purge when `pg_cron` is enabled — see Worker README). Cloudflare
+  applies per-IP rate limits; we do not store IP in `crash_reports`.
 
 ### Device or other identifiers
 

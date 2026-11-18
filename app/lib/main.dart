@@ -37,16 +37,30 @@ void main() async {
   ];
   final crashUploadThrottle = CrashUploadThrottle();
   if (ingestUrl.isNotEmpty) {
-    crashSinks.add(
-      ConsentGatedHttpCrashSink(
-        crashUploadPreferences,
-        crashUploadThrottle,
-        HttpCrashSink(
-          Uri.parse(ingestUrl),
-          allowInsecureHttp: !kReleaseMode,
+    final ingestUri = Uri.tryParse(ingestUrl);
+    if (ingestUri == null) {
+      debugPrint('AMIRO_CRASH_INGEST_URL is invalid; crash upload disabled.');
+    } else if (ingestUri.scheme == 'https') {
+      crashSinks.add(
+        ConsentGatedHttpCrashSink(
+          crashUploadPreferences,
+          crashUploadThrottle,
+          HttpCrashSink(ingestUri),
         ),
-      ),
-    );
+      );
+    } else if (!kReleaseMode) {
+      crashSinks.add(
+        ConsentGatedHttpCrashSink(
+          crashUploadPreferences,
+          crashUploadThrottle,
+          HttpCrashSink(ingestUri, allowInsecureHttp: true),
+        ),
+      );
+    } else {
+      debugPrint(
+        'AMIRO_CRASH_INGEST_URL must use https in release builds; crash upload disabled.',
+      );
+    }
   }
   installCrashReporting(
     CrashReporter(

@@ -111,11 +111,12 @@ Some release builds can send error summaries to help us fix bugs:
 - **Upload is off by default.** In Identity settings you can turn on
   **Share crash reports** to send scrubbed error text (message and stack) to
   our Cloudflare Worker, which stores it in Supabase for engineering review.
-- Only a short message (error type plus scrubbed summary), allowlisted Dart
-  `package:` / `dart:` stack frames, app version, and platform are uploaded.
-  Secrets such as JWTs, bearer tokens, UUIDs, and recovery-code-shaped hex are
-  stripped on device and again on the server. Your profile, passport, and
-  purchase data are not included.
+- Only a short message (error type plus the **scrubbed first line** of the
+  error text), allowlisted Dart `package:` / `dart:` stack frames, app version,
+  and platform are uploaded. Known secret patterns (JWTs, tokens, paths, etc.)
+  are stripped on device and again on the server; **other incidental words in
+  that line may still be present.** Your profile, passport, and purchase fields
+  are not sent as structured data.
 - Cloudflare may process your IP address in transit for DDoS protection and
   rate limiting; we do not store IP in the crash database.
 - Server copies are deleted automatically after **90 days**.

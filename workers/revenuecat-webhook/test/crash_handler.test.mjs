@@ -3,10 +3,15 @@ import test from 'node:test';
 
 import { handleCrash } from '../src/crash_handler.ts';
 
+const rateLimiter = {
+  limit: async () => ({ success: true }),
+};
+
 const baseEnv = {
   SUPABASE_URL: 'https://example.supabase.co',
   SUPABASE_SERVICE_ROLE_KEY: 'service-key',
   CRASH_PATH_TOKEN: 'crash-token',
+  CRASH_RATE_LIMITER: rateLimiter,
 };
 
 const validPayload = {
@@ -125,4 +130,16 @@ test('handleCrash rejects missing crash token', async () => {
     new URL('https://example.com/crash/wrong'),
   );
   assert.equal(response.status, 404);
+});
+
+test('handleCrash returns 503 when rate limiter binding is missing', async () => {
+  const env = { ...baseEnv };
+  delete env.CRASH_RATE_LIMITER;
+  const response = await handleCrash(
+    crashRequest(validPayload),
+    env,
+    new URL('https://example.com/crash/crash-token'),
+  );
+  assert.equal(response.status, 503);
+  assert.equal(await response.text(), 'Ingest unavailable');
 });

@@ -11,6 +11,6 @@ compatibility_date = "2026-09-01"
 #   SUPABASE_SERVICE_ROLE_KEY
 
 [[ratelimits]]
-binding = "CRASH_RATE_LIMITER"
+name = "CRASH_RATE_LIMITER"
 namespace_id = "1001"
 simple = { limit = 10, period = 60 }

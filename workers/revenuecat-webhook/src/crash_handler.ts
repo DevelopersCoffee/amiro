@@ -16,9 +16,6 @@ export interface CrashEnv {
   };
 }
 
-const globalMinute: { window: number; count: number } = { window: 0, count: 0 };
-const GLOBAL_PER_MINUTE = 100;
-
 async function readJsonBody(
   request: Request,
   maxBytes: number,
@@ -72,27 +69,23 @@ function clientIp(request: Request): string {
   );
 }
 
+function rateLimitKey(request: Request): string {
+  const ip = clientIp(request);
+  return `crash:${ip}`;
+}
+
 async function checkRateLimits(
   request: Request,
   env: CrashEnv,
 ): Promise<Response | null> {
-  const now = Math.floor(Date.now() / 60_000);
-  if (globalMinute.window !== now) {
-    globalMinute.window = now;
-    globalMinute.count = 0;
+  if (!env.CRASH_RATE_LIMITER) {
+    return new Response('Ingest unavailable', { status: 503 });
   }
-  globalMinute.count += 1;
-  if (globalMinute.count > GLOBAL_PER_MINUTE) {
+  const { success } = await env.CRASH_RATE_LIMITER.limit({
+    key: rateLimitKey(request),
+  });
+  if (!success) {
     return new Response('Too many requests', { status: 429 });
-  }
-
-  if (env.CRASH_RATE_LIMITER) {
-    const { success } = await env.CRASH_RATE_LIMITER.limit({
-      key: clientIp(request),
-    });
-    if (!success) {
-      return new Response('Too many requests', { status: 429 });
-    }
   }
   return null;
 }
@@ -135,10 +128,11 @@ function validateCrashBody(body: unknown):
     platform = record.platform;
   }
   const stack = typeof record.stack === 'string' ? record.stack : '';
-  const runtimeType =
+  const rawRuntimeType =
     typeof record.runtimeType === 'string' && record.runtimeType.length > 0
       ? record.runtimeType
       : 'Error';
+  const runtimeType = rawRuntimeType;
   return {
     ok: true,
     data: {

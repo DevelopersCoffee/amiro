@@ -18,7 +18,7 @@
     {
       "id": "share_link_token",
       "input": "https://id.amiro.app/u/AbCdEf0123456789xyzTOKEN",
-      "expected": "https://id.amiro.app/u/[redacted-base64url]"
+      "expected": "[redacted-url]"
     },
     {
       "id": "email_and_phone",
@@ -31,6 +31,41 @@
       "expected": "Failed to read [redacted-path]"
     },
     {
+      "id": "unix_path_quoted_equals",
+      "input": "FileSystemException: Cannot open file, path = '/data/user/0/com.app/cache/tmp.json' (OS Error)",
+      "expected": "FileSystemException: Cannot open file, path = '[redacted-path]' (OS Error)"
+    },
+    {
+      "id": "unix_path_unicode",
+      "input": "open failed /home/café/用户/档案.txt",
+      "expected": "open failed [redacted-path]"
+    },
+    {
+      "id": "url_query_token",
+      "input": "fetch failed https://api.example.com/v1/x?token=abc",
+      "expected": "fetch failed [redacted-url]"
+    },
+    {
+      "id": "url_query_token_quoted",
+      "input": "bad redirect https://evil.example/track?token='abc'",
+      "expected": "bad redirect [redacted-url]"
+    },
+    {
+      "id": "url_fragment_access_token",
+      "input": "OAuth redirect https://auth.example.com/cb#access_token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig",
+      "expected": "OAuth redirect [redacted-url]"
+    },
+    {
+      "id": "file_url",
+      "input": "load error file:///data/user/0/com.app/secret.sqlite",
+      "expected": "load error [redacted-path]"
+    },
+    {
+      "id": "windows_path",
+      "input": "Cannot find C:\\Users\\Priya\\AppData\\Local\\secret.json",
+      "expected": "Cannot find [redacted-path]"
+    },
+    {
       "id": "hex32_identity",
       "input": "identity mismatch for a1b2c3d4e5f67890123456789abcdef0",
       "expected": "identity mismatch for [redacted-hex32]"
@@ -39,6 +74,11 @@
       "id": "google_play_purchase_token",
       "input": "BillingClient: sync failed token GPA.1234-5678-9012-34567",
       "expected": "BillingClient: sync failed token [redacted-play-purchase]"
+    },
+    {
+      "id": "google_play_purchase_underscore",
+      "input": "Billing GPA.1234_5678-ABCD-EFGH-9012",
+      "expected": "Billing [redacted-play-purchase]"
     }
   ],
   "stackFilter": {
@@ -47,7 +87,7 @@
   },
   "fullReport": {
     "runtimeType": "StateError",
-    "message": "StateError: controlled",
+    "message": "StateError: controlled\nsecond line must not upload",
     "stack": "#0      main (package:amiro_app/main.dart:61:9)\nnoise line without frame\n",
     "expectedMessage": "StateError: controlled",
     "expectedStack": "#0      main (package:amiro_app/main.dart:61:9)"

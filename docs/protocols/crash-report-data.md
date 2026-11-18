@@ -9,17 +9,20 @@ reports** in Identity settings.
 | Field | Content |
 |---|---|
 | `runtimeType` | Dart type name of the error (e.g. `StateError`) |
-| `message` | Type plus a short, secret-scrubbed summary (≤300 chars) |
+| `message` | Error type plus the **first line** of the error text, scrubbed (≤300 chars) |
 | `stack` | Only Dart `package:` / `dart:` stack frames (no file paths or native frames) |
 | `source` | `flutter` or `platform` |
 | `appVersion` | Build version (e.g. `1.0.6+12`) |
 | `platform` | `android` or `ios` |
 
 The client does **not** send profile fields, purchase IDs, recovery codes, or
-device advertising identifiers. Before upload, message text is scrubbed for JWTs,
-bearer tokens, UUIDs, **32-character hex strings** (e.g. Amiro identity /
-recovery-shaped secrets), **Google Play purchase tokens** (`GPA.…`), emails,
-phone numbers, and file paths.
+device advertising identifiers. Before upload, only the first line of the
+message is considered; that line is scrubbed for JWTs, bearer tokens, UUIDs,
+URLs (including query/fragment tokens), **32-character hex strings**, **Google
+Play purchase tokens** (`GPA.…`), emails, phone numbers, and file paths
+(Unix, `file://`, and Windows-shaped). **Scrubbing is pattern-based:** incidental
+free text (for example a `displayName` inside a JSON fragment) may still appear
+if it does not match a redaction rule.
 
 ## Where it goes
 
