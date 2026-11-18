@@ -9,7 +9,7 @@ reports** in Identity settings.
 | Field | Content |
 |---|---|
 | `runtimeType` | Dart type name of the error (e.g. `StateError`) |
-| `message` | Error type plus the **first line** of the error text, scrubbed (≤300 chars) |
+| `message` | Error type plus the **first line** of the error text, scrubbed (≤300 chars); may contain incidental text |
 | `stack` | Only Dart `package:` / `dart:` stack frames (no file paths or native frames) |
 | `source` | `flutter` or `platform` |
 | `appVersion` | Build version (e.g. `1.0.6+12`) |

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -14,37 +15,118 @@ import 'revenuecat_keys.dart';
 class RevenueCatEntitlementStore implements EntitlementStore {
   final bool _isAndroid;
   bool _configured = false;
+  String? _boundAmiroIdentityId;
+  Future<bool>? _configureInFlight;
+  Future<void> _operationLock = Future<void>.value();
 
   /// True after [Purchases.configure] succeeded on this instance.
   bool get isConfigured => _configured;
 
+  /// Last Amiro identity id passed to [bindAmiroIdentity], if any.
+  String? get boundAmiroIdentityId => _boundAmiroIdentityId;
+
   /// [isAndroid] defaults to the real platform; tests pass it explicitly.
   RevenueCatEntitlementStore({bool? isAndroid})
     : _isAndroid = isAndroid ?? Platform.isAndroid;
+
+  Future<T> _withOperationLock<T>(Future<T> Function() action) async {
+    final previous = _operationLock;
+    final completer = Completer<void>();
+    _operationLock = completer.future;
+    await previous;
+    try {
+      return await action();
+    } finally {
+      completer.complete();
+    }
+  }
+
+  /// Ties RevenueCat's App User ID to this device's Amiro identity so
+  /// restore cannot silently adopt another profile's entitlements when the
+  /// project is set to **Keep with original App User ID** (see
+  /// `docs/qa/restore-purchases-device.md`).
+  Future<void> bindAmiroIdentity(String identityId) async {
+    if (identityId.isEmpty) {
+      throw const RevenueCatIdentityRequiredException();
+    }
+    return _withOperationLock(() async {
+      _boundAmiroIdentityId = identityId;
+      if (_configured) {
+        await _requireIdentifiedRevenueCatUser();
+      }
+    });
+  }
+
+  /// Clears the Amiro binding and logs out of RevenueCat so the next identity
+  /// does not inherit entitlements in memory.
+  Future<void> logOutAmiroIdentity() async {
+    return _withOperationLock(() async {
+      _boundAmiroIdentityId = null;
+      if (!_configured) return;
+      try {
+        await Purchases.logOut();
+      } on PlatformException catch (e) {
+        final code = PurchasesErrorHelper.getErrorCode(e);
+        if (code != PurchasesErrorCode.logOutWithAnonymousUserError) {
+          throw const RevenueCatIdentityRequiredException();
+        }
+      }
+    });
+  }
 
   /// Configuring is idempotent and safe to call from every constructor —
   /// nothing purchase-related can happen before this resolves.
   Future<bool> _ensureConfigured() async {
     if (_configured) return true;
     if (!_isAndroid) {
-      // iOS has no App Store Connect credentials registered in RevenueCat
-      // yet, so purchases would fail server-side validation — see
-      // TODOS.md. Treat iOS as "no purchases available" rather than
-      // crashing.
       return false;
     }
+    _configureInFlight ??= _configureOnce();
+    try {
+      return await _configureInFlight!;
+    } catch (_) {
+      _configureInFlight = null;
+      rethrow;
+    }
+  }
+
+  Future<bool> _configureOnce() async {
     await Purchases.configure(PurchasesConfiguration(revenueCatAndroidApiKey));
     _configured = true;
     return true;
   }
 
+  Future<void> _requireIdentifiedRevenueCatUser() async {
+    final id = _boundAmiroIdentityId;
+    if (id == null || id.isEmpty) {
+      throw const RevenueCatIdentityRequiredException();
+    }
+    try {
+      final current = await Purchases.appUserID;
+      if (current != id) {
+        await Purchases.logIn(id);
+      }
+      final appUserId = await Purchases.appUserID;
+      if (appUserId.isEmpty || appUserId.startsWith(r'$RCAnonymous')) {
+        throw const RevenueCatIdentityRequiredException();
+      }
+    } on RevenueCatIdentityRequiredException {
+      rethrow;
+    } on RevenueCatOfflineException {
+      rethrow;
+    } on PlatformException catch (e) {
+      final code = PurchasesErrorHelper.getErrorCode(e);
+      if (code == PurchasesErrorCode.networkError) {
+        throw const RevenueCatOfflineException();
+      }
+      throw const RevenueCatIdentityRequiredException();
+    }
+  }
+
   static String _entitlementKey(String cosmeticId) => 'cosmetic_$cosmeticId';
   static String _storeProductId(String cosmeticId) => 'amiro_$cosmeticId';
 
-  @override
-  Future<Set<String>> ownedCosmeticIds() async {
-    if (!await _ensureConfigured()) return const {};
-    final info = await Purchases.getCustomerInfo();
+  Set<String> _ownedFromCustomerInfo(CustomerInfo info) {
     return cosmeticCatalog
         .where(
           (item) =>
@@ -55,47 +137,98 @@ class RevenueCatEntitlementStore implements EntitlementStore {
   }
 
   @override
-  Future<void> restore() async {
-    if (!await _ensureConfigured()) return;
-    await Purchases.restorePurchases();
+  Future<Set<String>> ownedCosmeticIds() async {
+    return _withOperationLock(() async {
+      if (!await _ensureConfigured()) return const {};
+      await _requireIdentifiedRevenueCatUser();
+      final info = await Purchases.getCustomerInfo();
+      return _ownedFromCustomerInfo(info);
+    });
+  }
+
+  @override
+  Future<RestoreOutcome> restore() async {
+    return _withOperationLock(() async {
+      if (!await _ensureConfigured()) {
+        return const RestoreOutcome.unavailable();
+      }
+      await _requireIdentifiedRevenueCatUser();
+      final before = await _ownedCosmeticIdsUnlocked();
+      try {
+        final info = await Purchases.restorePurchases();
+        final after = _ownedFromCustomerInfo(info);
+        final gained = after.difference(before);
+        if (gained.isNotEmpty) {
+          return RestoreOutcome.restored(gained);
+        }
+        return const RestoreOutcome.nothingToRestore();
+      } on PlatformException catch (e) {
+        final code = PurchasesErrorHelper.getErrorCode(e);
+        if (code == PurchasesErrorCode.receiptAlreadyInUseError ||
+            code == PurchasesErrorCode.receiptInUseByOtherSubscriberError) {
+          throw const RestoreOwnershipConflictException();
+        }
+        rethrow;
+      }
+    });
+  }
+
+  Future<Set<String>> _ownedCosmeticIdsUnlocked() async {
+    final info = await Purchases.getCustomerInfo();
+    return _ownedFromCustomerInfo(info);
   }
 
   /// RevenueCat's id for this install. The same Google account on another
   /// phone still restores purchases through [restore]; this id is only the
   /// join key stored next to the profile in Supabase.
   Future<String?> appUserId() async {
-    if (!await _ensureConfigured()) return null;
-    return Purchases.appUserID;
+    return _withOperationLock(() async {
+      if (!await _ensureConfigured()) return null;
+      await _requireIdentifiedRevenueCatUser();
+      return Purchases.appUserID;
+    });
   }
 
   @override
   Future<void> grant(String cosmeticId) async {
-    if (!await _ensureConfigured()) {
-      throw StateError(
-        'Purchases are only available on Android until iOS store '
-        'credentials are configured in RevenueCat.',
-      );
-    }
-    final storeId = _storeProductId(cosmeticId);
-    // Catalog items are Play one-time products; getProducts looks up
-    // subscriptions unless told otherwise and would find nothing.
-    final products = await Purchases.getProducts([
-      storeId,
-    ], productCategory: ProductCategory.nonSubscription);
-    if (products.isEmpty) {
-      throw StateError('No store product found for "$storeId".');
-    }
-    try {
-      await Purchases.purchase(PurchaseParams.storeProduct(products.first));
-    } on PlatformException catch (e) {
-      if (PurchasesErrorHelper.getErrorCode(e) ==
-          PurchasesErrorCode.purchaseCancelledError) {
-        throw const PurchaseCancelledException();
+    return _withOperationLock(() async {
+      if (!await _ensureConfigured()) {
+        throw StateError(
+          'Purchases are only available on Android until iOS store '
+          'credentials are configured in RevenueCat.',
+        );
       }
-      rethrow;
-    }
-    // A successful purchaseStoreProduct means RevenueCat's on-device
-    // CustomerInfo cache already reflects the new entitlement — no need
-    // to re-fetch here.
+      await _requireIdentifiedRevenueCatUser();
+      final storeId = _storeProductId(cosmeticId);
+      final products = await Purchases.getProducts([
+        storeId,
+      ], productCategory: ProductCategory.nonSubscription);
+      if (products.isEmpty) {
+        throw StateError('No store product found for "$storeId".');
+      }
+      final boundId = _boundAmiroIdentityId;
+      if (boundId == null || boundId.isEmpty) {
+        throw const RevenueCatIdentityRequiredException();
+      }
+      final appUserId = await Purchases.appUserID;
+      if (appUserId != boundId) {
+        throw const RevenueCatIdentityRequiredException();
+      }
+      try {
+        await Purchases.purchase(PurchaseParams.storeProduct(products.first));
+      } on PlatformException catch (e) {
+        if (PurchasesErrorHelper.getErrorCode(e) ==
+            PurchasesErrorCode.purchaseCancelledError) {
+          throw const PurchaseCancelledException();
+        }
+        if (PurchasesErrorHelper.getErrorCode(e) ==
+                PurchasesErrorCode.receiptAlreadyInUseError ||
+            PurchasesErrorHelper.getErrorCode(e) ==
+                PurchasesErrorCode.receiptInUseByOtherSubscriberError) {
+          throw const RestoreOwnershipConflictException();
+        }
+        rethrow;
+      }
+    });
   }
 }

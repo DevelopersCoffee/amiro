@@ -5,6 +5,9 @@ export const CRASH_STACK_FINAL = 8000;
 export const CRASH_BODY_MAX_BYTES = 16_384;
 export const RUNTIME_TYPE_MAX = 120;
 
+export const DART_RUNTIME_TYPE_PATTERN =
+  /^[A-Za-z_$][\w$<>, ]{0,119}$/;
+
 const JWT =
   /eyJ[A-Za-z0-9_-]{1,2000}\.[A-Za-z0-9_-]{1,2000}\.[A-Za-z0-9_-]{1,2000}/g;
 const BEARER = /Bearer\s+\S{1,500}/g;
@@ -15,8 +18,10 @@ const URL_WITH_QUERY_FRAGMENT =
 const FILE_URL = /file:\/\/[^\s"'<>]+/gu;
 const WIN_PATH = /(?:^|[\s(])([A-Za-z]:\\[^\s"'<>]+)/gu;
 const HEX32 = /(?<![0-9a-fA-F])[0-9a-fA-F]{32}(?![0-9a-fA-F])/g;
-const GOOGLE_PLAY_PURCHASE =
+const GOOGLE_PLAY_ORDER =
   /GPA\.[0-9A-Za-z\-_]{12,200}/g;
+const PURCHASE_TOKEN_KEY =
+  /(purchase[_-]?token)\s*[=:]\s*['"]?([A-Za-z0-9._\-+/=]+)/gi;
 const HEX = /(?<![\w/])[0-9a-fA-F]{16,128}(?![\w/])/g;
 const BASE64 = /[A-Za-z0-9+/_\-]{20,}={0,2}/g;
 const SHARE_PATH_TOKEN = /(?<=\/u\/)[A-Za-z0-9_-]{10,}/g;
@@ -36,6 +41,18 @@ function truncateText(input: string, max: number): string {
   return input.slice(0, max);
 }
 
+export function sanitizeCrashRuntimeType(raw: string): string {
+  const capped = truncateText(raw, RUNTIME_TYPE_MAX);
+  if (!DART_RUNTIME_TYPE_PATTERN.test(capped)) {
+    return 'Error';
+  }
+  // Bare words with spaces (e.g. display names) are not Dart type names.
+  if (/\s/.test(capped) && !/[<,>]/.test(capped)) {
+    return 'Error';
+  }
+  return capped;
+}
+
 export function redactCrashSecrets(input: string): string {
   return input
     .replace(JWT, '[redacted-jwt]')
@@ -45,12 +62,13 @@ export function redactCrashSecrets(input: string): string {
     .replace(FILE_URL, '[redacted-path]')
     .replace(WIN_PATH, (match, path) => match.replace(path, '[redacted-path]'))
     .replace(SHARE_PATH_TOKEN, '[redacted-base64url]')
-    .replace(GOOGLE_PLAY_PURCHASE, '[redacted-play-purchase]')
+    .replace(GOOGLE_PLAY_ORDER, '[redacted-play-purchase]')
+    .replace(PURCHASE_TOKEN_KEY, '$1=[redacted-play-token]')
     .replace(HEX32, '[redacted-hex32]')
+    .replace(HEX, '[redacted-hex]')
     .replace(EMAIL, '[redacted-email]')
     .replace(PHONE, '[redacted-phone]')
     .replace(UNIX_PATH, (match, path) => match.replace(path, '[redacted-path]'))
-    .replace(HEX, '[redacted-hex]')
     .replace(BASE64, (match) =>
       match.includes('redacted') ? match : '[redacted-base64]',
     );
@@ -66,11 +84,20 @@ export function filterDartStackFrames(stack: string): string {
   return kept.join('\n');
 }
 
-function scrubbedFirstLine(runtimeType: string, rawMessage: string): string {
+function scrubbedFirstLine(
+  runtimeType: string,
+  rawMessage: string,
+  rawRuntimeType?: string,
+): string {
   let body = rawMessage;
-  const prefix = `${runtimeType}: `;
-  if (body.startsWith(prefix)) {
-    body = body.slice(prefix.length);
+  for (const type of new Set(
+    [runtimeType, rawRuntimeType].filter((t): t is string => Boolean(t)),
+  )) {
+    const prefix = `${type}: `;
+    if (body.startsWith(prefix)) {
+      body = body.slice(prefix.length);
+      break;
+    }
   }
   body = body.split(/\r?\n/)[0] ?? '';
   body = truncateText(body, CRASH_MESSAGE_PRE);
@@ -81,8 +108,8 @@ function scrubbedFirstLine(runtimeType: string, rawMessage: string): string {
 }
 
 export function prepareCrashMessage(runtimeType: string, rawMessage: string): string {
-  const safeType = truncateText(redactCrashSecrets(runtimeType), RUNTIME_TYPE_MAX);
-  return scrubbedFirstLine(safeType, rawMessage);
+  const safeType = sanitizeCrashRuntimeType(runtimeType);
+  return scrubbedFirstLine(safeType, rawMessage, runtimeType);
 }
 
 export function prepareCrashStack(rawStack: string): string {
