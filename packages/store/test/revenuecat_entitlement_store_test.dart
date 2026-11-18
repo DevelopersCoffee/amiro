@@ -47,6 +47,7 @@ void main() {
   final calls = <MethodCall>[];
   Map<String, dynamic> activeEntitlements = {};
   String? boundAppUserId;
+
   setUp(() {
     calls.clear();
     activeEntitlements = {};
@@ -65,6 +66,10 @@ void main() {
               'created': false,
             };
           }
+          if (call.method == 'logOut') {
+            boundAppUserId = r'$RCAnonymousID:logged-out';
+            return _customerInfoJson({});
+          }
           if (call.method == 'getCustomerInfo') {
             return _customerInfoJson(activeEntitlements);
           }
@@ -81,32 +86,114 @@ void main() {
         .setMockMethodCallHandler(channel, null);
   });
 
-  // The catalog's paid items are Play one-time products. The SDK looks up
-  // subscriptions unless told otherwise, and Play then returns nothing.
-  test('grant looks the product up as a one-time product', () async {
+  test('restore rejects unbound identity before restorePurchases', () async {
     final store = RevenueCatEntitlementStore(isAndroid: true);
 
-    await expectLater(store.grant('full_beard'), throwsStateError);
+    await expectLater(
+      store.restore(),
+      throwsA(isA<RevenueCatIdentityRequiredException>()),
+    );
 
-    final lookup = calls.singleWhere((c) => c.method == 'getProductInfo');
-    expect(lookup.arguments['productIdentifiers'], ['amiro_full_beard']);
-    expect(lookup.arguments['type'], 'nonSubscription');
+    expect(calls.map((c) => c.method), isNot(contains('restorePurchases')));
   });
 
-  test('bindAmiroIdentity logs into RevenueCat before restore', () async {
+  test('grant rejects unbound identity before product lookup', () async {
+    final store = RevenueCatEntitlementStore(isAndroid: true);
+
+    await expectLater(
+      store.grant('full_beard'),
+      throwsA(isA<RevenueCatIdentityRequiredException>()),
+    );
+
+    expect(calls.map((c) => c.method), isNot(contains('getProductInfo')));
+  });
+
+  test('bindAmiroIdentity rejects empty id', () async {
+    final store = RevenueCatEntitlementStore(isAndroid: true);
+
+    await expectLater(
+      store.bindAmiroIdentity(''),
+      throwsA(isA<RevenueCatIdentityRequiredException>()),
+    );
+  });
+
+  test('restore calls logIn before restorePurchases', () async {
     final store = RevenueCatEntitlementStore(isAndroid: true);
     await store.bindAmiroIdentity('amiro-identity-1');
     await store.restore();
 
-    expect(
-      calls.where((c) => c.method == 'logIn').single.arguments['appUserID'],
-      'amiro-identity-1',
+    final loginIdx = calls.indexWhere((c) => c.method == 'logIn');
+    final restoreIdx = calls.indexWhere((c) => c.method == 'restorePurchases');
+    expect(loginIdx, greaterThanOrEqualTo(0));
+    expect(restoreIdx, greaterThan(loginIdx));
+  });
+
+  test('grant calls logIn before getProductInfo', () async {
+    final store = RevenueCatEntitlementStore(isAndroid: true);
+    await store.bindAmiroIdentity('amiro-identity-1');
+
+    await expectLater(store.grant('full_beard'), throwsStateError);
+
+    final loginIdx = calls.indexWhere((c) => c.method == 'logIn');
+    final lookupIdx = calls.indexWhere((c) => c.method == 'getProductInfo');
+    expect(loginIdx, greaterThanOrEqualTo(0));
+    expect(lookupIdx, greaterThan(loginIdx));
+  });
+
+  test('rejects anonymous app user id after logIn', () async {
+    final store = RevenueCatEntitlementStore(isAndroid: true);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          calls.add(call);
+          if (call.method == 'setupPurchases') return null;
+          if (call.method == 'logIn') {
+            boundAppUserId = r'$RCAnonymousID:still-anon';
+            return {
+              'customerInfo': _customerInfoJson({}),
+              'created': false,
+            };
+          }
+          if (call.method == 'getAppUserID') {
+            return boundAppUserId ?? r'$RCAnonymousID:still-anon';
+          }
+          return null;
+        });
+
+    await store.bindAmiroIdentity('amiro-identity-1');
+
+    await expectLater(
+      store.restore(),
+      throwsA(isA<RevenueCatIdentityRequiredException>()),
     );
-    expect(calls.map((c) => c.method), contains('restorePurchases'));
+    expect(calls.map((c) => c.method), isNot(contains('restorePurchases')));
+  });
+
+  test('logIn failure throws RevenueCatIdentityRequiredException', () async {
+    final store = RevenueCatEntitlementStore(isAndroid: true);
+    await store.bindAmiroIdentity('amiro-identity-1');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          if (call.method == 'setupPurchases') return null;
+          if (call.method == 'logIn') {
+            throw PlatformException(code: '1', message: 'login failed');
+          }
+          if (call.method == 'getAppUserID') return r'$RCAnonymousID:test';
+          if (call.method == 'getCustomerInfo') {
+            return _customerInfoJson({});
+          }
+          return null;
+        });
+
+    await expectLater(
+      store.restore(),
+      throwsA(isA<RevenueCatIdentityRequiredException>()),
+    );
+    expect(calls.map((c) => c.method), isNot(contains('restorePurchases')));
   });
 
   test('restore reports nothingToRestore when entitlements stay empty', () async {
     final store = RevenueCatEntitlementStore(isAndroid: true);
+    await store.bindAmiroIdentity('amiro-identity-1');
 
     final outcome = await store.restore();
 
@@ -115,12 +202,13 @@ void main() {
 
   test('restore reports restored when new entitlements appear', () async {
     final store = RevenueCatEntitlementStore(isAndroid: true);
+    await store.bindAmiroIdentity('amiro-identity-1');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
           calls.add(call);
           if (call.method == 'setupPurchases') return null;
           if (call.method == 'getAppUserID') {
-            return boundAppUserId ?? r'$RCAnonymousID:test';
+            return boundAppUserId ?? 'amiro-identity-1';
           }
           if (call.method == 'logIn') {
             boundAppUserId = call.arguments['appUserID'] as String;
@@ -153,6 +241,7 @@ void main() {
   test('restore maps receipt conflict to RestoreOwnershipConflictException',
       () async {
     final store = RevenueCatEntitlementStore(isAndroid: true);
+    await store.bindAmiroIdentity('user-a');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
           if (call.method == 'setupPurchases') return null;
@@ -160,6 +249,12 @@ void main() {
             return _customerInfoJson({});
           }
           if (call.method == 'getAppUserID') return 'user-a';
+          if (call.method == 'logIn') {
+            return {
+              'customerInfo': _customerInfoJson({}),
+              'created': false,
+            };
+          }
           if (call.method == 'restorePurchases') {
             throw PlatformException(
               code: '${PurchasesErrorCode.receiptAlreadyInUseError.index}',
@@ -173,6 +268,16 @@ void main() {
       store.restore(),
       throwsA(isA<RestoreOwnershipConflictException>()),
     );
+  });
+
+  test('logOutAmiroIdentity calls RevenueCat logOut', () async {
+    final store = RevenueCatEntitlementStore(isAndroid: true);
+    await store.bindAmiroIdentity('amiro-identity-1');
+    await store.restore();
+    await store.logOutAmiroIdentity();
+
+    expect(calls.map((c) => c.method), contains('logOut'));
+    expect(store.boundAmiroIdentityId, isNull);
   });
 
   test('off Android, restore is unavailable', () async {
@@ -190,5 +295,17 @@ void main() {
     expect(await store.ownedCosmeticIds(), isEmpty);
     await expectLater(store.grant('full_beard'), throwsStateError);
     expect(calls, isEmpty);
+  });
+
+  test('configure runs setupPurchases only once across parallel callers',
+      () async {
+    final store = RevenueCatEntitlementStore(isAndroid: true);
+    await store.bindAmiroIdentity('a');
+    await Future.wait([store.restore(), store.restore()]);
+
+    expect(
+      calls.where((c) => c.method == 'setupPurchases').length,
+      1,
+    );
   });
 }

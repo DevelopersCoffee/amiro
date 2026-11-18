@@ -364,9 +364,15 @@ void main() {
     await pumpStoreReady(tester);
 
     await tester.tap(find.text('Restore purchases'));
-    await pumpUntilFound(tester, find.textContaining('Restore failed'));
+    await pumpUntilFound(
+      tester,
+      find.text('Restore failed. Try again or check your connection.'),
+    );
 
-    expect(find.textContaining('Restore failed'), findsOneWidget);
+    expect(
+      find.text('Restore failed. Try again or check your connection.'),
+      findsOneWidget,
+    );
     expect(find.widgetWithText(FilledButton, 'Buy \$2.99'), findsOneWidget);
   });
 

@@ -7,6 +7,8 @@ class RevenueCatActivatedNotifier extends Notifier<bool> {
   bool build() => false;
 
   void activate() => state = true;
+
+  void deactivate() => state = false;
 }
 
 final revenueCatActivatedProvider =

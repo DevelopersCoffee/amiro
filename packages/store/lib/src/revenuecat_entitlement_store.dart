@@ -15,6 +15,7 @@ class RevenueCatEntitlementStore implements EntitlementStore {
   final bool _isAndroid;
   bool _configured = false;
   String? _boundAmiroIdentityId;
+  Future<bool>? _configureInFlight;
 
   /// True after [Purchases.configure] succeeded on this instance.
   bool get isConfigured => _configured;
@@ -31,10 +32,27 @@ class RevenueCatEntitlementStore implements EntitlementStore {
   /// project is set to **Keep with original App User ID** (see
   /// `docs/qa/restore-purchases-device.md`).
   Future<void> bindAmiroIdentity(String identityId) async {
-    if (identityId.isEmpty) return;
+    if (identityId.isEmpty) {
+      throw const RevenueCatIdentityRequiredException();
+    }
     _boundAmiroIdentityId = identityId;
     if (_configured) {
-      await _ensureLoggedInAsIdentity();
+      await _requireIdentifiedRevenueCatUser();
+    }
+  }
+
+  /// Clears the Amiro binding and logs out of RevenueCat so the next identity
+  /// does not inherit entitlements in memory.
+  Future<void> logOutAmiroIdentity() async {
+    _boundAmiroIdentityId = null;
+    if (!_configured) return;
+    try {
+      await Purchases.logOut();
+    } on PlatformException catch (e) {
+      final code = PurchasesErrorHelper.getErrorCode(e);
+      if (code != PurchasesErrorCode.logOutWithAnonymousUserError) {
+        throw const RevenueCatIdentityRequiredException();
+      }
     }
   }
 
@@ -43,24 +61,41 @@ class RevenueCatEntitlementStore implements EntitlementStore {
   Future<bool> _ensureConfigured() async {
     if (_configured) return true;
     if (!_isAndroid) {
-      // iOS has no App Store Connect credentials registered in RevenueCat
-      // yet, so purchases would fail server-side validation — see
-      // TODOS.md. Treat iOS as "no purchases available" rather than
-      // crashing.
       return false;
     }
+    _configureInFlight ??= _configureOnce();
+    try {
+      return await _configureInFlight!;
+    } catch (_) {
+      _configureInFlight = null;
+      rethrow;
+    }
+  }
+
+  Future<bool> _configureOnce() async {
     await Purchases.configure(PurchasesConfiguration(revenueCatAndroidApiKey));
     _configured = true;
-    await _ensureLoggedInAsIdentity();
     return true;
   }
 
-  Future<void> _ensureLoggedInAsIdentity() async {
+  Future<void> _requireIdentifiedRevenueCatUser() async {
     final id = _boundAmiroIdentityId;
-    if (id == null || id.isEmpty) return;
-    final current = await Purchases.appUserID;
-    if (current != id) {
-      await Purchases.logIn(id);
+    if (id == null || id.isEmpty) {
+      throw const RevenueCatIdentityRequiredException();
+    }
+    try {
+      final current = await Purchases.appUserID;
+      if (current != id) {
+        await Purchases.logIn(id);
+      }
+      final appUserId = await Purchases.appUserID;
+      if (appUserId.isEmpty || appUserId.startsWith(r'$RCAnonymous')) {
+        throw const RevenueCatIdentityRequiredException();
+      }
+    } on RevenueCatIdentityRequiredException {
+      rethrow;
+    } on PlatformException {
+      throw const RevenueCatIdentityRequiredException();
     }
   }
 
@@ -80,7 +115,7 @@ class RevenueCatEntitlementStore implements EntitlementStore {
   @override
   Future<Set<String>> ownedCosmeticIds() async {
     if (!await _ensureConfigured()) return const {};
-    await _ensureLoggedInAsIdentity();
+    await _requireIdentifiedRevenueCatUser();
     final info = await Purchases.getCustomerInfo();
     return _ownedFromCustomerInfo(info);
   }
@@ -90,7 +125,7 @@ class RevenueCatEntitlementStore implements EntitlementStore {
     if (!await _ensureConfigured()) {
       return const RestoreOutcome.unavailable();
     }
-    await _ensureLoggedInAsIdentity();
+    await _requireIdentifiedRevenueCatUser();
     final before = await ownedCosmeticIds();
     try {
       final info = await Purchases.restorePurchases();
@@ -115,7 +150,7 @@ class RevenueCatEntitlementStore implements EntitlementStore {
   /// join key stored next to the profile in Supabase.
   Future<String?> appUserId() async {
     if (!await _ensureConfigured()) return null;
-    await _ensureLoggedInAsIdentity();
+    await _requireIdentifiedRevenueCatUser();
     return Purchases.appUserID;
   }
 
@@ -127,10 +162,8 @@ class RevenueCatEntitlementStore implements EntitlementStore {
         'credentials are configured in RevenueCat.',
       );
     }
-    await _ensureLoggedInAsIdentity();
+    await _requireIdentifiedRevenueCatUser();
     final storeId = _storeProductId(cosmeticId);
-    // Catalog items are Play one-time products; getProducts looks up
-    // subscriptions unless told otherwise and would find nothing.
     final products = await Purchases.getProducts([
       storeId,
     ], productCategory: ProductCategory.nonSubscription);
@@ -152,8 +185,5 @@ class RevenueCatEntitlementStore implements EntitlementStore {
       }
       rethrow;
     }
-    // A successful purchaseStoreProduct means RevenueCat's on-device
-    // CustomerInfo cache already reflects the new entitlement — no need
-    // to re-fetch here.
   }
 }

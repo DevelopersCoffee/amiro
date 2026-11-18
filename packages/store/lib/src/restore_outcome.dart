@@ -27,6 +27,16 @@ final class RestoreUnavailable extends RestoreOutcome {
   const RestoreUnavailable();
 }
 
+/// Thrown when purchase or restore would run without a bound Amiro identity
+/// or while RevenueCat still reports an anonymous App User ID.
+class RevenueCatIdentityRequiredException implements Exception {
+  const RevenueCatIdentityRequiredException();
+
+  @override
+  String toString() =>
+      'RevenueCat purchases require an Amiro identity to be set up first.';
+}
+
 /// Thrown when RevenueCat refuses to attach a receipt because it belongs to a
 /// different identified App User ID ([PurchasesErrorCode.receiptAlreadyInUseError]
 /// or [PurchasesErrorCode.receiptInUseByOtherSubscriberError]) — expected when

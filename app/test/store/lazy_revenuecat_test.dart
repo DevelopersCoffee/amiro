@@ -17,16 +17,20 @@ void main() {
   const channel = MethodChannel('purchases_flutter');
   final calls = <MethodCall>[];
 
+  String? linkedAppUserId;
+
   setUp(() {
     calls.clear();
+    linkedAppUserId = null;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
           calls.add(call);
           if (call.method == 'setupPurchases') return null;
           if (call.method == 'getAppUserID') {
-            return r'$RCAnonymousID:test';
+            return linkedAppUserId ?? r'$RCAnonymousID:test';
           }
           if (call.method == 'logIn') {
+            linkedAppUserId = call.arguments['appUserID'] as String;
             return {
               'customerInfo': <String, dynamic>{
                 'entitlements': {
