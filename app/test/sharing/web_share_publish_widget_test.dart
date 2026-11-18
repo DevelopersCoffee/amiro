@@ -121,6 +121,9 @@ void main() {
     await pumpUntilFound(tester, find.byKey(const Key('webSharePublishButton')));
 
     await tester.tap(find.byKey(const Key('webSharePublishButton')));
+    await tester.runAsync(() async {
+      await Future<void>.delayed(Duration.zero);
+    });
     await pumpUntilFound(tester, find.byKey(const Key('webSharePublishedUri')));
 
     expect(service.publishCalls, 1);
@@ -156,6 +159,9 @@ void main() {
     await pumpUntilFound(tester, find.byKey(const Key('shareQrCode')));
     await pumpUntilFound(tester, find.byKey(const Key('webShareRevokeButton')));
     await tester.tap(find.byKey(const Key('webShareRevokeButton')));
+    await tester.runAsync(() async {
+      await Future<void>.delayed(Duration.zero);
+    });
     await pumpUntilAbsent(
       tester,
       find.byKey(const Key('webSharePublishedUri')),

@@ -141,7 +141,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
   }) async {
     final client = ref.read(webShareClientProvider);
     if (client == null || !client.canPublish) return;
-    final state = ref.read(webShareStateProvider).value ?? WebShareState.empty;
+    final state = await ref.read(webShareStateProvider.future);
     if (!state.consentGiven) {
       final accepted = await showWebShareConsentDialog(context);
       if (accepted != true || !mounted) return;
@@ -179,7 +179,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
 
   Future<void> _revokeWebShare() async {
     final client = ref.read(webShareClientProvider);
-    final state = ref.read(webShareStateProvider).value ?? WebShareState.empty;
+    final state = await ref.read(webShareStateProvider.future);
     final token = state.activeToken;
     if (client == null || token == null) return;
     setState(() => _webBusy = true);
@@ -204,7 +204,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
     required EncounterShareOptions shareOptions,
   }) async {
     final client = ref.read(webShareClientProvider);
-    final state = ref.read(webShareStateProvider).value ?? WebShareState.empty;
+    final state = await ref.read(webShareStateProvider.future);
     final existing = state.activeToken;
     if (client == null || existing == null) return;
     setState(() => _webBusy = true);
