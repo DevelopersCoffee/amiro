@@ -13,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:identity_core/identity_core.dart';
 import 'package:nfc/nfc.dart';
 
+import 'package:amiro_app/avatar/avatar_loader.dart';
 import 'package:amiro_app/avatar/avatar_providers.dart';
 import 'package:amiro_app/identity/identity_providers.dart';
 import 'package:amiro_app/sharing/sharing_preferences_providers.dart';
@@ -33,6 +34,8 @@ Identity _identity() => Identity(
 );
 
 void main() {
+  setUp(resetAvatarLoadChainForTest);
+
   testWidgets('publish shows consent then stores https link', (tester) async {
     if (!kWebSharePublishEnabled) {
       return;
@@ -63,6 +66,7 @@ void main() {
         ),
       ),
     );
+    await pumpAfterAvatarLoad(tester);
     await pumpUntilFound(tester, find.byKey(const Key('webSharePublishButton')));
 
     await tester.tap(find.byKey(const Key('webSharePublishButton')));
@@ -77,6 +81,7 @@ void main() {
     if (!kWebSharePublishEnabled) {
       return;
     }
+    useTallTestViewport(tester);
     final service = FakeWebShareService();
     final dir = Directory.systemTemp.createTempSync('web_share_revoke_');
     final prefs = WebSharePreferences.inDirectory(dir);
