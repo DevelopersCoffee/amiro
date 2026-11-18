@@ -33,12 +33,12 @@ void main() {
   test('persisted daily cap survives a new throttle instance', () {
     final dir = Directory.systemTemp.createTempSync('amiro-throttle-');
     final store = CrashUploadThrottleStore.inDirectory(dir);
-    final clock = () => DateTime.utc(2026, 11, 18);
+    DateTime fixedClock() => DateTime.utc(2026, 11, 18);
     final first = CrashUploadThrottle(
       maxPerSession: 100,
       maxPerDay: 3,
       store: store,
-      clock: clock,
+      clock: fixedClock,
     );
     expect(first.tryReserveUploadSlot('a'), isTrue);
     expect(first.tryReserveUploadSlot('b'), isTrue);
@@ -49,7 +49,7 @@ void main() {
       maxPerSession: 100,
       maxPerDay: 3,
       store: store,
-      clock: clock,
+      clock: fixedClock,
     );
     expect(second.tryReserveUploadSlot('e'), isFalse);
     dir.deleteSync(recursive: true);

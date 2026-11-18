@@ -29,7 +29,8 @@ final RegExp _googlePlayOrderIdPattern = RegExp(
   r'GPA\.[0-9A-Za-z\-_]{12,200}',
 );
 final RegExp _purchaseTokenKeyValuePattern = RegExp(
-  r'''(?i)(purchase[_-]?token)\s*[=:]\s*['"]?([A-Za-z0-9._\-+/=]+)''',
+  r'''(purchase[_-]?token)\s*[=:]\s*['"]?([A-Za-z0-9._\-+/=]+)''',
+  caseSensitive: false,
 );
 final RegExp _hexPattern = RegExp(r'(?<![\w/])[0-9a-fA-F]{16,128}(?![\w/])');
 final RegExp _base64Pattern = RegExp(r'[A-Za-z0-9+/_\-]{20,}={0,2}');
