@@ -125,5 +125,5 @@ void main() {
 
     expect(service.revokeCalls, 1);
     expect(find.byKey(const Key('webSharePublishedUri')), findsNothing);
-  }, skip: _kSkipWebShareWidgetTests);
+  }, skip: _kSkipWebShareWidgetTests ? true : null);
 }
