@@ -12,6 +12,7 @@ import 'package:discovery/discovery.dart';
 
 import 'app.dart';
 import 'crash/crash_reporter.dart';
+import 'crash/crash_upload_preferences.dart';
 import 'identity/cloud_backup_preferences.dart';
 import 'identity/profile_secrets_store.dart';
 import 'identity/supabase_profile_cloud.dart';
@@ -26,13 +27,23 @@ void main() async {
 
   final supportDir = await getApplicationSupportDirectory();
   final ingestUrl = const String.fromEnvironment('AMIRO_CRASH_INGEST_URL');
+  final crashUploadPreferences =
+      CrashUploadPreferences.inDirectory(supportDir);
+  final crashSinks = <CrashSink>[
+    FileCrashSink(File('${supportDir.path}/crashes.jsonl')),
+  ];
+  if (ingestUrl.isNotEmpty) {
+    crashSinks.add(
+      ConsentGatedHttpCrashSink(
+        crashUploadPreferences,
+        HttpCrashSink(Uri.parse(ingestUrl)),
+      ),
+    );
+  }
   installCrashReporting(
     CrashReporter(
       appVersion: '1.0.6+12',
-      sinks: [
-        FileCrashSink(File('${supportDir.path}/crashes.jsonl')),
-        if (ingestUrl.isNotEmpty) HttpCrashSink(Uri.parse(ingestUrl)),
-      ],
+      sinks: crashSinks,
     ),
   );
   final isar = await openIdentityIsar(directory: supportDir.path);
@@ -69,6 +80,7 @@ void main() async {
       overrides: amiroLaunchProviderOverrides(
         identityRepository: repository,
         cloudBackupPreferences: backupPreferences,
+        crashUploadPreferences: crashUploadPreferences,
         profileCloud: profileCloud,
         avatarRenderer: avatarRenderer,
         avatarRendererFactory: ThermionAvatarRenderer.create,

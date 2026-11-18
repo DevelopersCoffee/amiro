@@ -3,6 +3,9 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import 'crash_scrub.dart';
+import 'crash_upload_preferences.dart';
+
 /// Where a captured crash is delivered. Implementations must not throw;
 /// [CrashReporter] already swallows sink failures so a broken reporter
 /// cannot take down the error path.
@@ -53,6 +56,20 @@ class HttpCrashSink implements CrashSink {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw HttpException('crash ingest ${response.statusCode}', uri: uri);
     }
+  }
+}
+
+/// Skips the network unless the user opted in; scrubs message and stack first.
+class ConsentGatedHttpCrashSink implements CrashSink {
+  ConsentGatedHttpCrashSink(this.preferences, this.inner);
+
+  final CrashUploadPreferences preferences;
+  final HttpCrashSink inner;
+
+  @override
+  Future<void> send(Map<String, Object?> report) async {
+    if (!await preferences.isEnabled()) return;
+    await inner.send(scrubCrashReport(report));
   }
 }
 

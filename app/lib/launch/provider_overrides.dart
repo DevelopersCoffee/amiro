@@ -6,6 +6,7 @@ import 'package:nfc/nfc.dart';
 
 import '../avatar/avatar_providers.dart';
 import '../discovery/discovery_providers.dart';
+import '../crash/crash_upload_preferences.dart';
 import '../identity/cloud_backup_preferences.dart';
 import '../identity/identity_providers.dart';
 import '../identity/profile_cloud.dart';
@@ -18,6 +19,7 @@ import '../sharing/sharing_providers.dart';
 List<Override> amiroLaunchProviderOverrides({
   required IdentityRepository identityRepository,
   required CloudBackupPreferences cloudBackupPreferences,
+  required CrashUploadPreferences crashUploadPreferences,
   required ProfileCloud profileCloud,
   required AvatarRenderer avatarRenderer,
   required Future<AvatarRenderer> Function() avatarRendererFactory,
@@ -29,6 +31,7 @@ List<Override> amiroLaunchProviderOverrides({
   return [
     identityRepositoryProvider.overrideWithValue(identityRepository),
     cloudBackupPreferencesProvider.overrideWithValue(cloudBackupPreferences),
+    crashUploadPreferencesProvider.overrideWithValue(crashUploadPreferences),
     encounterSharePreferencesProvider.overrideWithValue(
       encounterSharePreferences,
     ),
