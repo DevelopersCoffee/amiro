@@ -6,6 +6,7 @@ import 'package:amiro_app/identity/profile_secrets_store.dart';
 import 'package:amiro_app/identity/supabase_profile_cloud.dart';
 import 'package:amiro_app/sharing/encounter_share_options.dart';
 import 'package:amiro_app/sharing/supabase_web_share_client.dart';
+import 'package:avatar_core/avatar_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:identity_core/identity_core.dart';
 
@@ -54,8 +55,21 @@ class _RpcHarness extends SupabaseProfileCloud {
   }
 }
 
-Identity _identity() =>
-    const Identity(id: 'id-1', displayName: 'Ada', username: 'ada');
+const _avatarJson =
+    '{"id":"default","body":"body_superhero_male","hair":"hair_simple_parted"}';
+
+Identity _identity() => const Identity(
+      id: 'id-1',
+      displayName: 'Ada',
+      username: 'ada',
+      avatarDefinitionJson: _avatarJson,
+    );
+
+AvatarDefinition _definition() => const AvatarDefinition(
+      id: 'default',
+      body: 'body_superhero_male',
+      hair: 'hair_simple_parted',
+    );
 
 void main() {
   test('parseWebShareRpcToken rejects 204 empty body', () {
@@ -75,7 +89,7 @@ void main() {
     final client = SupabaseWebShareClient(harness);
     final result = await client.rotate(
       identity: _identity(),
-      definition: null,
+      definition: _definition(),
       purchasedIds: const {},
       shareOptions: const EncounterShareOptions(),
       existingToken: 'oldtokenabcdefghijklmnopqrst',

@@ -65,7 +65,7 @@ void main() {
     await tester.tap(find.byKey(const Key('webSharePublishButton')));
     await pumpShort(tester);
     await tester.tap(find.byKey(const Key('webShareConsentAccept')));
-    await pumpShort(tester, frames: 20);
+    await tester.pumpAndSettle();
 
     expect(service.publishCalls, 1);
     expect(find.byKey(const Key('webSharePublishedUri')), findsOneWidget);
@@ -79,7 +79,7 @@ void main() {
     await prefs.write(
       const WebShareState(
         consentGiven: true,
-        activeToken: 'testtokenabcdefghij',
+        activeToken: 'testtokenabcdefghijklmnopqrst',
         useHttpsForQr: true,
       ),
     );
