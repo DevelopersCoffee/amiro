@@ -121,5 +121,5 @@ void main() {
 
     expect(service.revokeCalls, 1);
     expect(find.byKey(const Key('webSharePublishedUri')), findsNothing);
-  }, skip: true); // TODO(#80): re-enable with publish test above
+  });
 }
