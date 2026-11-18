@@ -6,9 +6,7 @@ import 'crash_upload_preferences.dart';
 
 /// Overridden in `main.dart`. Default: crash upload off.
 final crashUploadPreferencesProvider = Provider<CrashUploadPreferences>((ref) {
-  return CrashUploadPreferences.inDirectory(
-    Directory.systemTemp.createTempSync('amiro_crash_upload_default'),
-  );
+  return CrashUploadPreferences.inMemory();
 });
 
 /// True when the build defines `AMIRO_CRASH_INGEST_URL`. Tests may override.

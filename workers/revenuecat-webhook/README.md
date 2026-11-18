@@ -25,6 +25,19 @@ Play Billing purchase
      (revenuecat_events: full event log; entitlement_grants: current state)
 ```
 
+## Crash report ingest (`POST /crash/<token>`)
+
+Optional opt-in crash uploads from the Flutter app (see
+`docs/protocols/crash-report-data.md`). Configure:
+
+- `CRASH_PATH_TOKEN` — **not a secret**. It is compiled into release builds
+  via `--dart-define=AMIRO_CRASH_INGEST_URL=https://…/crash/<token>` so anyone
+  with the APK can see it. It only reduces drive-by spam alongside rate
+  limiting. To rotate: deploy a new token with `wrangler secret put
+  CRASH_PATH_TOKEN`, update the dart-define, and ship a new app build.
+- `CRASH_RATE_LIMITER` — configured in `wrangler.toml` (10 requests / minute
+  per IP).
+
 ## Secrets
 
 Set with `wrangler secret put <NAME>` (never commit these):
