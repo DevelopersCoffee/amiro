@@ -132,6 +132,16 @@ test('handleCrash rejects missing crash token', async () => {
   assert.equal(response.status, 404);
 });
 
+test('handleCrash returns 400 for invalid runtimeType', async () => {
+  const response = await handleCrash(
+    crashRequest({ ...validPayload, runtimeType: 'Not Valid' }),
+    baseEnv,
+    new URL('https://example.com/crash/crash-token'),
+  );
+  assert.equal(response.status, 400);
+  assert.equal(await response.text(), 'Invalid runtimeType');
+});
+
 test('handleCrash returns 503 when rate limiter binding is missing', async () => {
   const env = { ...baseEnv };
   delete env.CRASH_RATE_LIMITER;

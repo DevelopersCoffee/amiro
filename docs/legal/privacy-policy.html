@@ -121,11 +121,11 @@ traffic applies to you — free cosmetics unlock without a purchase request.</p>
   <li><strong>Upload is off by default.</strong> In Identity settings you can turn on
   <strong>Share crash reports</strong> to send scrubbed error text (message and stack) to
   our Cloudflare Worker, which stores it in Supabase for engineering review.</li>
-  <li>Only a short message (error type plus scrubbed summary), allowlisted Dart
-  <code>package:</code> / <code>dart:</code> stack frames, app version, and platform
-  are uploaded. Secrets such as JWTs, bearer tokens, UUIDs, emails, phone
-  numbers, and file paths are stripped on device and again on the server. Your
-  profile, passport, and purchase data are not included.</li>
+  <li>Only a short message (error type plus the <strong>scrubbed first line</strong> of the
+  error text), allowlisted Dart <code>package:</code> / <code>dart:</code> stack frames,
+  app version, and platform are uploaded. Known secret patterns are stripped on device and
+  again on the server; <strong>other incidental words in that line may still be present.</strong>
+  Your profile, passport, and purchase fields are not sent as structured data.</li>
   <li>Cloudflare may process your IP address in transit for DDoS protection and
   rate limiting; we do not store IP in the crash database.</li>
   <li>Server copies are deleted automatically after <strong>90 days</strong>.</li>

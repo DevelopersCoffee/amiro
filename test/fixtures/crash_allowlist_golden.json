@@ -71,14 +71,33 @@
       "expected": "identity mismatch for [redacted-hex32]"
     },
     {
-      "id": "google_play_purchase_token",
-      "input": "BillingClient: sync failed token GPA.1234-5678-9012-34567",
-      "expected": "BillingClient: sync failed token [redacted-play-purchase]"
+      "id": "google_play_order_id",
+      "input": "BillingClient: order GPA.1234-5678-9012-34567",
+      "expected": "BillingClient: order [redacted-play-order]"
+    },
+    {
+      "id": "google_play_purchase_token_field",
+      "input": "Billing purchaseToken=abcdefghijklmnopqrstuvwxyz012345",
+      "expected": "Billing [redacted-play-token]"
     },
     {
       "id": "google_play_purchase_underscore",
       "input": "Billing GPA.1234_5678-ABCD-EFGH-9012",
-      "expected": "Billing [redacted-play-purchase]"
+      "expected": "Billing [redacted-play-order]"
+    }
+  ],
+  "messageUpload": [
+    {
+      "id": "jwt_recovery_allowlist",
+      "runtimeType": "FormatException",
+      "input": "FormatException: {\"access_token\":\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig\",\"recovery_code\":\"3f9a1c0be2d74e8f9a0b1c2d3e4f5a6b\",\"displayName\":\"Priya Sharma\"}",
+      "expected": "FormatException: {\"access_token\":\"[redacted-jwt]\",\"recovery_code\":\"[redacted-hex32]\",\"displayName\":\"[redacted-text]\"}"
+    },
+    {
+      "id": "profile_username_bio",
+      "runtimeType": "StateError",
+      "input": "StateError: {\"username\":\"priya_s\",\"bio\":\"Coffee enthusiast in Mumbai\"}",
+      "expected": "StateError: {\"username\":\"[redacted-text]\",\"bio\":\"[redacted-text]\"}"
     }
   ],
   "stackFilter": {

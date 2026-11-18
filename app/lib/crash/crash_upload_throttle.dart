@@ -1,4 +1,5 @@
 /// Limits crash uploads to avoid tight-loop POST storms when opted in.
+/// Quota is consumed synchronously on each upload **attempt** (not on success).
 class CrashUploadThrottle {
   CrashUploadThrottle({
     this.maxPerSession = 5,
@@ -10,8 +11,8 @@ class CrashUploadThrottle {
   final int maxPerDay;
   final DateTime Function() _clock;
 
-  int _sessionCount = 0;
-  int _dailyCount = 0;
+  int _sessionAttempts = 0;
+  int _dailyAttempts = 0;
   String? _dayKey;
   final Set<String> _fingerprints = {};
 
@@ -20,28 +21,31 @@ class CrashUploadThrottle {
     final key = '${now.year}-${now.month}-${now.day}';
     if (_dayKey != key) {
       _dayKey = key;
-      _dailyCount = 0;
+      _dailyAttempts = 0;
     }
   }
 
-  bool shouldUpload(String fingerprint) {
+  /// Synchronous gate: counts this attempt and returns false when over quota or duplicate.
+  bool tryConsumeUploadQuota(String fingerprint) {
     _rollDay();
-    if (_sessionCount >= maxPerSession) return false;
-    if (_dailyCount >= maxPerDay) return false;
-    if (_fingerprints.contains(fingerprint)) return false;
+    if (_fingerprints.contains(fingerprint)) {
+      return false;
+    }
+    if (_sessionAttempts >= maxPerSession) {
+      return false;
+    }
+    if (_dailyAttempts >= maxPerDay) {
+      return false;
+    }
+    _sessionAttempts += 1;
+    _dailyAttempts += 1;
+    _fingerprints.add(fingerprint);
     return true;
   }
 
-  void recordUpload(String fingerprint) {
-    _rollDay();
-    _sessionCount += 1;
-    _dailyCount += 1;
-    _fingerprints.add(fingerprint);
-  }
-
   void reset() {
-    _sessionCount = 0;
-    _dailyCount = 0;
+    _sessionAttempts = 0;
+    _dailyAttempts = 0;
     _dayKey = null;
     _fingerprints.clear();
   }

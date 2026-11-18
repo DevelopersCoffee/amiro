@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:io';
 
 import 'package:amiro_app/identity/profile_cloud.dart';
@@ -20,9 +22,6 @@ import '../avatar/fake_avatar_renderer.dart';
 import '../identity/in_memory_identity_repository.dart';
 import '../pump_helpers.dart';
 import 'fake_web_share_service.dart';
-
-// TODO(#81): Flaky in CI (publish/revoke pumps); re-enable when web profile work lands.
-const bool _kSkipWebShareWidgetTests = true;
 
 const _defaultAvatarJson =
     '{"id":"default","body":"body_superhero_male","hair":"hair_simple_parted"}';
@@ -73,7 +72,7 @@ void main() {
     expect(service.publishCalls, 1);
     expect(find.byKey(const Key('webSharePublishedUri')), findsOneWidget);
     expect(find.textContaining('https://'), findsWidgets);
-  }, skip: _kSkipWebShareWidgetTests ? true : null);
+  });
 
   testWidgets('revoke clears published uri', (tester) async {
     final service = FakeWebShareService();
@@ -114,5 +113,5 @@ void main() {
 
     expect(service.revokeCalls, 1);
     expect(find.byKey(const Key('webSharePublishedUri')), findsNothing);
-  }, skip: _kSkipWebShareWidgetTests ? true : null);
+  });
 }

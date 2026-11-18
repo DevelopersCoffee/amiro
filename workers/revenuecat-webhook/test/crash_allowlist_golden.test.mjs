@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import {
   filterDartStackFrames,
+  prepareCrashMessage,
   redactCrashSecrets,
   scrubCrashPayload,
 } from '../src/crash_allowlist.ts';
@@ -18,6 +19,15 @@ const golden = JSON.parse(
 for (const entry of golden.secretRedaction) {
   test(`secret redaction: ${entry.id}`, () => {
     assert.equal(redactCrashSecrets(entry.input), entry.expected);
+  });
+}
+
+for (const entry of golden.messageUpload) {
+  test(`message upload allowlist: ${entry.id}`, () => {
+    assert.equal(
+      prepareCrashMessage(entry.runtimeType, entry.input),
+      entry.expected,
+    );
   });
 }
 

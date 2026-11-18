@@ -19,7 +19,7 @@ The client does **not** send profile fields, purchase IDs, recovery codes, or
 device advertising identifiers. Before upload, only the first line of the
 message is considered; that line is scrubbed for JWTs, bearer tokens, UUIDs,
 URLs (including query/fragment tokens), **32-character hex strings**, **Google
-Play purchase tokens** (`GPA.…`), emails, phone numbers, and file paths
+Play **order IDs** (`GPA.…`) and explicit `purchaseToken` fields, emails, phone numbers, and file paths
 (Unix, `file://`, and Windows-shaped). **Scrubbing is pattern-based:** incidental
 free text (for example a `displayName` inside a JSON fragment) may still appear
 if it does not match a redaction rule.

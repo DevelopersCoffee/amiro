@@ -3,6 +3,9 @@ import {
   CRASH_BODY_MAX_BYTES,
   CRASH_PLATFORMS,
   CRASH_SOURCES,
+  DART_RUNTIME_TYPE_PATTERN,
+  RUNTIME_TYPE_MAX,
+  redactCrashSecrets,
   scrubCrashPayload,
 } from './crash_allowlist.ts';
 import { constantTimeEqual } from './security.ts';
@@ -132,7 +135,10 @@ function validateCrashBody(body: unknown):
     typeof record.runtimeType === 'string' && record.runtimeType.length > 0
       ? record.runtimeType
       : 'Error';
-  const runtimeType = rawRuntimeType;
+  const runtimeType = redactCrashSecrets(rawRuntimeType).slice(0, RUNTIME_TYPE_MAX);
+  if (!DART_RUNTIME_TYPE_PATTERN.test(runtimeType)) {
+    return { ok: false, status: 400, body: 'Invalid runtimeType' };
+  }
   return {
     ok: true,
     data: {

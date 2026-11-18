@@ -21,6 +21,19 @@ void main() {
     });
   }
 
+  for (final entry in fixture['messageUpload'] as List) {
+    final map = entry as Map<String, dynamic>;
+    test('message upload allowlist: ${map['id']}', () {
+      expect(
+        prepareCrashMessage(
+          map['runtimeType'] as String,
+          map['input'] as String,
+        ),
+        map['expected'],
+      );
+    });
+  }
+
   test('stack frame allowlist', () {
     final block = fixture['stackFilter'] as Map<String, dynamic>;
     expect(
