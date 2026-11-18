@@ -6,6 +6,11 @@ import 'package:nfc/nfc.dart';
 
 import '../avatar/avatar_providers.dart';
 import '../discovery/discovery_providers.dart';
+import '../analytics/analytics_install_id.dart';
+import '../analytics/analytics_once.dart';
+import '../analytics/analytics_preferences.dart';
+import '../analytics/analytics_providers.dart';
+import '../analytics/analytics_sink.dart';
 import '../crash/crash_providers.dart';
 import '../crash/crash_upload_preferences.dart';
 import '../identity/cloud_backup_preferences.dart';
@@ -23,6 +28,10 @@ List<Override> amiroLaunchProviderOverrides({
   required IdentityRepository identityRepository,
   required CloudBackupPreferences cloudBackupPreferences,
   required CrashUploadPreferences crashUploadPreferences,
+  required AnalyticsPreferences analyticsPreferences,
+  required AnalyticsInstallIdStore analyticsInstallIdStore,
+  required AnalyticsOnceStore analyticsOnceStore,
+  required List<AnalyticsSink> analyticsSinks,
   required ProfileCloud profileCloud,
   required AvatarRenderer avatarRenderer,
   required Future<AvatarRenderer> Function() avatarRendererFactory,
@@ -36,6 +45,10 @@ List<Override> amiroLaunchProviderOverrides({
     identityRepositoryProvider.overrideWithValue(identityRepository),
     cloudBackupPreferencesProvider.overrideWithValue(cloudBackupPreferences),
     crashUploadPreferencesProvider.overrideWithValue(crashUploadPreferences),
+    analyticsPreferencesProvider.overrideWithValue(analyticsPreferences),
+    analyticsInstallIdStoreProvider.overrideWithValue(analyticsInstallIdStore),
+    analyticsOnceStoreProvider.overrideWithValue(analyticsOnceStore),
+    analyticsSinksProvider.overrideWithValue(analyticsSinks),
     encounterSharePreferencesProvider.overrideWithValue(
       encounterSharePreferences,
     ),

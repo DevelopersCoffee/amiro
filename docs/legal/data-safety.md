@@ -47,10 +47,16 @@ user shares their card.
 
 ### App activity / App info and performance
 
-- None for analytics. No analytics SDKs.
+- **Product analytics (optional, opt-in):** Off by default. When you turn on
+  **Product analytics** under Privacy & diagnostics, the app may send
+  anonymous funnel counts (setup, first share, store, purchase) to our
+  Cloudflare Worker → Supabase. Allow-listed fields only; no encounter or
+  profile content. Install-scoped random id, not linked to identity or
+  RevenueCat. Builds need `AMIRO_ANALYTICS_INGEST_URL` (empty in default store
+  builds). No third-party analytics SDKs.
 - **Crash / diagnostics (optional, opt-in):** A JSON log may be written on
   device (`crashes.jsonl`). Upload to our Cloudflare Worker runs only after
-  you turn on **Share crash reports** in Identity settings (off by default),
+  you turn on **Share crash reports** in Privacy & diagnostics (off by default),
   and only in builds made with `AMIRO_CRASH_INGEST_URL` (empty in default
   store builds). Uploaded text is scrubbed on device and again on the server
   (emails, phone numbers, URLs with query strings, file paths). No profile or

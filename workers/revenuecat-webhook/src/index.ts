@@ -1,21 +1,16 @@
+import { handleAnalytics } from './analytics_handler.ts';
 import {
   CRASH_MESSAGE_MAX,
   CRASH_STACK_MAX,
   scrubCrashPayload,
 } from './crash_scrub.ts';
+import type { Env } from './env.ts';
 import {
   constantTimeEqual,
   verifyRevenueCatWebhookSignature,
 } from './security.ts';
 
-export interface Env {
-  WEBHOOK_PATH_TOKEN: string;
-  WEBHOOK_AUTHORIZATION?: string;
-  WEBHOOK_SIGNING_SECRET?: string;
-  CRASH_PATH_TOKEN?: string;
-  SUPABASE_URL: string;
-  SUPABASE_SERVICE_ROLE_KEY: string;
-}
+export type { Env } from './env.ts';
 
 interface RevenueCatEvent {
   id: string;
@@ -159,6 +154,9 @@ export default {
     const url = new URL(request.url);
     if (url.pathname.startsWith('/crash/')) {
       return handleCrash(request, env, url);
+    }
+    if (url.pathname.startsWith('/analytics/')) {
+      return handleAnalytics(request, env, url);
     }
     const pathToken = url.pathname.replace(/^\/webhook\//, '');
 

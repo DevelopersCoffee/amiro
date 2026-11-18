@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:store/store.dart';
 
+import '../analytics/analytics_funnel.dart';
 import 'revenue_cat_activation.dart';
 
 /// Real purchases go through RevenueCat/Play Billing; overridden in tests
@@ -46,6 +47,7 @@ class OwnedCosmeticsNotifier extends AsyncNotifier<Set<String>> {
     ref.read(revenueCatActivatedProvider.notifier).activate();
     final store = ref.read(entitlementStoreProvider);
     await store.grant(cosmeticId);
+    await ref.read(analyticsFunnelProvider).tryPurchase(cosmeticId);
     state = AsyncData(await store.ownedCosmeticIds());
   }
 }

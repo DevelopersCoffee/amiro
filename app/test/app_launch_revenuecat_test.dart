@@ -2,6 +2,9 @@ import 'dart:io';
 
 import 'package:amiro_app/app.dart';
 import 'package:amiro_app/avatar/avatar_loader.dart';
+import 'package:amiro_app/analytics/analytics_install_id.dart';
+import 'package:amiro_app/analytics/analytics_once.dart';
+import 'package:amiro_app/analytics/analytics_preferences.dart';
 import 'package:amiro_app/crash/crash_upload_preferences.dart';
 import 'package:amiro_app/identity/cloud_backup_preferences.dart';
 import 'package:amiro_app/identity/profile_cloud.dart';
@@ -76,6 +79,10 @@ void main() {
           identityRepository: InMemoryIdentityRepository(),
           cloudBackupPreferences: CloudBackupPreferences.inMemory(),
           crashUploadPreferences: CrashUploadPreferences.inMemory(),
+          analyticsPreferences: AnalyticsPreferences.inMemory(),
+          analyticsInstallIdStore: AnalyticsInstallIdStore.inMemory(),
+          analyticsOnceStore: AnalyticsOnceStore.inMemory(),
+          analyticsSinks: const [],
           profileCloud: const NoopProfileCloud(),
           avatarRenderer: FakeAvatarRenderer(),
           avatarRendererFactory: () async => FakeAvatarRenderer(),
@@ -121,6 +128,10 @@ void main() {
           identityRepository: InMemoryIdentityRepository(),
           cloudBackupPreferences: CloudBackupPreferences.inMemory(),
           crashUploadPreferences: CrashUploadPreferences.inMemory(),
+          analyticsPreferences: AnalyticsPreferences.inMemory(),
+          analyticsInstallIdStore: AnalyticsInstallIdStore.inMemory(),
+          analyticsOnceStore: AnalyticsOnceStore.inMemory(),
+          analyticsSinks: const [],
           profileCloud: const NoopProfileCloud(),
           avatarRenderer: FakeAvatarRenderer(),
           avatarRendererFactory: () async => FakeAvatarRenderer(),

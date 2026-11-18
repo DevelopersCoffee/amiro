@@ -6,11 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:identity_core/identity_core.dart';
 
+import '../analytics/analytics_consent_dialog.dart';
+import '../analytics/analytics_providers.dart';
 import '../avatar/avatar_defaults.dart';
 import '../crash/crash_providers.dart';
 import '../theme/amiro_card.dart';
 import '../theme/amiro_theme.dart';
 import '../theme/section_label.dart';
+import '../analytics/analytics_funnel.dart';
 import 'cloud_backup_consent_dialog.dart';
 import 'cloud_backup_enable.dart';
 import 'identity_providers.dart';
@@ -45,6 +48,8 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
   bool _cloudPrefsLoaded = false;
   bool _crashUploadEnabled = false;
   bool _crashPrefsLoaded = false;
+  bool _analyticsEnabled = false;
+  bool _analyticsPrefsLoaded = false;
   Timer? _saveTimer;
   Future<void> _saveQueue = Future<void>.value();
   String? _status;
@@ -78,12 +83,27 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
         });
       });
     }
-    if (ref.read(crashIngestConfiguredProvider)) {
-      ref.read(crashUploadPreferencesProvider).isEnabled().then((enabled) {
+    final telemetryConfigured =
+        ref.read(crashIngestConfiguredProvider) ||
+        ref.read(analyticsIngestConfiguredProvider);
+    if (telemetryConfigured) {
+      Future.wait([
+        if (ref.read(crashIngestConfiguredProvider))
+          ref.read(crashUploadPreferencesProvider).isEnabled(),
+        if (ref.read(analyticsIngestConfiguredProvider))
+          ref.read(analyticsPreferencesProvider).isEnabled(),
+      ]).then((values) {
         if (!mounted) return;
+        var i = 0;
         setState(() {
-          _crashUploadEnabled = enabled;
-          _crashPrefsLoaded = true;
+          if (ref.read(crashIngestConfiguredProvider)) {
+            _crashUploadEnabled = values[i++] as bool;
+            _crashPrefsLoaded = true;
+          }
+          if (ref.read(analyticsIngestConfiguredProvider)) {
+            _analyticsEnabled = values[i] as bool;
+            _analyticsPrefsLoaded = true;
+          }
         });
       });
     }
@@ -163,6 +183,16 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
       privacy: _isPublic.map((key, value) => MapEntry(key, PrivacyFlag(value))),
     );
     await ref.read(currentIdentityProvider.notifier).save(identity);
+    final avatarLoaded =
+        (identity.avatarDefinitionJson ?? '').trim().isNotEmpty;
+    if (avatarLoaded) {
+      unawaited(
+        ref.read(analyticsFunnelProvider).trySetupComplete(
+          identity,
+          avatarLoaded: true,
+        ),
+      );
+    }
     var remote = false;
     final backupOn =
         _cloudBackupEnabled ||
@@ -207,6 +237,21 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
     await ref.read(crashUploadPreferencesProvider).setEnabled(enabled);
     if (!mounted) return;
     setState(() => _crashUploadEnabled = enabled);
+  }
+
+  Future<void> _setAnalytics(bool enabled) async {
+    if (enabled && !_analyticsEnabled) {
+      final accepted = await showAnalyticsConsentDialog(context);
+      if (accepted != true || !mounted) return;
+    }
+    final prefs = ref.read(analyticsPreferencesProvider);
+    final service = ref.read(analyticsServiceProvider);
+    await prefs.setEnabled(enabled);
+    if (!enabled) {
+      await service.onConsentDisabled();
+    }
+    if (!mounted) return;
+    setState(() => _analyticsEnabled = enabled);
   }
 
   Future<void> _setCloudBackup(bool enabled) async {
@@ -454,25 +499,50 @@ class _IdentityEditScreenState extends ConsumerState<IdentityEditScreen> {
             ),
             const SizedBox(height: AmiroSpacing.md),
           ],
-          if (ref.watch(crashIngestConfiguredProvider) && _crashPrefsLoaded) ...[
+          if ((ref.watch(crashIngestConfiguredProvider) ||
+                  ref.watch(analyticsIngestConfiguredProvider)) &&
+              (_crashPrefsLoaded || _analyticsPrefsLoaded)) ...[
             AmiroCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SectionLabel('CRASH REPORTS'),
+                  const SectionLabel('PRIVACY & DIAGNOSTICS'),
                   const SizedBox(height: AmiroSpacing.sm),
                   Text(
-                    'Off by default. Turn on to send scrubbed error summaries '
-                    'so we can fix crashes. Your full log stays on this phone.',
+                    'Off by default. These never include encounter details or '
+                    'contact fields from your passport.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  SwitchListTile(
-                    key: const Key('crashUploadToggle'),
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Share crash reports'),
-                    value: _crashUploadEnabled,
-                    onChanged: (value) => unawaited(_setCrashUpload(value)),
-                  ),
+                  if (ref.watch(analyticsIngestConfiguredProvider) &&
+                      _analyticsPrefsLoaded) ...[
+                    const SizedBox(height: AmiroSpacing.sm),
+                    Material(
+                      color: Colors.transparent,
+                      child: SwitchListTile(
+                        key: const Key('analyticsToggle'),
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Product analytics'),
+                        subtitle: const Text(
+                          'Anonymous counts like setup and first share',
+                        ),
+                        value: _analyticsEnabled,
+                        onChanged: (value) => unawaited(_setAnalytics(value)),
+                      ),
+                    ),
+                  ],
+                  if (ref.watch(crashIngestConfiguredProvider) &&
+                      _crashPrefsLoaded)
+                    Material(
+                      color: Colors.transparent,
+                      child: SwitchListTile(
+                        key: const Key('crashUploadToggle'),
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Share crash reports'),
+                        subtitle: const Text('Scrubbed error summaries only'),
+                        value: _crashUploadEnabled,
+                        onChanged: (value) => unawaited(_setCrashUpload(value)),
+                      ),
+                    ),
                 ],
               ),
             ),
