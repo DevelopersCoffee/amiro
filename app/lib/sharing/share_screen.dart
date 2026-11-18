@@ -141,7 +141,9 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
   }) async {
     final client = ref.read(webShareClientProvider);
     if (client == null || !client.canPublish) return;
-    final state = await ref.read(webShareStateProvider.future);
+    final stateAsync = ref.read(webShareStateProvider);
+    if (!stateAsync.hasValue) return;
+    final state = stateAsync.requireValue;
     if (!state.consentGiven) {
       final accepted = await showWebShareConsentDialog(context);
       if (accepted != true || !mounted) return;
@@ -179,7 +181,9 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
 
   Future<void> _revokeWebShare() async {
     final client = ref.read(webShareClientProvider);
-    final state = await ref.read(webShareStateProvider.future);
+    final stateAsync = ref.read(webShareStateProvider);
+    if (!stateAsync.hasValue) return;
+    final state = stateAsync.requireValue;
     final token = state.activeToken;
     if (client == null || token == null) return;
     setState(() => _webBusy = true);
@@ -204,7 +208,9 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
     required EncounterShareOptions shareOptions,
   }) async {
     final client = ref.read(webShareClientProvider);
-    final state = await ref.read(webShareStateProvider.future);
+    final stateAsync = ref.read(webShareStateProvider);
+    if (!stateAsync.hasValue) return;
+    final state = stateAsync.requireValue;
     final existing = state.activeToken;
     if (client == null || existing == null) return;
     setState(() => _webBusy = true);
@@ -417,7 +423,9 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                         children: [
                           FilledButton(
                             key: const Key('webSharePublishButton'),
-                            onPressed: _webBusy || !webClient.canPublish
+                            onPressed: _webBusy ||
+                                    !webClient.canPublish ||
+                                    webStateAsync.isLoading
                                 ? null
                                 : () => _publishWebShare(
                                       identity: shown,
@@ -432,7 +440,9 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                           if (webState.isPublished) ...[
                             OutlinedButton(
                               key: const Key('webShareRevokeButton'),
-                              onPressed: _webBusy ? null : _revokeWebShare,
+                              onPressed: _webBusy || webStateAsync.isLoading
+                                  ? null
+                                  : _revokeWebShare,
                               child: const Text('Revoke'),
                             ),
                             OutlinedButton(
