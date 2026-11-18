@@ -19,6 +19,7 @@ import 'identity/supabase_public.dart';
 import 'launch/provider_overrides.dart';
 import 'launch/startup_cloud_restore.dart';
 import 'sharing/encounter_share_options.dart';
+import 'sharing/web_share_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,6 +56,7 @@ void main() async {
   );
   final encounterSharePreferences =
       EncounterSharePreferences.inDirectory(supportDir);
+  final webSharePreferences = WebSharePreferences.inDirectory(supportDir);
 
   // Engine construction lives behind `avatar_renderer`'s own factory: per the
   // spec's global constraint, nothing outside `packages/avatar_renderer` may
@@ -74,6 +76,7 @@ void main() async {
         avatarRendererFactory: ThermionAvatarRenderer.create,
         discoveryRepository: discoveryRepository,
         encounterSharePreferences: encounterSharePreferences,
+        webSharePreferences: webSharePreferences,
         nfcEmulator:
             Platform.isAndroid ? AndroidNfcEmulator() : NoopNfcEmulator(),
         nfcReader: ManagerNfcReader(),

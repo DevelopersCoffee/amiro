@@ -34,6 +34,37 @@ class SupabaseProfileCloud implements ProfileCloud {
   @override
   bool get supportsRestore => anonKey.isNotEmpty;
 
+  /// Authenticated REST calls for other data-plane features (e.g. web share).
+  Future<({String accessToken, String userId})> userSessionForDataPlane() async {
+    final session = await _ensureSession();
+    return (accessToken: session.accessToken, userId: session.userId);
+  }
+
+  Future<({int status, String body})> sendAuthenticated({
+    required String method,
+    required Uri uri,
+    String? body,
+    required String accessToken,
+    Map<String, String> extraHeaders = const {},
+  }) {
+    return _send(
+      method: method,
+      uri: uri,
+      headers: {
+        ..._userHeaders(_Session(
+          accessToken: accessToken,
+          refreshToken: '',
+          userId: '',
+          expiresAt: DateTime.now(),
+        )),
+        ...extraHeaders,
+      },
+      body: body,
+    );
+  }
+
+  Uri restTable(String table) => _rest(table);
+
   @override
   Future<String?> recoveryCode() async {
     final code = await secrets.readRecoveryCode();

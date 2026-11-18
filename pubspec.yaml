@@ -47,11 +47,11 @@ melos:
       description: Run every package's tests (pure-Dart and Flutter).
 
     test:dart:
-      run: melos exec --scope="identity_core,avatar_core" --dir-exists=test -- dart test
+      run: melos exec --scope="identity_core,avatar_core,sharing" --dir-exists=test -- dart test
       description: >
         Run `dart test` in the pure-Dart packages. These have no Flutter SDK
         dependency and use `package:test`, so `flutter test` cannot run them.
 
     test:flutter:
-      run: melos exec --ignore="identity_core,avatar_core" --dir-exists=test -- flutter test
+      run: melos exec --ignore="identity_core,avatar_core,sharing" --dir-exists=test -- flutter test
       description: Run `flutter test` in every Flutter package that has a test directory.

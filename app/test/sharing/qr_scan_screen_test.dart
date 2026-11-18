@@ -59,5 +59,13 @@ void main() {
         isA<NotAmiroLink>(),
       );
     });
+
+    test('resolves https web share to opaque token only', () {
+      const token = 'abcdefghijklmnopqrstuv';
+      final uri = buildWebShareUri(token);
+      final result = scanResultFromCapture(capture(uri));
+      expect(result, isA<WebShareTokenLink>());
+      expect((result as WebShareTokenLink).token, token);
+    });
   });
 }

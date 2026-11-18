@@ -11,6 +11,7 @@ import 'package:store/store.dart';
 
 import 'package:amiro_app/avatar/avatar_providers.dart';
 import 'package:amiro_app/identity/identity_providers.dart';
+import 'package:amiro_app/identity/profile_cloud.dart';
 import 'package:amiro_app/identity/identity_edit_screen.dart';
 import 'package:amiro_app/sharing/identity_card.dart';
 import 'package:amiro_app/sharing/encounter_share_options.dart';
@@ -18,6 +19,8 @@ import 'package:amiro_app/sharing/share_screen.dart';
 import 'package:amiro_app/sharing/sharing_preferences_providers.dart';
 import 'package:amiro_app/sharing/sharing_providers.dart'
     show nfcEmulatorProvider;
+import 'package:amiro_app/sharing/web_share_preferences.dart';
+import 'package:amiro_app/sharing/web_share_providers.dart';
 import 'package:amiro_app/store/store_providers.dart';
 import 'package:amiro_app/theme/amiro_theme.dart';
 
@@ -48,9 +51,16 @@ Widget _screen(
       '${Directory.systemTemp.path}/enc_share_${DateTime.now().microsecondsSinceEpoch}.json',
     ),
   );
+  final webDir = Directory(
+    '${Directory.systemTemp.path}/web_share_${DateTime.now().microsecondsSinceEpoch}',
+  );
   return ProviderScope(
     overrides: [
       encounterSharePreferencesProvider.overrideWithValue(sharePrefs),
+      webSharePreferencesProvider.overrideWithValue(
+        WebSharePreferences.inDirectory(webDir),
+      ),
+      profileCloudProvider.overrideWithValue(const NoopProfileCloud()),
       identityRepositoryProvider.overrideWithValue(
         InMemoryIdentityRepository(identity),
       ),

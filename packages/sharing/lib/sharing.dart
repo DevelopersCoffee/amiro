@@ -4,3 +4,4 @@ export 'src/encounter_qr.dart';
 export 'src/ndef_encounter.dart';
 export 'src/shared_profile.dart';
 export 'src/share_payload_codec.dart';
+export 'src/web_share_link.dart';
