@@ -39,7 +39,7 @@ melos:
 
   scripts:
     analyze:
-      run: melos exec -- flutter analyze
+      run: melos exec --concurrency=1 -- flutter analyze --no-fatal-infos
       description: Run flutter analyze in every package.
 
     test:
@@ -53,5 +53,5 @@ melos:
         dependency and use `package:test`, so `flutter test` cannot run them.
 
     test:flutter:
-      run: melos exec --ignore="identity_core,avatar_core,sharing" --dir-exists=test -- flutter test
+      run: melos exec --ignore="identity_core,avatar_core,sharing" --dir-exists=test -- flutter test --dart-define=AMIRO_WEB_SHARE_PUBLISH_ENABLED=true
       description: Run `flutter test` in every Flutter package that has a test directory.

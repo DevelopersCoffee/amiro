@@ -24,15 +24,23 @@ the token (no query, no `#` fragment).
 1. Browser requests `GET https://id.amiro.app/u/<token>` on the **web-profile**
    Cloudflare Worker.
 2. Worker looks up `public.web_share_profiles` by token (service role).
-3. Active rows render an HTML profile; revoked rows return **410** with
-   `Cache-Control: no-store`.
+3. Active rows render an HTML profile with `Cache-Control: private, no-store`,
+   a strict CSP (`frame-ancestors 'none'`), and related security headers.
+   Revoked or tombstoned rows return **410** with the same cache policy.
 4. Avatar bytes are served from the same row (`GET .../avatar`).
 
 ## Owner controls
 
-- **Publish** upserts the row for the current identity.
-- **Revoke** sets `revoked_at`; the link stops working everywhere.
-- **Rotate** creates a new token and revokes the previous link.
+- **Publish** calls `web_share_publish` (server mints token on first insert,
+  in-place update when an active `(owner_id, identity_id)` row exists).
+- **Revoke** calls `web_share_revoke`, wipes PII, sets `revoked_at`, keeps a
+  tombstone row (410).
+- **Rotate** calls `web_share_rotate`: tombstones the old token row, inserts a
+  new active row with a fresh server token (old URL stays 410).
+
+Play builds ship with web publish UI hidden until
+`AMIRO_WEB_SHARE_PUBLISH_ENABLED=true` is set at compile time **and** the
+Worker plus migrations are deployed.
 
 `amiro://encounter` QR/NFC shares continue unchanged when web publish is off.
 When published, the Share tab prefers the HTTPS link on QR and NFC.

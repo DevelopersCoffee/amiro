@@ -65,6 +65,8 @@ class SupabaseProfileCloud implements ProfileCloud {
 
   Uri restTable(String table) => _rest(table);
 
+  Uri restRpc(String functionName) => _rest('rpc/$functionName');
+
   @override
   Future<String?> recoveryCode() async {
     final code = await secrets.readRecoveryCode();
@@ -165,6 +167,7 @@ class SupabaseProfileCloud implements ProfileCloud {
         if (response.status >= 200 &&
             response.status < 300 &&
             deletedCount > 0) {
+          await _deleteWebShareProfiles(session);
           await secrets.clearCloudBackupCredentials();
           return const RevokeBackupResult.ok();
         }
@@ -370,6 +373,19 @@ class SupabaseProfileCloud implements ProfileCloud {
   Future<String> _newCode() async {
     final bytes = List<int>.generate(16, (_) => _random.nextInt(256));
     return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
+  Future<void> _deleteWebShareProfiles(_Session session) async {
+    await _send(
+      method: 'DELETE',
+      uri: _rest('web_share_profiles').replace(
+        queryParameters: {'owner_id': 'eq.${session.userId}'},
+      ),
+      headers: {
+        ..._userHeaders(session),
+        'Prefer': 'return=representation',
+      },
+    );
   }
 
   Uri _rest(String path) => projectUrl.replace(path: '/rest/v1/$path');

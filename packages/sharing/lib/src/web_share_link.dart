@@ -34,7 +34,7 @@ bool isWebShareUri(Uri uri, {Iterable<String> allowedHosts = const [defaultWebSh
   final segments = uri.pathSegments;
   if (segments.length != 2 || segments.first != 'u') return false;
   final token = segments[1];
-  if (token.length < 16 || token.length > 64) return false;
+  if (token.length < 22 || token.length > 64) return false;
   return RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(token);
 }
 

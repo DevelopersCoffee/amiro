@@ -5,3 +5,4 @@ export 'src/ndef_encounter.dart';
 export 'src/shared_profile.dart';
 export 'src/share_payload_codec.dart';
 export 'src/web_share_link.dart';
+export 'src/web_share_public_view.dart';
