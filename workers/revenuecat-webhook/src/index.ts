@@ -1,8 +1,4 @@
-import {
-  CRASH_MESSAGE_MAX,
-  CRASH_STACK_MAX,
-  scrubCrashPayload,
-} from './crash_scrub.ts';
+import { handleCrash } from './crash_handler.ts';
 import {
   constantTimeEqual,
   verifyRevenueCatWebhookSignature,
@@ -15,6 +11,9 @@ export interface Env {
   CRASH_PATH_TOKEN?: string;
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
+  CRASH_RATE_LIMITER?: {
+    limit(options: { key: string }): Promise<{ success: boolean }>;
+  };
 }
 
 interface RevenueCatEvent {
@@ -50,59 +49,7 @@ async function supabaseRequest(
   });
 }
 
-export async function handleCrash(
-  request: Request,
-  env: Env,
-  url: URL,
-): Promise<Response> {
-  if (request.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
-  }
-  const token = url.pathname.replace(/^\/crash\//, '');
-  if (!env.CRASH_PATH_TOKEN || !constantTimeEqual(token, env.CRASH_PATH_TOKEN)) {
-    return new Response('Not found', { status: 404 });
-  }
-
-  let body: {
-    message?: string;
-    stack?: string;
-    source?: string;
-    appVersion?: string;
-    platform?: string;
-    at?: string;
-  };
-  try {
-    body = await request.json();
-  } catch {
-    return new Response('Invalid JSON', { status: 400 });
-  }
-  if (!body.message || !body.appVersion) {
-    return new Response('Missing crash fields', { status: 400 });
-  }
-
-  const scrubbed = scrubCrashPayload(body);
-
-  const insert = await supabaseRequest(env, 'crash_reports', {
-    method: 'POST',
-    headers: { Prefer: 'return=minimal' },
-    body: JSON.stringify([
-      {
-        message: (scrubbed.message ?? '').slice(0, CRASH_MESSAGE_MAX),
-        stack: (scrubbed.stack ?? '').slice(0, CRASH_STACK_MAX),
-        source: body.source ?? 'unknown',
-        app_version: body.appVersion,
-        platform: body.platform ?? null,
-        occurred_at: body.at ?? new Date().toISOString(),
-      },
-    ]),
-  });
-  if (!insert.ok) {
-    return new Response(`Supabase crash insert failed: ${await insert.text()}`, {
-      status: 502,
-    });
-  }
-  return new Response('ok', { status: 200 });
-}
+export { handleCrash };
 
 function webhookSecretsConfigured(env: Env): boolean {
   const auth =

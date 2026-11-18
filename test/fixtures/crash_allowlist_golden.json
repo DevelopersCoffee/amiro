@@ -1,0 +1,95 @@
+{
+  "secretRedaction": [
+    {
+      "id": "jwt_recovery_display",
+      "input": "FormatException: {\"access_token\":\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.sig\",\"recovery_code\":\"3f9a1c0be2d74e8f9a0b1c2d3e4f5a6b\",\"displayName\":\"Priya Sharma\"}",
+      "expected": "FormatException: {\"access_token\":\"[redacted-jwt]\",\"recovery_code\":\"[redacted-hex32]\",\"displayName\":\"Priya Sharma\"}"
+    },
+    {
+      "id": "uuid_in_message",
+      "input": "Bad state: no identity 8c1f2d3e-4b5a-6c7d-8e9f-0a1b2c3d4e5f",
+      "expected": "Bad state: no identity [redacted-uuid]"
+    },
+    {
+      "id": "bearer_token",
+      "input": "Authorization: Bearer sk_live_abcdef1234567890",
+      "expected": "Authorization: [redacted-bearer]"
+    },
+    {
+      "id": "share_link_token",
+      "input": "https://id.amiro.app/u/AbCdEf0123456789xyzTOKEN",
+      "expected": "[redacted-url]"
+    },
+    {
+      "id": "email_and_phone",
+      "input": "reach me at dev@example.co or +1 (555) 867-5309",
+      "expected": "reach me at [redacted-email] or [redacted-phone]"
+    },
+    {
+      "id": "unix_path",
+      "input": "Failed to read /home/user/.config/amiro/secrets.json",
+      "expected": "Failed to read [redacted-path]"
+    },
+    {
+      "id": "unix_path_quoted_equals",
+      "input": "FileSystemException: Cannot open file, path = '/data/user/0/com.app/cache/tmp.json' (OS Error)",
+      "expected": "FileSystemException: Cannot open file, path = '[redacted-path]' (OS Error)"
+    },
+    {
+      "id": "unix_path_unicode",
+      "input": "open failed /home/café/用户/档案.txt",
+      "expected": "open failed [redacted-path]"
+    },
+    {
+      "id": "url_query_token",
+      "input": "fetch failed https://api.example.com/v1/x?token=abc",
+      "expected": "fetch failed [redacted-url]"
+    },
+    {
+      "id": "url_query_token_quoted",
+      "input": "bad redirect https://evil.example/track?token='abc'",
+      "expected": "bad redirect [redacted-url]"
+    },
+    {
+      "id": "url_fragment_access_token",
+      "input": "OAuth redirect https://auth.example.com/cb#access_token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig",
+      "expected": "OAuth redirect [redacted-url]"
+    },
+    {
+      "id": "file_url",
+      "input": "load error file:///data/user/0/com.app/secret.sqlite",
+      "expected": "load error [redacted-path]"
+    },
+    {
+      "id": "windows_path",
+      "input": "Cannot find C:\\Users\\Priya\\AppData\\Local\\secret.json",
+      "expected": "Cannot find [redacted-path]"
+    },
+    {
+      "id": "hex32_identity",
+      "input": "identity mismatch for a1b2c3d4e5f67890123456789abcdef0",
+      "expected": "identity mismatch for [redacted-hex32]"
+    },
+    {
+      "id": "google_play_purchase_token",
+      "input": "BillingClient: sync failed token GPA.1234-5678-9012-34567",
+      "expected": "BillingClient: sync failed token [redacted-play-purchase]"
+    },
+    {
+      "id": "google_play_purchase_underscore",
+      "input": "Billing GPA.1234_5678-ABCD-EFGH-9012",
+      "expected": "Billing [redacted-play-purchase]"
+    }
+  ],
+  "stackFilter": {
+    "input": "#0      main (package:amiro_app/main.dart:61:9)\n#1      build (package:flutter/src/widgets/framework.dart:1:1)\nfoo bar\n#2      _invoke (dart:async/zone.dart:100:1)\n",
+    "expected": "#0      main (package:amiro_app/main.dart:61:9)\n#1      build (package:flutter/src/widgets/framework.dart:1:1)\n#2      _invoke (dart:async/zone.dart:100:1)"
+  },
+  "fullReport": {
+    "runtimeType": "StateError",
+    "message": "StateError: controlled\nsecond line must not upload",
+    "stack": "#0      main (package:amiro_app/main.dart:61:9)\nnoise line without frame\n",
+    "expectedMessage": "StateError: controlled",
+    "expectedStack": "#0      main (package:amiro_app/main.dart:61:9)"
+  }
+}
