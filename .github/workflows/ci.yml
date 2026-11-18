@@ -43,7 +43,10 @@ jobs:
           sudo apt-get install -y libegl1-mesa-dev libgles2-mesa-dev libgl1-mesa-dev libgbm-dev libdrm-dev
       - uses: subosito/flutter-action@v2
         with:
+          # Pin below 3.47: stable started reporting material.dart import as
+          # analyzer exit-1 "info" across the whole app (repo-wide pre-existing).
           channel: stable
+          flutter-version: "3.35.7"
       - run: dart pub global activate melos
       - run: melos bootstrap
       - run: melos run analyze
