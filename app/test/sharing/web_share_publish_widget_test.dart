@@ -12,11 +12,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:identity_core/identity_core.dart';
 import 'package:nfc/nfc.dart';
 
+import 'package:amiro_app/avatar/avatar_loader.dart';
 import 'package:amiro_app/avatar/avatar_providers.dart';
 import 'package:amiro_app/identity/identity_providers.dart';
 import 'package:amiro_app/sharing/sharing_preferences_providers.dart';
 import 'package:amiro_app/sharing/sharing_providers.dart';
-import 'package:amiro_app/avatar/avatar_loader.dart';
 
 import '../avatar/fake_avatar_renderer.dart';
 import '../identity/in_memory_identity_repository.dart';
@@ -26,12 +26,15 @@ import 'fake_web_share_service.dart';
 const _defaultAvatarJson =
     '{"id":"default","body":"body_superhero_male","hair":"hair_simple_parted"}';
 
+// TODO(#81): Re-enable when web profile client wiring is fixed (also red on main).
+const bool _kSkipWebShareWidgetTests = true;
+
 Identity _identity() => Identity(
-  id: 'id-1',
-  displayName: 'Uday',
-  username: 'uday',
-  avatarDefinitionJson: _defaultAvatarJson,
-);
+      id: 'id-1',
+      displayName: 'Uday',
+      username: 'uday',
+      avatarDefinitionJson: _defaultAvatarJson,
+    );
 
 Widget _screen(FakeWebShareService service) {
   final dir = Directory.systemTemp.createTempSync('web_share_test_');
@@ -61,10 +64,7 @@ Widget _screen(FakeWebShareService service) {
 void main() {
   setUp(resetAvatarLoadChainForTest);
 
-  // TODO(#81): FakeWebShareService override + publish async; fails on CI (main too).
-  testWidgets(
-    'publish shows consent then stores https link',
-    (tester) async {
+  testWidgets('publish shows consent then stores https link', (tester) async {
     final service = FakeWebShareService();
     await tester.pumpWidget(_screen(service));
     await pumpAfterAvatarLoad(tester);
@@ -82,13 +82,9 @@ void main() {
     expect(service.publishCalls, 1);
     expect(find.byKey(const Key('webSharePublishedUri')), findsOneWidget);
     expect(find.textContaining('https://'), findsWidgets);
-    },
-    skip: 'Web profile publish widget; fix on sharing PR #81',
-  );
+  }, skip: _kSkipWebShareWidgetTests ? true : null);
 
-  testWidgets(
-    'revoke clears published uri',
-    (tester) async {
+  testWidgets('revoke clears published uri', (tester) async {
     final service = FakeWebShareService();
     final dir = Directory.systemTemp.createTempSync('web_share_revoke_');
     final prefs = WebSharePreferences.inDirectory(dir);
@@ -129,7 +125,5 @@ void main() {
 
     expect(service.revokeCalls, 1);
     expect(find.byKey(const Key('webSharePublishedUri')), findsNothing);
-    },
-    skip: 'Web profile publish widget; fix on sharing PR #81',
-  );
+  }, skip: _kSkipWebShareWidgetTests);
 }
