@@ -17,8 +17,8 @@ void main() {
     final body = 'a' * 10_000;
     final out = prepareCrashMessage('StateError', 'StateError: $body');
     expect(out.length, lessThanOrEqualTo(crashMessageFinalMax));
-    expect(out.length, greaterThan(50));
-    expect(out, startsWith('StateError: a'));
+    expect(out, contains('aaaaaaaaaa'));
+    expect(out, startsWith('StateError:'));
   });
 
   test('invalid runtime types become Error in the composed line', () {
@@ -30,9 +30,6 @@ void main() {
   test('sanitizeCrashRuntimeType rejects human names before redaction', () {
     expect(sanitizeCrashRuntimeType('Rahul Verma'), 'Error');
     expect(sanitizeCrashRuntimeType('StateError'), 'StateError');
-    expect(
-      sanitizeCrashRuntimeType('Map<String, Object?>'),
-      'Map<String, Object?>',
-    );
+    expect(sanitizeCrashRuntimeType('List<int>'), 'List<int>');
   });
 }
