@@ -14,10 +14,10 @@ void main() {
   });
 
   test('final message cap is 300 chars (not a constant stub)', () {
-    final body = 'a' * 10_000;
+    final body = '!' * 10_000;
     final out = prepareCrashMessage('StateError', 'StateError: $body');
     expect(out.length, lessThanOrEqualTo(crashMessageFinalMax));
-    expect(out, contains('aaaaaaaaaa'));
+    expect(out, contains('!!!!!!!!!!'));
     expect(out, startsWith('StateError:'));
   });
 
