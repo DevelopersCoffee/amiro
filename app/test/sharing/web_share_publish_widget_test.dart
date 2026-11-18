@@ -62,13 +62,15 @@ void main() {
   testWidgets('publish shows consent then stores https link', (tester) async {
     final service = FakeWebShareService();
     await tester.pumpWidget(_screen(service));
-    await pumpAfterAvatarLoad(tester);
     await pumpUntilFound(tester, find.byKey(const Key('webSharePublishButton')));
 
     await tester.tap(find.byKey(const Key('webSharePublishButton')));
     await pumpShort(tester);
     await tester.tap(find.byKey(const Key('webShareConsentAccept')));
-    await pumpShort(tester, frames: 20);
+    await pumpUntilFound(
+      tester,
+      find.byKey(const Key('webSharePublishedUri')),
+    );
 
     expect(service.publishCalls, 1);
     expect(find.byKey(const Key('webSharePublishedUri')), findsOneWidget);
@@ -109,7 +111,6 @@ void main() {
         ),
       ),
     );
-    await pumpAfterAvatarLoad(tester);
     await pumpUntilFound(tester, find.byKey(const Key('webShareRevokeButton')));
     await tester.tap(find.byKey(const Key('webShareRevokeButton')));
     await pumpShort(tester, frames: 20);
