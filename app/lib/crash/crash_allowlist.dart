@@ -25,8 +25,11 @@ final RegExp _winPathPattern = RegExp(
 final RegExp _hex32Pattern = RegExp(
   r'(?<![0-9a-fA-F])[0-9a-fA-F]{32}(?![0-9a-fA-F])',
 );
-final RegExp _googlePlayPurchaseTokenPattern = RegExp(
+final RegExp _googlePlayOrderIdPattern = RegExp(
   r'GPA\.[0-9A-Za-z\-_]{12,200}',
+);
+final RegExp _purchaseTokenKeyValuePattern = RegExp(
+  r'''(?i)(purchase[_-]?token)\s*[=:]\s*['"]?([A-Za-z0-9._\-+/=]+)''',
 );
 final RegExp _hexPattern = RegExp(r'(?<![\w/])[0-9a-fA-F]{16,128}(?![\w/])');
 final RegExp _base64Pattern = RegExp(r'[A-Za-z0-9+/_\-]{20,}={0,2}');
@@ -38,8 +41,11 @@ final RegExp _phonePattern = RegExp(
   r'\+?[0-9][0-9\s\-().]{6,24}[0-9]',
 );
 final RegExp _unixPathPattern = RegExp(
-  r"(?:^|[\s(]|[:=]\s*['\"]?)(/[\p{L}\p{N}./\-_]{1,200})",
+  r'''(?:^|[\s(]|[:=]\s*['"]?)(/[\p{L}\p{N}./\-_]{1,200})''',
   unicode: true,
+);
+final RegExp _dartRuntimeTypePattern = RegExp(
+  r'^[A-Za-z_$][\w$<>, ]{0,119}$',
 );
 final RegExp _dartFramePattern = RegExp(
   r'^#\d+\s+\S.* \((package:[a-z0-9_]+/|dart:[a-z_]+)[\w/.-]*:\d+(:\d+)?\)$',
@@ -48,6 +54,18 @@ final RegExp _dartFramePattern = RegExp(
 String truncateCrashText(String input, int maxChars) {
   if (input.length <= maxChars) return input;
   return input.substring(0, maxChars);
+}
+
+/// Caps length first, then validates Dart type syntax; invalid types become [Error].
+String sanitizeCrashRuntimeType(String raw) {
+  final capped = truncateCrashText(raw, crashRuntimeTypeMax);
+  if (!_dartRuntimeTypePattern.hasMatch(capped)) {
+    return 'Error';
+  }
+  if (RegExp(r'\s').hasMatch(capped) && !RegExp(r'[<,>]').hasMatch(capped)) {
+    return 'Error';
+  }
+  return capped;
 }
 
 String redactCrashSecrets(String input) {
@@ -62,18 +80,19 @@ String redactCrashSecrets(String input) {
     (m) => m.group(0)!.replaceFirst(m.group(1)!, '[redacted-path]'),
   );
   text = text.replaceAll(_sharePathTokenPattern, '[redacted-base64url]');
-  text = text.replaceAll(
-    _googlePlayPurchaseTokenPattern,
-    '[redacted-play-purchase]',
+  text = text.replaceAll(_googlePlayOrderIdPattern, '[redacted-play-purchase]');
+  text = text.replaceAllMapped(
+    _purchaseTokenKeyValuePattern,
+    (m) => '${m.group(1)}=[redacted-play-token]',
   );
   text = text.replaceAll(_hex32Pattern, '[redacted-hex32]');
+  text = text.replaceAll(_hexPattern, '[redacted-hex]');
   text = text.replaceAll(_emailPattern, '[redacted-email]');
   text = text.replaceAll(_phonePattern, '[redacted-phone]');
   text = text.replaceAllMapped(
     _unixPathPattern,
     (m) => m.group(0)!.replaceFirst(m.group(1)!, '[redacted-path]'),
   );
-  text = text.replaceAll(_hexPattern, '[redacted-hex]');
   text = text.replaceAllMapped(_base64Pattern, (m) {
     final chunk = m.group(0)!;
     return chunk.contains('redacted') ? chunk : '[redacted-base64]';
@@ -93,11 +112,21 @@ String filterDartStackFrames(String stack) {
   return kept.join('\n');
 }
 
-String _scrubbedFirstLine(String runtimeType, String rawMessage) {
+String _scrubbedFirstLine(
+  String runtimeType,
+  String rawMessage, {
+  String? rawRuntimeType,
+}) {
   var body = rawMessage;
-  final prefix = '$runtimeType: ';
-  if (body.startsWith(prefix)) {
-    body = body.substring(prefix.length);
+  for (final type in <String>{
+    runtimeType,
+    if (rawRuntimeType != null) rawRuntimeType,
+  }) {
+    final prefix = '$type: ';
+    if (body.startsWith(prefix)) {
+      body = body.substring(prefix.length);
+      break;
+    }
   }
   body = body.split(RegExp(r'\r?\n')).first;
   body = truncateCrashText(body, crashMessagePreTruncate);
@@ -108,11 +137,8 @@ String _scrubbedFirstLine(String runtimeType, String rawMessage) {
 }
 
 String prepareCrashMessage(String runtimeType, String rawMessage) {
-  final safeType = truncateCrashText(
-    redactCrashSecrets(runtimeType),
-    crashRuntimeTypeMax,
-  );
-  return _scrubbedFirstLine(safeType, rawMessage);
+  final safeType = sanitizeCrashRuntimeType(runtimeType);
+  return _scrubbedFirstLine(safeType, rawMessage, rawRuntimeType: runtimeType);
 }
 
 String prepareCrashStack(String rawStack) {
