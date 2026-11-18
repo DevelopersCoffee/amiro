@@ -37,6 +37,14 @@ class RevenueCatIdentityRequiredException implements Exception {
       'RevenueCat purchases require an Amiro identity to be set up first.';
 }
 
+/// Thrown when RevenueCat cannot reach its servers (e.g. logIn while offline).
+class RevenueCatOfflineException implements Exception {
+  const RevenueCatOfflineException();
+
+  @override
+  String toString() => 'RevenueCat is offline.';
+}
+
 /// Thrown when RevenueCat refuses to attach a receipt because it belongs to a
 /// different identified App User ID ([PurchasesErrorCode.receiptAlreadyInUseError]
 /// or [PurchasesErrorCode.receiptInUseByOtherSubscriberError]) — expected when

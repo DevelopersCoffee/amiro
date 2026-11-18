@@ -17,6 +17,25 @@ Map<String, dynamic> _catalogEntitlement(String key, String productId) => {
       'periodType': 'NORMAL',
     };
 
+Map<String, dynamic> _storeProductJson(String storeId) => {
+      'identifier': storeId,
+      'description': 'desc',
+      'title': 'title',
+      'price': 0.99,
+      'priceString': r'$0.99',
+      'currencyCode': 'USD',
+      'productCategory': 'nonSubscription',
+    };
+
+Map<String, dynamic> _purchaseResultJson(Map<String, dynamic> activeEntitlements) => {
+      'customerInfo': _customerInfoJson(activeEntitlements),
+      'transaction': {
+        'transactionIdentifier': 'tx-1',
+        'productIdentifier': 'amiro_full_beard',
+        'purchaseDate': '2026-10-01T00:00:00Z',
+      },
+    };
+
 Map<String, dynamic> _customerInfoJson(Map<String, dynamic> activeEntitlements) {
   return <String, dynamic>{
     'entitlements': {
@@ -74,6 +93,9 @@ void main() {
             return _customerInfoJson(activeEntitlements);
           }
           if (call.method == 'getProductInfo') return <dynamic>[];
+          if (call.method == 'purchaseProduct') {
+            return _purchaseResultJson(activeEntitlements);
+          }
           if (call.method == 'restorePurchases') {
             return _customerInfoJson(activeEntitlements);
           }
@@ -128,16 +150,173 @@ void main() {
     expect(restoreIdx, greaterThan(loginIdx));
   });
 
-  test('grant calls logIn before getProductInfo', () async {
+  test('grant completes purchase after logIn in call order', () async {
     final store = RevenueCatEntitlementStore(isAndroid: true);
     await store.bindAmiroIdentity('amiro-identity-1');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          calls.add(call);
+          if (call.method == 'setupPurchases') return null;
+          if (call.method == 'getAppUserID') {
+            return boundAppUserId ?? r'$RCAnonymousID:test';
+          }
+          if (call.method == 'logIn') {
+            boundAppUserId = call.arguments['appUserID'] as String;
+            return {
+              'customerInfo': _customerInfoJson({}),
+              'created': false,
+            };
+          }
+          if (call.method == 'getCustomerInfo') {
+            return _customerInfoJson(activeEntitlements);
+          }
+          if (call.method == 'getProductInfo') {
+            return [
+              _storeProductJson('amiro_full_beard'),
+            ];
+          }
+          if (call.method == 'purchaseProduct') {
+            activeEntitlements = {
+              'cosmetic_full_beard': _catalogEntitlement(
+                'cosmetic_full_beard',
+                'amiro_full_beard',
+              ),
+            };
+            return _purchaseResultJson(activeEntitlements);
+          }
+          return null;
+        });
 
-    await expectLater(store.grant('full_beard'), throwsStateError);
+    await store.grant('full_beard');
 
     final loginIdx = calls.indexWhere((c) => c.method == 'logIn');
     final lookupIdx = calls.indexWhere((c) => c.method == 'getProductInfo');
+    final purchaseIdx = calls.indexWhere((c) => c.method == 'purchaseProduct');
     expect(loginIdx, greaterThanOrEqualTo(0));
     expect(lookupIdx, greaterThan(loginIdx));
+    expect(purchaseIdx, greaterThan(lookupIdx));
+    expect(await store.ownedCosmeticIds(), contains('full_beard'));
+  });
+
+  test('grant rejects anonymous app user id after logIn', () async {
+    final store = RevenueCatEntitlementStore(isAndroid: true);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          calls.add(call);
+          if (call.method == 'setupPurchases') return null;
+          if (call.method == 'logIn') {
+            boundAppUserId = r'$RCAnonymousID:still-anon';
+            return {
+              'customerInfo': _customerInfoJson({}),
+              'created': false,
+            };
+          }
+          if (call.method == 'getAppUserID') {
+            return boundAppUserId ?? r'$RCAnonymousID:still-anon';
+          }
+          return null;
+        });
+
+    await store.bindAmiroIdentity('amiro-identity-1');
+
+    await expectLater(
+      store.grant('full_beard'),
+      throwsA(isA<RevenueCatIdentityRequiredException>()),
+    );
+    expect(calls.map((c) => c.method), isNot(contains('getProductInfo')));
+  });
+
+  test('grant logIn failure throws before purchaseProduct', () async {
+    final store = RevenueCatEntitlementStore(isAndroid: true);
+    await store.bindAmiroIdentity('amiro-identity-1');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          calls.add(call);
+          if (call.method == 'setupPurchases') return null;
+          if (call.method == 'logIn') {
+            throw PlatformException(code: '1', message: 'login failed');
+          }
+          if (call.method == 'getAppUserID') return r'$RCAnonymousID:test';
+          if (call.method == 'getProductInfo') {
+            return [_storeProductJson('amiro_full_beard')];
+          }
+          return null;
+        });
+
+    await expectLater(
+      store.grant('full_beard'),
+      throwsA(isA<RevenueCatIdentityRequiredException>()),
+    );
+    expect(calls.map((c) => c.method), isNot(contains('purchaseProduct')));
+  });
+
+  test('grant maps receipt conflict to RestoreOwnershipConflictException',
+      () async {
+    final store = RevenueCatEntitlementStore(isAndroid: true);
+    await store.bindAmiroIdentity('user-a');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          calls.add(call);
+          if (call.method == 'setupPurchases') return null;
+          if (call.method == 'getAppUserID') return 'user-a';
+          if (call.method == 'logIn') {
+            return {
+              'customerInfo': _customerInfoJson({}),
+              'created': false,
+            };
+          }
+          if (call.method == 'getCustomerInfo') {
+            return _customerInfoJson({});
+          }
+          if (call.method == 'getProductInfo') {
+            return [_storeProductJson('amiro_full_beard')];
+          }
+          if (call.method == 'purchaseProduct') {
+            throw PlatformException(
+              code: '${PurchasesErrorCode.receiptInUseByOtherSubscriberError.index}',
+              message: 'Receipt in use',
+            );
+          }
+          return null;
+        });
+
+    await expectLater(
+      store.grant('full_beard'),
+      throwsA(isA<RestoreOwnershipConflictException>()),
+    );
+  });
+
+  test('grant aborts when appUserID no longer matches before purchase',
+      () async {
+    final store = RevenueCatEntitlementStore(isAndroid: true);
+    await store.bindAmiroIdentity('user-a');
+    var appUserReads = 0;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          calls.add(call);
+          if (call.method == 'setupPurchases') return null;
+          if (call.method == 'getAppUserID') {
+            appUserReads++;
+            if (appUserReads >= 2) return 'someone-else';
+            return 'user-a';
+          }
+          if (call.method == 'logIn') {
+            return {
+              'customerInfo': _customerInfoJson({}),
+              'created': false,
+            };
+          }
+          if (call.method == 'getProductInfo') {
+            return [_storeProductJson('amiro_full_beard')];
+          }
+          return null;
+        });
+
+    await expectLater(
+      store.grant('full_beard'),
+      throwsA(isA<RevenueCatIdentityRequiredException>()),
+    );
+    expect(calls.map((c) => c.method), isNot(contains('purchaseProduct')));
   });
 
   test('rejects anonymous app user id after logIn', () async {
@@ -166,6 +345,28 @@ void main() {
       throwsA(isA<RevenueCatIdentityRequiredException>()),
     );
     expect(calls.map((c) => c.method), isNot(contains('restorePurchases')));
+  });
+
+  test('logIn network error throws RevenueCatOfflineException', () async {
+    final store = RevenueCatEntitlementStore(isAndroid: true);
+    await store.bindAmiroIdentity('amiro-identity-1');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          if (call.method == 'setupPurchases') return null;
+          if (call.method == 'logIn') {
+            throw PlatformException(
+              code: '${PurchasesErrorCode.networkError.index}',
+              message: 'offline',
+            );
+          }
+          if (call.method == 'getAppUserID') return r'$RCAnonymousID:test';
+          return null;
+        });
+
+    await expectLater(
+      store.restore(),
+      throwsA(isA<RevenueCatOfflineException>()),
+    );
   });
 
   test('logIn failure throws RevenueCatIdentityRequiredException', () async {
@@ -307,5 +508,53 @@ void main() {
       calls.where((c) => c.method == 'setupPurchases').length,
       1,
     );
+  });
+
+  test('identity bind grant and restore share one operation lock', () async {
+    final store = RevenueCatEntitlementStore(isAndroid: true);
+    await store.bindAmiroIdentity('a');
+    var inFlight = 0;
+    var maxInFlight = 0;
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          calls.add(call);
+          inFlight++;
+          maxInFlight = maxInFlight < inFlight ? inFlight : maxInFlight;
+          try {
+            if (call.method == 'setupPurchases') return null;
+            if (call.method == 'getAppUserID') return 'a';
+            if (call.method == 'logIn') {
+              await Future<void>.delayed(const Duration(milliseconds: 20));
+              return {
+                'customerInfo': _customerInfoJson({}),
+                'created': false,
+              };
+            }
+            if (call.method == 'getCustomerInfo') {
+              return _customerInfoJson({});
+            }
+            if (call.method == 'restorePurchases') {
+              await Future<void>.delayed(const Duration(milliseconds: 20));
+              return _customerInfoJson({});
+            }
+            if (call.method == 'getProductInfo') {
+              return [_storeProductJson('amiro_full_beard')];
+            }
+            if (call.method == 'purchaseProduct') {
+              return _purchaseResultJson({});
+            }
+            return null;
+          } finally {
+            inFlight--;
+          }
+        });
+
+    await Future.wait([
+      store.restore(),
+      store.bindAmiroIdentity('b'),
+    ]);
+
+    expect(maxInFlight, 1);
   });
 }

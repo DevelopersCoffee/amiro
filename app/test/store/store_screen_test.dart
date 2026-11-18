@@ -240,6 +240,25 @@ void main() {
     },
   );
 
+  testWidgets('offline logIn shows a retry message, not identity setup', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 2600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final entitlements = _OfflineEntitlementStore();
+    await tester.pumpWidget(
+      _screen(FakeAvatarRenderer(), entitlementStore: entitlements),
+    );
+    await pumpStoreReady(tester);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Buy \$2.99'));
+    await pumpUntilFound(tester, find.text("You're offline. Try again."));
+
+    expect(find.text("You're offline. Try again."), findsOneWidget);
+    expect(find.textContaining('Set up your identity'), findsNothing);
+  });
+
   testWidgets('a purchase failure surfaces an error, not a silent no-op', (
     tester,
   ) async {
@@ -484,7 +503,15 @@ void main() {
       await entitlements.grant(item.id);
     }
     await tester.pumpWidget(
-      _screen(FakeAvatarRenderer(), entitlementStore: entitlements),
+      _screen(
+        FakeAvatarRenderer(),
+        entitlementStore: entitlements,
+        identity: const Identity(
+          id: 'series-owner',
+          displayName: 'Owner',
+          username: 'owner',
+        ),
+      ),
     );
     await pumpStoreReady(tester);
 
@@ -635,6 +662,20 @@ class _CancellingEntitlementStore implements EntitlementStore {
   @override
   Future<void> grant(String cosmeticId) {
     throw const PurchaseCancelledException();
+  }
+
+  @override
+  Future<RestoreOutcome> restore() async =>
+      const RestoreOutcome.nothingToRestore();
+}
+
+class _OfflineEntitlementStore implements EntitlementStore {
+  @override
+  Future<Set<String>> ownedCosmeticIds() async => const {};
+
+  @override
+  Future<void> grant(String cosmeticId) {
+    throw const RevenueCatOfflineException();
   }
 
   @override

@@ -16,16 +16,19 @@ final entitlementStoreProvider = Provider<EntitlementStore>((ref) {
 });
 
 class OwnedCosmeticsNotifier extends AsyncNotifier<Set<String>> {
+  bool _disposed = false;
+
   @override
   Future<Set<String>> build() async {
+    ref.onDispose(() => _disposed = true);
     ref.listen<AsyncValue<Identity?>>(
       currentIdentityProvider,
       (previous, next) {
         final prevId = previous?.valueOrNull?.id;
         final nextId = next.valueOrNull?.id;
         if (prevId == nextId) return;
-        // Ignore the first resolved identity — only react to later switches.
-        if (previous == null && next.hasValue && nextId != null) return;
+        // Only react to explicit identity switches (not the first resolution).
+        if (prevId == null && nextId != null) return;
         unawaited(_reactToIdentityChange(next.valueOrNull));
       },
     );
@@ -37,22 +40,38 @@ class OwnedCosmeticsNotifier extends AsyncNotifier<Set<String>> {
   }
 
   Future<void> _reactToIdentityChange(Identity? identity) async {
-    final store = ref.read(entitlementStoreProvider);
-    if (store is RevenueCatEntitlementStore) {
-      if (identity == null) {
-        await store.logOutAmiroIdentity();
-        ref.read(revenueCatActivatedProvider.notifier).deactivate();
-      } else {
-        await store.bindAmiroIdentity(identity.id);
-      }
-    }
+    if (_disposed) return;
     state = const AsyncData({});
+
+    final store = ref.read(entitlementStoreProvider);
+    try {
+      if (store is RevenueCatEntitlementStore) {
+        if (identity == null) {
+          await store.logOutAmiroIdentity();
+          if (_disposed) return;
+          ref.read(revenueCatActivatedProvider.notifier).deactivate();
+        } else {
+          await store.bindAmiroIdentity(identity.id);
+        }
+      }
+    } catch (_) {
+      if (_disposed) return;
+      ref.read(revenueCatActivatedProvider.notifier).deactivate();
+      state = const AsyncData({});
+      return;
+    }
+
+    if (_disposed) return;
     if (identity != null && ref.read(revenueCatActivatedProvider)) {
       try {
         state = AsyncData(
           await ref.read(entitlementStoreProvider).ownedCosmeticIds(),
         );
       } on RevenueCatIdentityRequiredException {
+        state = const AsyncData({});
+      } on RevenueCatOfflineException {
+        state = const AsyncData({});
+      } catch (_) {
         state = const AsyncData({});
       }
     }

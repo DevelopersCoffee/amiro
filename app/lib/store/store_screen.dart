@@ -326,6 +326,13 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
       await ref.read(ownedCosmeticsProvider.notifier).purchase(item.id);
     } on PurchaseCancelledException {
       // User backed out of the native sheet — nothing to report.
+    } on RevenueCatOfflineException {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('You\'re offline. Try again.'),
+        ),
+      );
     } on RevenueCatIdentityRequiredException {
       if (!mounted) return;
       messenger.showSnackBar(
@@ -366,6 +373,13 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
             'Open the profile that bought them, or sign into that identity '
             'from Identity settings.',
           ),
+        ),
+      );
+    } on RevenueCatOfflineException {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('You\'re offline. Try again.'),
         ),
       );
     } on RevenueCatIdentityRequiredException {
