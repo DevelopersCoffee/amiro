@@ -13,6 +13,13 @@ final RegExp _bearerPattern = RegExp(r'Bearer\s+\S{1,500}');
 final RegExp _uuidPattern = RegExp(
   r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}',
 );
+/// Amiro identity ids, recovery codes, and similar 32-char secrets.
+final RegExp _hex32Pattern = RegExp(
+  r'(?<![0-9a-fA-F])[0-9a-fA-F]{32}(?![0-9a-fA-F])',
+);
+final RegExp _googlePlayPurchaseTokenPattern = RegExp(
+  r'GPA\.[0-9A-Za-z\-]{12,200}',
+);
 final RegExp _hexPattern = RegExp(r'(?<![\w/])[0-9a-fA-F]{16,128}(?![\w/])');
 final RegExp _base64Pattern = RegExp(r'[A-Za-z0-9+/]{20,}={0,2}');
 final RegExp _sharePathTokenPattern = RegExp(r'(?<=/u/)[A-Za-z0-9_-]{10,}');
@@ -40,6 +47,11 @@ String redactCrashSecrets(String input) {
   text = text.replaceAll(_bearerPattern, '[redacted-bearer]');
   text = text.replaceAll(_uuidPattern, '[redacted-uuid]');
   text = text.replaceAll(_sharePathTokenPattern, '[redacted-base64url]');
+  text = text.replaceAll(
+    _googlePlayPurchaseTokenPattern,
+    '[redacted-play-purchase]',
+  );
+  text = text.replaceAll(_hex32Pattern, '[redacted-hex32]');
   text = text.replaceAll(_emailPattern, '[redacted-email]');
   text = text.replaceAll(_phonePattern, '[redacted-phone]');
   text = text.replaceAllMapped(

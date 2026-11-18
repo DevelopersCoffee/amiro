@@ -16,7 +16,10 @@ reports** in Identity settings.
 | `platform` | `android` or `ios` |
 
 The client does **not** send profile fields, purchase IDs, recovery codes, or
-device advertising identifiers.
+device advertising identifiers. Before upload, message text is scrubbed for JWTs,
+bearer tokens, UUIDs, **32-character hex strings** (e.g. Amiro identity /
+recovery-shaped secrets), **Google Play purchase tokens** (`GPA.…`), emails,
+phone numbers, and file paths.
 
 ## Where it goes
 

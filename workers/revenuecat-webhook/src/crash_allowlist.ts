@@ -9,6 +9,9 @@ const JWT =
 const BEARER = /Bearer\s+\S{1,500}/g;
 const UUID =
   /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g;
+const HEX32 = /(?<![0-9a-fA-F])[0-9a-fA-F]{32}(?![0-9a-fA-F])/g;
+const GOOGLE_PLAY_PURCHASE =
+  /GPA\.[0-9A-Za-z\-]{12,200}/g;
 const HEX = /(?<![\w/])[0-9a-fA-F]{16,128}(?![\w/])/g;
 const BASE64 = /[A-Za-z0-9+/]{20,}={0,2}/g;
 const SHARE_PATH_TOKEN = /(?<=\/u\/)[A-Za-z0-9_-]{10,}/g;
@@ -34,6 +37,8 @@ export function redactCrashSecrets(input: string): string {
     .replace(BEARER, '[redacted-bearer]')
     .replace(UUID, '[redacted-uuid]')
     .replace(SHARE_PATH_TOKEN, '[redacted-base64url]')
+    .replace(GOOGLE_PLAY_PURCHASE, '[redacted-play-purchase]')
+    .replace(HEX32, '[redacted-hex32]')
     .replace(EMAIL, '[redacted-email]')
     .replace(PHONE, '[redacted-phone]')
     .replace(UNIX_PATH, (match, path) => match.replace(path, '[redacted-path]'))
