@@ -1,0 +1,16 @@
+-- Repair (#93): Supabase hosts pgcrypto in schema extensions; unqualified gen_random_bytes
+-- fails when search_path is public-only. Do not edit earlier web-share RPC migrations.
+
+create or replace function public._web_share_new_token()
+returns text
+language sql
+volatile
+set search_path = public
+as $$
+  select rtrim(
+    translate(encode(extensions.gen_random_bytes(16), 'base64'), '+/', '-_'),
+    '='
+  );
+$$;
+
+revoke all on function public._web_share_new_token() from public;
