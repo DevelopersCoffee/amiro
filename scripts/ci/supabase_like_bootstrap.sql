@@ -21,6 +21,9 @@ begin
 end
 $$;
 
+grant usage on schema extensions to postgres, anon, authenticated, service_role;
+grant usage on schema supabase_migrations to postgres, anon, authenticated, service_role;
+
 create table if not exists supabase_migrations.schema_migrations (
   version text primary key,
   statements text[],

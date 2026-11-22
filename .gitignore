@@ -26,6 +26,11 @@ Cargo.lock
 .vscode/
 *.iml
 
+# Python
+__pycache__/
+*.py[cod]
+
 # OS
 .DS_Store
 .secrets/
+

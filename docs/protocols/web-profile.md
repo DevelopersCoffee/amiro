@@ -44,7 +44,7 @@ Play builds ship with web publish UI hidden by default
 (`AMIRO_WEB_SHARE_PUBLISH_ENABLED` defaults to false). Enable only with
 `--dart-define=AMIRO_WEB_SHARE_PUBLISH_ENABLED=true` at compile time **after**
 the web-profile Worker (with its own Supabase secrets, not the webhook Worker)
-and migrations through `20261122120000_web_share_token_base64url.sql` are
+and migrations through `20261122130000_web_share_pgcrypto_extensions.sql` are
 deployed.
 
 `amiro://encounter` QR/NFC shares continue unchanged when web publish is off.
