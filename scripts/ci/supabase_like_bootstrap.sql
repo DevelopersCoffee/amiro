@@ -1,12 +1,12 @@
--- Minimal Supabase-shaped database for CI migration apply:
--- pgcrypto lives in extensions; default search_path is public only (no extensions).
+-- Supabase-shaped database for CI migration apply:
+-- pgcrypto in extensions; default search_path is public only (no extensions).
+-- Idempotent on vanilla Postgres and on supabase/postgres (auth schema is protected).
 
 \set ON_ERROR_STOP on
 
 create schema if not exists extensions;
 create schema if not exists supabase_migrations;
 
--- Roles referenced in migrations (Supabase-compatible names).
 do $$
 begin
   if not exists (select 1 from pg_roles where rolname = 'anon') then
@@ -27,26 +27,43 @@ create table if not exists supabase_migrations.schema_migrations (
   name text
 );
 
--- Supabase installs pgcrypto in extensions, not public.
 create extension if not exists pgcrypto with schema extensions;
-
--- pg_cron retention migrations (same layout as hosted Supabase).
 create extension if not exists pg_cron with schema extensions;
 
--- auth.users FK target for profile / web-share tables.
-create schema if not exists auth;
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.tables
+    where table_schema = 'auth' and table_name = 'users'
+  ) then
+    execute $sql$
+      create schema if not exists auth;
+      create table auth.users (
+        id uuid primary key default gen_random_uuid(),
+        created_at timestamptz not null default now()
+      );
+    $sql$;
+  end if;
+exception
+  when insufficient_privilege then
+    raise notice 'auth.users already managed by Supabase image; skipping stub';
+end
+$$;
 
-create table if not exists auth.users (
-  id uuid primary key default gen_random_uuid(),
-  created_at timestamptz not null default now()
-);
-
-create or replace function auth.uid()
-returns uuid
-language sql
-stable
-as $$
-  select null::uuid;
+do $$
+begin
+  create or replace function auth.uid()
+  returns uuid
+  language sql
+  stable
+  as $fn$
+    select null::uuid;
+  $fn$;
+exception
+  when insufficient_privilege then
+    raise notice 'auth.uid() not replaced (Supabase image); using existing definition';
+end
 $$;
 
 alter database postgres set search_path to public;
