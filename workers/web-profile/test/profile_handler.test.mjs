@@ -15,9 +15,14 @@ const activeRow = {
   revoked_at: null,
 };
 
+const rateLimiter = {
+  limit: async () => ({ success: true }),
+};
+
 const baseEnv = {
   SUPABASE_URL: 'https://example.supabase.co',
   SUPABASE_SERVICE_ROLE_KEY: 'service-key',
+  PROFILE_RATE_LIMITER: rateLimiter,
 };
 
 function mockFetch(rows) {
@@ -108,6 +113,24 @@ test('JSON profile uses same allowlist fields', async () => {
   assert.equal(json.displayName, 'Uday');
   assert.equal(json.publicContact.bio, 'Engineer');
   assert.equal(json.publicContact.leak, undefined);
+});
+
+test('missing rate limiter binding returns 503', async () => {
+  const env = { ...baseEnv };
+  delete env.PROFILE_RATE_LIMITER;
+  const request = new Request(`https://id.amiro.app/u/${token}`);
+  const response = await worker.fetch(request, env);
+  assert.equal(response.status, 503);
+});
+
+test('rate limiter denial returns 429', async () => {
+  const env = {
+    ...baseEnv,
+    PROFILE_RATE_LIMITER: { limit: async () => ({ success: false }) },
+  };
+  const request = new Request(`https://id.amiro.app/u/${token}`);
+  const response = await worker.fetch(request, env);
+  assert.equal(response.status, 429);
 });
 
 test('avatar response uses no-store and image/png', async () => {

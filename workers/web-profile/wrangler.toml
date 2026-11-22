@@ -10,5 +10,10 @@ workers_dev = false
 # Optional:
 #   PLAY_STORE_URL
 #
-# Rate limiting: configure a Cloudflare Rate Limiting rule on GET /u/*
-# (see workers/web-profile/README.md).
+# PROFILE_RATE_LIMITER — required binding below (60 requests / minute per client IP).
+# Returns 503 when the binding is missing so misconfigured deploys fail closed.
+
+[[ratelimits]]
+name = "PROFILE_RATE_LIMITER"
+namespace_id = "1002"
+simple = { limit = 60, period = 60 }
