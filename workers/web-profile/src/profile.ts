@@ -2,6 +2,9 @@ export interface Env {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   PLAY_STORE_URL?: string;
+  PROFILE_RATE_LIMITER?: {
+    limit(options: { key: string }): Promise<{ success: boolean }>;
+  };
 }
 
 export interface WebShareRow {
@@ -16,7 +19,7 @@ export interface WebShareRow {
 }
 
 /** 128-bit base64url tokens are 22 chars without padding (#50). */
-const tokenPattern = /^[A-Za-z0-9_-]{22,64}$/;
+export const tokenPattern = /^[A-Za-z0-9_-]{22,64}$/;
 
 export function parseTokenFromPath(pathname: string): string | null {
   const match = pathname.match(/^\/u\/([A-Za-z0-9_-]+)(?:\/avatar)?\/?$/);

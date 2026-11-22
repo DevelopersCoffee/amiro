@@ -8,6 +8,40 @@ import { isValidPng } from './avatar_validate.ts';
 import { profileJson, renderProfileHtml, resolvePlayStoreUrl } from './html.ts';
 import { responseSecurityHeaders, NO_STORE_CACHE } from './security_headers.ts';
 
+function clientIp(request: Request): string {
+  return (
+    request.headers.get('cf-connecting-ip') ??
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    'unknown'
+  );
+}
+
+function profileRateLimitKey(request: Request): string {
+  return `profile:${clientIp(request)}`;
+}
+
+async function checkProfileRateLimit(
+  request: Request,
+  env: Env,
+): Promise<Response | null> {
+  if (!env.PROFILE_RATE_LIMITER) {
+    return new Response('Service unavailable', {
+      status: 503,
+      headers: responseSecurityHeaders(),
+    });
+  }
+  const { success } = await env.PROFILE_RATE_LIMITER.limit({
+    key: profileRateLimitKey(request),
+  });
+  if (!success) {
+    return new Response('Too many requests', {
+      status: 429,
+      headers: responseSecurityHeaders(),
+    });
+  }
+  return null;
+}
+
 function notFound(): Response {
   return new Response('Not found', {
     status: 404,
@@ -98,11 +132,13 @@ export async function handleProfileRequest(
 }
 
 export default {
-  fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (!url.pathname.startsWith('/u/')) {
-      return Promise.resolve(notFound());
+      return notFound();
     }
+    const rateLimited = await checkProfileRateLimit(request, env);
+    if (rateLimited) return rateLimited;
     return handleProfileRequest(request, env, url);
   },
 };

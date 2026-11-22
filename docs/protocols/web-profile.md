@@ -31,16 +31,21 @@ the token (no query, no `#` fragment).
 
 ## Owner controls
 
-- **Publish** calls `web_share_publish` (server mints token on first insert,
-  in-place update when an active `(owner_id, identity_id)` row exists).
+- **Publish** calls `web_share_publish` (server mints a base64url token without
+  `=` padding on first insert, in-place update when an active
+  `(owner_id, identity_id)` row exists). Each owner may have at most **5**
+  active published identities at once.
 - **Revoke** calls `web_share_revoke`, wipes PII, sets `revoked_at`, keeps a
   tombstone row (410).
 - **Rotate** calls `web_share_rotate`: tombstones the old token row, inserts a
   new active row with a fresh server token (old URL stays 410).
 
-Play builds ship with web publish UI hidden until
-`AMIRO_WEB_SHARE_PUBLISH_ENABLED=true` is set at compile time **and** the
-Worker plus migrations are deployed.
+Play builds ship with web publish UI hidden by default
+(`AMIRO_WEB_SHARE_PUBLISH_ENABLED` defaults to false). Enable only with
+`--dart-define=AMIRO_WEB_SHARE_PUBLISH_ENABLED=true` at compile time **after**
+the web-profile Worker (with its own Supabase secrets, not the webhook Worker)
+and migrations through `20261122120000_web_share_token_base64url.sql` are
+deployed.
 
 `amiro://encounter` QR/NFC shares continue unchanged when web publish is off.
 When published, the Share tab prefers the HTTPS link on QR and NFC.
