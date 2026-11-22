@@ -21,6 +21,9 @@ or purchase amounts.
 
 ## Server enforcement
 
-The Worker rejects unknown event names, caps body size, limits batch size, and
-drops properties outside the allow-list before inserting into Supabase
-(`analytics_events`, RLS on, no client read).
+The Worker rejects unknown event names, caps body size (streamed, fail at 8 KiB),
+rate-limits per client IP, validates `install_id` as a UUID, limits batch size,
+and drops properties outside the allow-list before inserting into Supabase
+(`analytics_events`, RLS on, no client read). Opting out triggers
+`DELETE` by `install_id`. The path token is a **public URL gate** (same as
+crash ingest), not a secret — it ships in release builds.

@@ -48,6 +48,24 @@ the `pg_cron` extension enabled for your project (`create extension if not exist
 pg_cron with schema extensions` in the migration). If cron is unavailable, rows
 remain until you run an equivalent purge manually.
 
+## Product analytics ingest (`POST /analytics/<token>`)
+
+Optional opt-in funnel events from the Flutter app (see
+`docs/protocols/analytics-data.md`). Configure:
+
+- `ANALYTICS_PATH_TOKEN` — public URL gate (see above); rotate with
+  `wrangler secret put ANALYTICS_PATH_TOKEN` and a new dart-define build.
+- `ANALYTICS_RATE_LIMITER` — required binding in `wrangler.toml` (30 requests /
+  minute **per client IP**). Missing binding returns **503** (fail closed).
+
+**Revoke:** `DELETE /analytics/<token>` with JSON body
+`{"install_id":"<uuid>"}` deletes rows for that install id when the user turns
+analytics off.
+
+**Retention:** `supabase/migrations/20261122120000_analytics_events_retention.sql`
+schedules a `pg_cron` job to delete rows older than 90 days (requires
+`pg_cron` as for crash ingest).
+
 ## Secrets
 
 Set with `wrangler secret put <NAME>` (never commit these):
@@ -58,7 +76,10 @@ Set with `wrangler secret put <NAME>` (never commit these):
   the webhook URL in RevenueCat (`rc webhooks update <id> --url ...`).
 - `SUPABASE_URL` — `https://<project-ref>.supabase.co`.
 - `CRASH_PATH_TOKEN` — random token for scrubbed crash POSTs (see #79).
-- `ANALYTICS_PATH_TOKEN` — random token for funnel analytics POSTs (#53/#54).
+- `ANALYTICS_PATH_TOKEN` — **public, not a secret.** Compiled into release
+  builds via `--dart-define=AMIRO_ANALYTICS_INGEST_URL=https://…/analytics/<token>`;
+  anyone with the APK can extract it. It only reduces drive-by spam together
+  with rate limiting.
 - `SUPABASE_SERVICE_ROLE_KEY` — from `supabase projects api-keys
   --project-ref <ref>`. This bypasses Row Level Security — treat it like
   a root DB password. The migration

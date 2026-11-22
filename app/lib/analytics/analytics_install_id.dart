@@ -22,6 +22,8 @@ class AnalyticsInstallIdStore {
     return _InMemoryAnalyticsInstallIdStore(id);
   }
 
+  Future<String?> readCurrent() => _readId();
+
   Future<String> currentOrCreate() async {
     final existing = await _readId();
     if (existing != null && existing.isNotEmpty) return existing;
@@ -72,6 +74,9 @@ class _InMemoryAnalyticsInstallIdStore extends AnalyticsInstallIdStore {
   _InMemoryAnalyticsInstallIdStore(this._id) : super(File(''));
 
   String? _id;
+
+  @override
+  Future<String?> readCurrent() async => _id;
 
   @override
   Future<String> currentOrCreate() async {

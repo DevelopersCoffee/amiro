@@ -7,8 +7,9 @@ Identity → **Privacy & diagnostics**.
 **Install id:** random UUID, install-scoped, regenerated when analytics is
 turned off. Not linked to identity, contacts, RevenueCat, or Supabase backup.
 
-**Retention:** 24 months in `analytics_events`, then aggregate or delete
-(manual ops until #63 reporting ships).
+**Retention:** 90 days in `analytics_events`, purged nightly via `pg_cron`
+(`supabase/migrations/20261122120000_analytics_events_retention.sql`). Turning
+analytics off sends `DELETE` to drop rows for the current `install_id`.
 
 | Event | Trigger | Properties | Metric |
 |---|---|---|---|

@@ -9,4 +9,7 @@ export interface Env {
   CRASH_RATE_LIMITER?: {
     limit(options: { key: string }): Promise<{ success: boolean }>;
   };
+  ANALYTICS_RATE_LIMITER?: {
+    limit(options: { key: string }): Promise<{ success: boolean }>;
+  };
 }

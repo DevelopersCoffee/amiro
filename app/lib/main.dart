@@ -15,6 +15,7 @@ import 'app.dart';
 import 'analytics/analytics_install_id.dart';
 import 'analytics/analytics_once.dart';
 import 'analytics/analytics_preferences.dart';
+import 'analytics/analytics_ingest.dart';
 import 'analytics/analytics_sink.dart';
 import 'crash/crash_reporter.dart';
 import 'crash/crash_upload_throttle.dart';
@@ -101,10 +102,7 @@ void main() async {
   final analyticsOnce = AnalyticsOnceStore.inDirectory(supportDir);
   final analyticsIngestUrl =
       const String.fromEnvironment('AMIRO_ANALYTICS_INGEST_URL');
-  final analyticsSinks = <AnalyticsSink>[];
-  if (analyticsIngestUrl.isNotEmpty) {
-    analyticsSinks.add(HttpAnalyticsSink(Uri.parse(analyticsIngestUrl)));
-  }
+  final analyticsSinks = analyticsSinksFromIngestUrl(analyticsIngestUrl);
 
   // Engine construction lives behind `avatar_renderer`'s own factory: per the
   // spec's global constraint, nothing outside `packages/avatar_renderer` may

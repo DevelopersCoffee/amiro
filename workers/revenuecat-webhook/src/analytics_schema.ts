@@ -27,6 +27,10 @@ const COMMON_KEYS = new Set([
 /** Max JSON body bytes for POST /analytics/<token>. */
 export const ANALYTICS_MAX_BODY_BYTES = 8192;
 
+/** install_id must be a canonical UUID (matches `analytics_events.install_id`). */
+export const INSTALL_ID_UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 /** Max events in one batch. */
 export const ANALYTICS_MAX_EVENTS_PER_REQUEST = 20;
 
@@ -56,7 +60,7 @@ export function sanitiseAnalyticsEvent(
       continue;
     }
     if (key === 'src' && !ANALYTICS_SRC.has(value)) continue;
-    if (key === 'install_id' && value.length > 64) continue;
+    if (key === 'install_id' && !INSTALL_ID_UUID_PATTERN.test(value)) continue;
     if (key === 'app_version' && value.length > 32) continue;
     if (key === 'platform' && value.length > 16) continue;
     if (key === 'event_day' && !/^\d{4}-\d{2}-\d{2}$/.test(value)) continue;

@@ -76,6 +76,16 @@ class AnalyticsService {
   }
 
   Future<void> onConsentDisabled() async {
+    final installId = await installIdStore.readCurrent();
+    if (installId != null) {
+      for (final sink in sinks) {
+        if (sink is HttpAnalyticsSink) {
+          try {
+            await sink.revokeInstall(installId);
+          } catch (_) {}
+        }
+      }
+    }
     await installIdStore.regenerate();
   }
 }
