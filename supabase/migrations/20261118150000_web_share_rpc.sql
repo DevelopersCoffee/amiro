@@ -9,7 +9,7 @@ volatile
 set search_path = public
 as $$
   select replace(
-    replace(encode(gen_random_bytes(16), 'base64'), '+', '-'),
+    replace(encode(extensions.gen_random_bytes(16), 'base64'), '+', '-'),
     '/',
     '_'
   );
@@ -241,6 +241,8 @@ revoke all on function public.web_share_rotate(
   text, text, text, jsonb, jsonb, bytea
 ) from public;
 revoke all on function public.web_share_revoke(text) from public;
+revoke all on function public._web_share_new_token() from public;
+revoke execute on function public._web_share_new_token() from anon, authenticated;
 
 grant execute on function public.web_share_publish(
   text, text, jsonb, jsonb, bytea

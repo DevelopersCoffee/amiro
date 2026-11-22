@@ -1,5 +1,4 @@
--- Repair (#93): Supabase hosts pgcrypto in schema extensions; unqualified gen_random_bytes
--- fails when search_path is public-only. Do not edit earlier web-share RPC migrations.
+-- Repair (#93): Supabase hosts pgcrypto in schema extensions; idempotent qualification and revokes.
 
 create or replace function public._web_share_new_token()
 returns text
@@ -15,3 +14,4 @@ $$;
 
 revoke all on function public._web_share_new_token() from public;
 revoke execute on function public._web_share_new_token() from anon, authenticated;
+

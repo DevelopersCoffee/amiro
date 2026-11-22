@@ -30,7 +30,7 @@ Provision a rate-limit namespace in Cloudflare and set `namespace_id` in `wrangl
 
 ## Migrations
 
-Apply web share migrations through `20261122120000_web_share_token_base64url.sql`
+Apply web share migrations through `20261122130000_web_share_pgcrypto_extensions.sql`
 before first publish (tokens are base64url without `=` padding).
 
 ## Publish limits (server)

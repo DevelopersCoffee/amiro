@@ -84,7 +84,7 @@ jobs:
       - run: cargo test
       - run: cargo clippy -- -D warnings
 
-  # Expected red on main until owner-approved migration renames (#93). Does not gate flutter/worker/rust.
+  # Migration version uniqueness audit (#93).
   supabase-migration-versions:
     runs-on: ubuntu-latest
     steps:
@@ -98,7 +98,6 @@ jobs:
         run: python3 scripts/ci/check_supabase_migration_versions.py
 
   # Full migration apply on Supabase-shaped Postgres (pgcrypto in extensions; search_path public only).
-  # Expected red until duplicate versions are resolved; gen_random_bytes repair is in 20261122130000.
   supabase-migrations-apply:
     runs-on: ubuntu-latest
     services:

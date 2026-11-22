@@ -34,7 +34,7 @@ apply_one() {
   name="${BASH_REMATCH[2]}"
 
   local existing
-  existing="$(psql_query "${version}" "" -tAc -f "${CI_SQL}/schema_migration_version_exists.sql" \
+  existing="$(psql_query "${version}" "" -tA -f "${CI_SQL}/schema_migration_version_exists.sql" \
     || true)"
   if [[ "${existing}" == "1" ]]; then
     echo "" >&2

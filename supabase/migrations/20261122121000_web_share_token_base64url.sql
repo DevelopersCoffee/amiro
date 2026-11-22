@@ -7,7 +7,7 @@ volatile
 set search_path = public
 as $$
   select rtrim(
-    translate(encode(gen_random_bytes(16), 'base64'), '+/', '-_'),
+    translate(encode(extensions.gen_random_bytes(16), 'base64'), '+/', '-_'),
     '='
   );
 $$;
@@ -101,3 +101,6 @@ begin
   return v_row;
 end;
 $$;
+
+revoke all on function public._web_share_new_token() from public;
+revoke execute on function public._web_share_new_token() from anon, authenticated;
