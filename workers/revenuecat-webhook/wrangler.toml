@@ -7,8 +7,9 @@ compatibility_date = "2026-09-01"
 #   CRASH_PATH_TOKEN     public URL gate for POST /crash/<token> (not a secret;
 #                        compiled into the app via --dart-define). Rotate by
 #                        deploying a new token and shipping a new app build.
-#   ANALYTICS_PATH_TOKEN random token for POST /analytics/<token> (secret;
-#                        set with wrangler secret put, not compiled into the app)
+#   ANALYTICS_PATH_TOKEN public URL gate for POST /analytics/<token> (not a
+#                        secret; compiled into the app via --dart-define). Rotate
+#                        with wrangler secret put and a new app build.
 #   SUPABASE_URL         e.g. https://srvhqmfjqmxxvrdctbtf.supabase.co
 #   SUPABASE_SERVICE_ROLE_KEY
 
@@ -16,3 +17,8 @@ compatibility_date = "2026-09-01"
 name = "CRASH_RATE_LIMITER"
 namespace_id = "1001"
 simple = { limit = 10, period = 60 }
+
+[[ratelimits]]
+name = "ANALYTICS_RATE_LIMITER"
+namespace_id = "1002"
+simple = { limit = 30, period = 60 }

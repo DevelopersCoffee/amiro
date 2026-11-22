@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:amiro_app/analytics/analytics_install_id.dart';
 import 'package:amiro_app/analytics/analytics_preferences.dart';
 import 'package:amiro_app/analytics/analytics_service.dart';
@@ -23,7 +26,7 @@ void main() {
     final sink = MemoryAnalyticsSink();
     final service = AnalyticsService(
       preferences: prefs,
-      installIdStore: AnalyticsInstallIdStore.inMemory(id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'),
+      installIdStore: AnalyticsInstallIdStore.inMemory(id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'),
       sinks: [sink],
       appVersion: '1.0.6+12',
       clock: () => DateTime.utc(2026, 11, 18),
@@ -45,7 +48,7 @@ void main() {
 
   test('opt-out regenerates install id', () async {
     final prefs = AnalyticsPreferences.inMemory(enabled: true);
-    final idStore = AnalyticsInstallIdStore.inMemory();
+    final idStore = AnalyticsInstallIdStore.inMemory(id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
     final service = AnalyticsService(
       preferences: prefs,
       installIdStore: idStore,
@@ -56,5 +59,32 @@ void main() {
     await service.onConsentDisabled();
     final second = await idStore.currentOrCreate();
     expect(second, isNot(first));
+  });
+
+  test('opt-out calls revoke on HTTP sink before regenerating id', () async {
+    final id = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+    String? revoked;
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    server.listen((request) async {
+      if (request.method == 'DELETE') {
+        final body = await utf8.decoder.bind(request).join();
+        revoked = (jsonDecode(body) as Map)['install_id'] as String;
+        request.response.statusCode = 200;
+      }
+      await request.response.close();
+    });
+    final sink = HttpAnalyticsSink(
+      Uri.parse('http://127.0.0.1:${server.port}/analytics/t'),
+      allowInsecureHttp: true,
+    );
+    final service = AnalyticsService(
+      preferences: AnalyticsPreferences.inMemory(enabled: true),
+      installIdStore: AnalyticsInstallIdStore.inMemory(id: id),
+      sinks: [sink],
+      appVersion: '1.0.0',
+    );
+    await service.onConsentDisabled();
+    await server.close(force: true);
+    expect(revoked, id);
   });
 }
