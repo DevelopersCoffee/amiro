@@ -14,7 +14,7 @@ final RegExp _bearerPattern = RegExp(r'Bearer\s+\S{1,500}');
 final RegExp _uuidPattern = RegExp(
   r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}',
 );
-final RegExp _urlWithQueryFragmentPattern = RegExp(
+final RegExp _httpUrlPattern = RegExp(
   r'''https?://(?:[^\s"'<>]|'[^']*'|"[^"]*")+''',
 );
 final RegExp _fileUrlPattern = RegExp(r'file://[^\s"<>]+');
@@ -29,7 +29,7 @@ final RegExp _googlePlayOrderIdPattern = RegExp(
   r'GPA\.[0-9A-Za-z\-_]{12,200}',
 );
 final RegExp _purchaseTokenKeyValuePattern = RegExp(
-  r'''(purchase[_-]?token)\s*[=:]\s*['"]?([A-Za-z0-9._\-+/=]+)''',
+  r'''\b(purchase[_-]?token|token)["']?\s*[=:\s]\s*['"]?([A-Za-z0-9._\-+/=]+)''',
   caseSensitive: false,
 );
 final RegExp _hexPattern = RegExp(r'(?<![\w/])[0-9a-fA-F]{16,128}(?![\w/])');
@@ -42,7 +42,7 @@ final RegExp _phonePattern = RegExp(
   r'\+?[0-9][0-9\s\-().]{6,24}[0-9]',
 );
 final RegExp _unixPathPattern = RegExp(
-  r'''(?:^|[\s(]|[:=]\s*['"]?)(/[\p{L}\p{N}./\-_]{1,200})''',
+  r'''(?:^['"]?|[\s(]['"]?|[:=]\s*['"]?)(/[\p{L}\p{N}./\-_]{1,200})''',
   unicode: true,
 );
 final RegExp _dartRuntimeTypePattern = RegExp(
@@ -63,8 +63,24 @@ String sanitizeCrashRuntimeType(String raw) {
   if (!_dartRuntimeTypePattern.hasMatch(capped)) {
     return 'Error';
   }
-  if (RegExp(r'\s').hasMatch(capped) && !RegExp(r'[<,>]').hasMatch(capped)) {
+  if (redactCrashSecrets(capped) != capped) {
     return 'Error';
+  }
+  if (RegExp(r'\s').hasMatch(capped)) {
+    final firstAngle = capped.indexOf('<');
+    final lastAngle = capped.lastIndexOf('>');
+    if (firstAngle == -1 || lastAngle == -1 || firstAngle >= lastAngle) {
+      return 'Error';
+    }
+    final firstSpace = capped.indexOf(RegExp(r'\s'));
+    final lastSpace = capped.lastIndexOf(RegExp(r'\s'));
+    if (firstSpace < firstAngle || lastSpace > lastAngle) {
+      return 'Error';
+    }
+    if (RegExp(r'(?<!,)\s').hasMatch(capped) ||
+        RegExp(r',\s{2,}').hasMatch(capped)) {
+      return 'Error';
+    }
   }
   return capped;
 }
@@ -74,7 +90,7 @@ String redactCrashSecrets(String input) {
   text = text.replaceAll(_jwtPattern, '[redacted-jwt]');
   text = text.replaceAll(_bearerPattern, '[redacted-bearer]');
   text = text.replaceAll(_uuidPattern, '[redacted-uuid]');
-  text = text.replaceAll(_urlWithQueryFragmentPattern, '[redacted-url]');
+  text = text.replaceAll(_httpUrlPattern, '[redacted-url]');
   text = text.replaceAll(_fileUrlPattern, '[redacted-path]');
   text = text.replaceAllMapped(
     _winPathPattern,

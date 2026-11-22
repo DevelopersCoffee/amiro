@@ -13,7 +13,7 @@ const JWT =
 const BEARER = /Bearer\s+\S{1,500}/g;
 const UUID =
   /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g;
-const URL_WITH_QUERY_FRAGMENT =
+const HTTP_URL =
   /https?:\/\/(?:[^\s"'<>]|'[^']*'|"[^"]*")+/gu;
 const FILE_URL = /file:\/\/[^\s"'<>]+/gu;
 const WIN_PATH = /(?:^|[\s(])([A-Za-z]:\\[^\s"'<>]+)/gu;
@@ -21,14 +21,14 @@ const HEX32 = /(?<![0-9a-fA-F])[0-9a-fA-F]{32}(?![0-9a-fA-F])/g;
 const GOOGLE_PLAY_ORDER =
   /GPA\.[0-9A-Za-z\-_]{12,200}/g;
 const PURCHASE_TOKEN_KEY =
-  /(purchase[_-]?token)\s*[=:]\s*['"]?([A-Za-z0-9._\-+/=]+)/gi;
+  /\b(purchase[_-]?token|token)["']?\s*[=:\s]\s*['"]?([A-Za-z0-9._\-+/=]+)/gi;
 const HEX = /(?<![\w/])[0-9a-fA-F]{16,128}(?![\w/])/g;
 const BASE64 = /[A-Za-z0-9+/_\-]{20,}={0,2}/g;
 const SHARE_PATH_TOKEN = /(?<=\/u\/)[A-Za-z0-9_-]{10,}/g;
 const EMAIL =
   /[a-zA-Z0-9._%+-]{1,64}@[a-zA-Z0-9.-]{1,253}\.[a-zA-Z]{2,24}/g;
 const PHONE = /\+?[0-9][0-9\s\-().]{6,24}[0-9]/g;
-const UNIX_PATH = /(?:^|[\s(]|[:=]\s*['"]?)(\/[\p{L}\p{N}./\-_]{1,200})/gu;
+const UNIX_PATH = /(?:^['"]?|[\s(]['"]?|[:=]\s*['"]?)(\/[\p{L}\p{N}./\-_]{1,200})/gu;
 const DART_FRAME =
   /^#\d+\s+\S.* \((package:[a-z0-9_]+\/|dart:[a-z_]+)[\w/.-]*:\d+(:\d+)?\)$/;
 
@@ -46,9 +46,23 @@ export function sanitizeCrashRuntimeType(raw: string): string {
   if (!DART_RUNTIME_TYPE_PATTERN.test(capped)) {
     return 'Error';
   }
-  // Bare words with spaces (e.g. display names) are not Dart type names.
-  if (/\s/.test(capped) && !/[<,>]/.test(capped)) {
+  if (redactCrashSecrets(capped) !== capped) {
     return 'Error';
+  }
+  if (/\s/.test(capped)) {
+    const firstAngle = capped.indexOf('<');
+    const lastAngle = capped.lastIndexOf('>');
+    if (firstAngle === -1 || lastAngle === -1 || firstAngle >= lastAngle) {
+      return 'Error';
+    }
+    const firstSpace = capped.search(/\s/);
+    const lastSpace = capped.length - 1 - [...capped].reverse().join('').search(/\s/);
+    if (firstSpace < firstAngle || lastSpace > lastAngle) {
+      return 'Error';
+    }
+    if (/(?<!,)\s/.test(capped) || /,\s{2,}/.test(capped)) {
+      return 'Error';
+    }
   }
   return capped;
 }
@@ -58,7 +72,7 @@ export function redactCrashSecrets(input: string): string {
     .replace(JWT, '[redacted-jwt]')
     .replace(BEARER, '[redacted-bearer]')
     .replace(UUID, '[redacted-uuid]')
-    .replace(URL_WITH_QUERY_FRAGMENT, '[redacted-url]')
+    .replace(HTTP_URL, '[redacted-url]')
     .replace(FILE_URL, '[redacted-path]')
     .replace(WIN_PATH, (match, path) => match.replace(path, '[redacted-path]'))
     .replace(SHARE_PATH_TOKEN, '[redacted-base64url]')

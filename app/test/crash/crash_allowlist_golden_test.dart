@@ -5,9 +5,14 @@ import 'package:amiro_app/crash/crash_allowlist.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> _loadFixture() {
-  final file = File(
+  var file = File(
     '${Directory.current.path}/../test/fixtures/crash_allowlist_golden.json',
   );
+  if (!file.existsSync()) {
+    file = File(
+      '${Directory.current.path}/test/fixtures/crash_allowlist_golden.json',
+    );
+  }
   return jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
 }
 

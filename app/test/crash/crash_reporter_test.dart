@@ -262,6 +262,84 @@ void main() {
     expect(posts, 1);
   });
 
+  test('30 unawaited record calls with distinct fingerprints are capped at maxPerSession', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    var posts = 0;
+    final sub = server.listen((request) async {
+      posts += 1;
+      request.response.statusCode = 200;
+      await request.response.close();
+    });
+    final prefs = CrashUploadPreferences.inMemory(enabled: true);
+    final throttle = CrashUploadThrottle(maxPerSession: 5, maxPerDay: 100);
+    final reporter = CrashReporter(
+      sinks: [
+        _gatedSink(
+          prefs: prefs,
+          throttle: throttle,
+          inner: _loopbackSink(
+            Uri.parse('http://${server.address.host}:${server.port}/crash'),
+          ),
+        ),
+      ],
+    );
+
+    await Future.wait(
+      List.generate(
+        30,
+        (i) => reporter.record(
+          StateError('storm-$i'),
+          StackTrace.fromString(
+            '#0 main (package:amiro_app/main.dart:$i:9)\n',
+          ),
+          'flutter',
+        ),
+      ),
+    );
+    await sub.cancel();
+    await server.close();
+
+    expect(posts, 5);
+  });
+
+  test('30 unawaited record calls with identical fingerprint upload at most once', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    var posts = 0;
+    final sub = server.listen((request) async {
+      posts += 1;
+      request.response.statusCode = 200;
+      await request.response.close();
+    });
+    final prefs = CrashUploadPreferences.inMemory(enabled: true);
+    final throttle = CrashUploadThrottle(maxPerSession: 5, maxPerDay: 100);
+    final reporter = CrashReporter(
+      sinks: [
+        _gatedSink(
+          prefs: prefs,
+          throttle: throttle,
+          inner: _loopbackSink(
+            Uri.parse('http://${server.address.host}:${server.port}/crash'),
+          ),
+        ),
+      ],
+    );
+
+    final error = StateError('storm-duplicate');
+    final stack = StackTrace.fromString(
+      '#0 main (package:amiro_app/main.dart:1:9)\n',
+    );
+    await Future.wait(
+      List.generate(
+        30,
+        (_) => reporter.record(error, stack, 'flutter'),
+      ),
+    );
+    await sub.cancel();
+    await server.close();
+
+    expect(posts, 1);
+  });
+
   test('file sink keeps the unscrubbed message', () async {
     final file = File(
       '${Directory.systemTemp.path}/amiro-crash-raw-${DateTime.now().microsecondsSinceEpoch}.jsonl',

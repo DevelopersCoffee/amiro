@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { handleCrash } from '../src/crash_handler.ts';
+import {
+  sanitizeCrashRuntimeType,
+  scrubCrashPayload,
+} from '../src/crash_allowlist.ts';
 
 const rateLimiter = {
   limit: async () => ({ success: true }),
@@ -220,3 +224,76 @@ test('handleCrash returns 503 when rate limiter binding is missing', async () =>
   assert.equal(response.status, 503);
   assert.equal(await response.text(), 'Ingest unavailable');
 });
+
+test('scrubCrashPayload caps message to exactly 300 chars', () => {
+  const body = '!'.repeat(10_000);
+  const out = scrubCrashPayload({
+    runtimeType: 'StateError',
+    message: `StateError: ${body}`,
+  });
+  assert.equal(out.message.length, 300);
+  assert.equal(out.message, `StateError: ${'!'.repeat(288)}`);
+});
+
+test('scrubCrashPayload redacts long repeated characters as base64', () => {
+  const body = 'a'.repeat(10_000);
+  const out = scrubCrashPayload({
+    runtimeType: 'StateError',
+    message: `StateError: ${body}`,
+  });
+  assert.equal(out.message, 'StateError: [redacted-base64]');
+});
+
+test('sanitizeCrashRuntimeType caps length at 120 chars and rejects secrets', () => {
+  const longType = 'A$'.repeat(100);
+  const sanitized = sanitizeCrashRuntimeType(longType);
+  assert.equal(sanitized.length, 120);
+  assert.equal(sanitized, 'A$'.repeat(60));
+
+  assert.equal(
+    sanitizeCrashRuntimeType('abcdef0123456789abcdef0123456789'),
+    'Error',
+  );
+  assert.equal(sanitizeCrashRuntimeType('Jane Doe, 9876543210'), 'Error');
+});
+
+test('sanitizeCrashRuntimeType allows whitespace only after comma inside angles', () => {
+  assert.equal(sanitizeCrashRuntimeType('Map<String, int>'), 'Map<String, int>');
+  assert.equal(
+    sanitizeCrashRuntimeType('Map<String, List<int>>'),
+    'Map<String, List<int>>',
+  );
+  assert.equal(sanitizeCrashRuntimeType('Foo <Bar>'), 'Error');
+  assert.equal(sanitizeCrashRuntimeType('Foo<Bar , Baz>'), 'Error');
+  assert.equal(sanitizeCrashRuntimeType('List<int?>'), 'Error');
+  assert.equal(sanitizeCrashRuntimeType('(int, String)'), 'Error');
+  assert.equal(sanitizeCrashRuntimeType('() => void'), 'Error');
+});
+
+test('handleCrash preserves exact 300 char cap on inserted row', async () => {
+  let rows;
+  const env = { ...baseEnv };
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, init) => {
+    rows = JSON.parse(init.body);
+    return new Response('ok', { status: 201 });
+  };
+  try {
+    const hugeMessage = `StateError: ${'!'.repeat(10_000)}`;
+    const response = await handleCrash(
+      crashRequest({
+        ...validPayload,
+        message: hugeMessage,
+      }),
+      env,
+      new URL('https://example.com/crash/crash-token'),
+    );
+    assert.equal(response.status, 200);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].message.length, 300);
+    assert.equal(rows[0].message, `StateError: ${'!'.repeat(288)}`);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+

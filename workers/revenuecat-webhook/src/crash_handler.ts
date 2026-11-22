@@ -128,11 +128,10 @@ function validateCrashBody(body: unknown):
     platform = record.platform;
   }
   const stack = typeof record.stack === 'string' ? record.stack : '';
-  const rawRuntimeType =
+  const runtimeType =
     typeof record.runtimeType === 'string' && record.runtimeType.length > 0
       ? record.runtimeType
       : 'Error';
-  const runtimeType = rawRuntimeType;
   return {
     ok: true,
     data: {
