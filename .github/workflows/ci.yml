@@ -83,3 +83,64 @@ jobs:
           components: clippy
       - run: cargo test
       - run: cargo clippy -- -D warnings
+
+  # Expected red on main until owner-approved migration renames (#93). Does not gate flutter/worker/rust.
+  supabase-migration-versions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unit test migration version audit
+        run: PYTHONPATH=scripts/ci python3 -m unittest discover -s scripts/ci -p 'test_*.py'
+      - name: Audit unique 14-digit migration version prefixes
+        run: python3 scripts/ci/check_supabase_migration_versions.py
+
+  # Full migration apply on Supabase-shaped Postgres (pgcrypto in extensions; search_path public only).
+  # Expected red until duplicate versions are resolved; gen_random_bytes repair is in 20261122130000.
+  supabase-migrations-apply:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: supabase/postgres:17.4.1.068
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Apply full Supabase migration set
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: bash scripts/ci/apply_supabase_migrations.sh
+
+  supabase-web-share-pgcrypto:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: supabase/postgres:17.4.1.068
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Assert _web_share_new_token uses extensions.gen_random_bytes
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: bash scripts/ci/assert_web_share_pgcrypto_extensions.sh
