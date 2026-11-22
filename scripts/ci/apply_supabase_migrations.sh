@@ -4,10 +4,18 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 MIGRATIONS_DIR="${ROOT}/supabase/migrations"
+CI_SQL="${ROOT}/scripts/ci"
 
 : "${DATABASE_URL:?DATABASE_URL must be set (e.g. postgresql://postgres:postgres@localhost:5432/postgres)}"
 
-psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -f "${ROOT}/scripts/ci/supabase_like_bootstrap.sql"
+psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -f "${CI_SQL}/supabase_like_bootstrap.sql"
+
+psql_query() {
+  psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 \
+    -v "migration_version=${1}" \
+    -v "migration_name=${2:-}" \
+    "${@:3}"
+}
 
 shopt -s nullglob
 files=("${MIGRATIONS_DIR}"/*.sql)
@@ -26,16 +34,14 @@ apply_one() {
   name="${BASH_REMATCH[2]}"
 
   local existing
-  existing="$(psql "${DATABASE_URL}" -tAc \
-    "select 1 from supabase_migrations.schema_migrations where version = '${version}' limit 1" \
+  existing="$(psql_query "${version}" "" -tAc -f "${CI_SQL}/schema_migration_version_exists.sql" \
     || true)"
   if [[ "${existing}" == "1" ]]; then
     echo "" >&2
     echo "ERROR: duplicate migration version '${version}' (schema_migrations_pkey)." >&2
     echo "  Already recorded; refusing to apply: ${base}" >&2
     echo "  Earlier file(s) with same prefix:" >&2
-    psql "${DATABASE_URL}" -tAc \
-      "select name from supabase_migrations.schema_migrations where version = '${version}'" \
+    psql_query "${version}" "" -tAf "${CI_SQL}/schema_migration_names_for_version.sql" \
       | sed 's/^/    /' >&2
     echo "  Owner must rename the later-merged sibling or add a repair migration." >&2
     return 1
@@ -57,8 +63,7 @@ apply_one() {
     return 1
   fi
 
-  psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -c \
-    "insert into supabase_migrations.schema_migrations (version, name) values ('${version}', '${name}')"
+  psql_query "${version}" "${name}" -f "${CI_SQL}/schema_migration_record.sql"
 }
 
 for f in "${files[@]}"; do

@@ -92,6 +92,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Unit test migration version audit
+        run: PYTHONPATH=scripts/ci python3 -m unittest discover -s scripts/ci -p 'test_*.py'
       - name: Audit unique 14-digit migration version prefixes
         run: python3 scripts/ci/check_supabase_migration_versions.py
 

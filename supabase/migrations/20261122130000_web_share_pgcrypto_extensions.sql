@@ -14,3 +14,4 @@ as $$
 $$;
 
 revoke all on function public._web_share_new_token() from public;
+revoke execute on function public._web_share_new_token() from anon, authenticated;
