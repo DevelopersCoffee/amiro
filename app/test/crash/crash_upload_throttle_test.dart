@@ -71,4 +71,54 @@ void main() {
     expect(raw['dailyCount'], 1);
     dir.deleteSync(recursive: true);
   });
+
+  test('day rollover resets dailyCount and allows new uploads', () {
+    var currentTime = DateTime.utc(2026, 11, 18, 12);
+    final throttle = CrashUploadThrottle(
+      maxPerSession: 100,
+      maxPerDay: 2,
+      clock: () => currentTime,
+    );
+    expect(throttle.tryReserveUploadSlot('day1-a'), isTrue);
+    expect(throttle.tryReserveUploadSlot('day1-b'), isTrue);
+    expect(throttle.tryReserveUploadSlot('day1-c'), isFalse);
+
+    currentTime = DateTime.utc(2026, 11, 19, 0, 1);
+    expect(throttle.tryReserveUploadSlot('day2-a'), isTrue);
+    expect(throttle.tryReserveUploadSlot('day2-b'), isTrue);
+    expect(throttle.tryReserveUploadSlot('day2-c'), isFalse);
+  });
+
+  test('corrupt or negative persisted state is handled safely without throwing', () {
+    final dir = Directory.systemTemp.createTempSync('amiro-throttle-corrupt-');
+    final stateFile = File('${dir.path}/crash_upload_throttle_state.json');
+    final store = CrashUploadThrottleStore.inDirectory(dir);
+
+    stateFile.writeAsStringSync('{"dayKey":"2026-11-18","dailyCount":-5}');
+    expect(store.loadSync(), (null, 0));
+
+    stateFile.writeAsStringSync('{corrupt json...');
+    expect(store.loadSync(), (null, 0));
+
+    stateFile.writeAsStringSync('[1, 2, 3]');
+    expect(store.loadSync(), (null, 0));
+
+    stateFile.writeAsStringSync('{"dayKey":123,"dailyCount":"not-a-number"}');
+    expect(store.loadSync(), (null, 0));
+
+    final throttle = CrashUploadThrottle(
+      maxPerSession: 5,
+      maxPerDay: 20,
+      store: store,
+      clock: () => DateTime.utc(2026, 11, 18),
+    );
+    expect(throttle.tryReserveUploadSlot('fp-1'), isTrue);
+
+    dir.deleteSync(recursive: true);
+  });
+
+  test('saveSync gracefully handles filesystem errors without throwing', () {
+    final store = CrashUploadThrottleStore(File('/dev/null/impossible/path.json'));
+    expect(() => store.saveSync('2026-11-18', 1), returnsNormally);
+  });
 }

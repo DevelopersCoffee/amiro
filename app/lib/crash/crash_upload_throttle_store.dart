@@ -27,7 +27,7 @@ class CrashUploadThrottleStore {
       if (decoded is Map) {
         final day = decoded['dayKey'];
         final count = decoded['dailyCount'];
-        if (day is String && count is int) {
+        if (day is String && count is int && count >= 0) {
           return (day, count);
         }
       }
@@ -35,14 +35,22 @@ class CrashUploadThrottleStore {
     return (null, 0);
   }
 
+  /// Persists the daily attempt count to disk.
+  ///
+  /// Runs on the crash path; filesystem exceptions are caught and swallowed so
+  /// the crash reporter itself never throws during active error handling.
   void saveSync(String dayKey, int dailyCount) {
     if (_file.path.isEmpty) return;
-    _file.parent.createSync(recursive: true);
-    final tmp = File('${_file.path}.tmp');
-    tmp.writeAsStringSync(
-      jsonEncode({'dayKey': dayKey, 'dailyCount': dailyCount}),
-    );
-    tmp.renameSync(_file.path);
+    try {
+      _file.parent.createSync(recursive: true);
+      final tmp = File('${_file.path}.tmp');
+      tmp.writeAsStringSync(
+        jsonEncode({'dayKey': dayKey, 'dailyCount': dailyCount}),
+      );
+      tmp.renameSync(_file.path);
+    } catch (_) {
+      // Fails closed if store write fails; slot remains counted in-memory.
+    }
   }
 }
 

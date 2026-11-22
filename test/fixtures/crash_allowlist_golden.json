@@ -84,6 +84,46 @@
       "id": "purchase_token_key_value_dots",
       "input": "Play billing purchaseToken=abc.def.ghi segment",
       "expected": "Play billing purchaseToken=[redacted-play-token] segment"
+    },
+    {
+      "id": "unix_path_quoted_paren",
+      "input": "Failed open(\"/sdcard/Jane/notes.md\")",
+      "expected": "Failed open(\"[redacted-path]\")"
+    },
+    {
+      "id": "unix_path_quoted_space",
+      "input": "Crash at \"/home/jane/x.txt\" line 10",
+      "expected": "Crash at \"[redacted-path]\" line 10"
+    },
+    {
+      "id": "unix_path_quoted_single_space",
+      "input": "Read file '/data/user/0/cache/tmp.json' error",
+      "expected": "Read file '[redacted-path]' error"
+    },
+    {
+      "id": "unix_path_quoted_start_of_string",
+      "input": "\"/home/jane/x.txt\"",
+      "expected": "\"[redacted-path]\""
+    },
+    {
+      "id": "purchase_token_json",
+      "input": "Payload {\"purchaseToken\":\"abc.def.ghi\"} end",
+      "expected": "Payload {\"purchaseToken=[redacted-play-token]\"} end"
+    },
+    {
+      "id": "purchase_token_space",
+      "input": "Google Play purchaseToken abc.def.ghi segment",
+      "expected": "Google Play purchaseToken=[redacted-play-token] segment"
+    },
+    {
+      "id": "purchase_token_generic_key",
+      "input": "Auth token=xyz.123.abc response",
+      "expected": "Auth token=[redacted-play-token] response"
+    },
+    {
+      "id": "hex_vs_phone_order",
+      "input": "id 0123456789abcdef and 1234567890123456 with +1 (555) 867-5309",
+      "expected": "id [redacted-hex] and [redacted-hex] with [redacted-phone]"
     }
   ],
   "stackFilter": {

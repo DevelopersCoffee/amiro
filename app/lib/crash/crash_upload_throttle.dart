@@ -29,7 +29,7 @@ class CrashUploadThrottle {
   void _rehydrateDaily() {
     final (persistedDay, persistedCount) = _store.loadSync();
     final today = _currentDayKey();
-    if (persistedDay == today) {
+    if (persistedDay == today && persistedCount >= 0) {
       _dayKey = persistedDay;
       _dailyCount = persistedCount;
     }
@@ -57,7 +57,11 @@ class CrashUploadThrottle {
     _sessionCount += 1;
     _dailyCount += 1;
     _fingerprints.add(fingerprint);
-    _store.saveSync(_dayKey!, _dailyCount);
+    try {
+      _store.saveSync(_dayKey!, _dailyCount);
+    } catch (_) {
+      // Fails closed if store write fails; slot remains counted in-memory.
+    }
     return true;
   }
 
@@ -66,6 +70,8 @@ class CrashUploadThrottle {
     _dailyCount = 0;
     _dayKey = null;
     _fingerprints.clear();
-    _store.saveSync(_currentDayKey(), 0);
+    try {
+      _store.saveSync(_currentDayKey(), 0);
+    } catch (_) {}
   }
 }
