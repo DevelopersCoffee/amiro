@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:amiro_app/analytics/analytics_ingest.dart';
 import 'package:amiro_app/analytics/analytics_sink.dart';
 import 'package:flutter_test/flutter_test.dart';

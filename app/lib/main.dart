@@ -16,7 +16,6 @@ import 'analytics/analytics_install_id.dart';
 import 'analytics/analytics_once.dart';
 import 'analytics/analytics_preferences.dart';
 import 'analytics/analytics_ingest.dart';
-import 'analytics/analytics_sink.dart';
 import 'crash/crash_reporter.dart';
 import 'crash/crash_upload_throttle.dart';
 import 'crash/crash_upload_throttle_store.dart';
