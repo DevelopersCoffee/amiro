@@ -20,7 +20,11 @@ remains manual and is not fully exercised.
 - `packages/discovery`: encounter records, file repository, processor.
 - `app`: widget tests under `app/test/` for identity, avatar, store, sharing
   (QR scan, NFC receive, scan routing, identity card), discovery/passport,
-  theme components, and related providers.
+  theme components, and related providers. Cloud backup consent, revoke, and
+  claim failures are covered with HTTP fakes
+  (`app/test/identity/supabase_profile_cloud_*`, `cloud_backup_*`), not only
+  against a live project. Analytics and crash ingest have worker tests under
+  `workers/revenuecat-webhook/test/` and app tests where present.
 
 ## Explicitly not covered (or only partially covered) in CI
 
@@ -30,8 +34,12 @@ remains manual and is not fully exercised.
   script: `docs/qa/restore-purchases-device.md`; automated restore outcomes in
   `packages/store` and `app/test/store/`).
 - iOS store, NFC emulate, and full renderer parity on Apple hardware.
-- Profile cloud backup against a live Supabase project (`identity` PR #43).
-- PRD web fallback when the app is not installed (`https://id.amiro.app/...`).
+- Profile cloud backup against a **live** Supabase project (HTTP fakes cover
+  the client; #43/#47/#48). Device restore of purchases:
+  `docs/qa/restore-purchases-device.md`.
+- A published `https://id.amiro.app/u/<token>` page when the app is not
+  installed (`workers/web-profile/`, `docs/protocols/web-profile.md`). The
+  Worker can serve that URL; store builds still ship with publish disabled.
 
 Each gap becomes a focused QA pass when its hardware or credentials are
 available; device spikes are recorded in the architecture doc rather than

@@ -1,14 +1,20 @@
 # Amiro — Play Console "Data safety" form, draft answers
 
 Fill the actual Play Console form from this. Re-check against the code
-before submitting — this reflects the app as of **2026-11-18**, after:
+before submitting — this reflects the app as of **2026-11-25**, after:
 
 - Real Play Billing via RevenueCat + Cloudflare Worker + Supabase entitlement
   audit (`workers/revenuecat-webhook/`,
   `packages/store/lib/src/revenuecat_entitlement_store.dart`).
-- Optional profile backup/restore to Supabase (#43,
-  `app/lib/identity/supabase_profile_cloud.dart`,
-  `supabase/migrations/20261016180000_create_profiles.sql`).
+- Optional profile backup/restore to Supabase (#43, opt-in in #47). Upload
+  starts only after the Identity-settings consent dialog
+  (`app/lib/identity/cloud_backup_consent_dialog.dart`). It is not an automatic
+  first-launch sync. Private contact fields stay off the payload
+  (`identityToCloudPayload`). Owner DELETE is the RLS policy in
+  `supabase/migrations/20261102100000_profiles_delete_owner.sql`. Pre-opt-in
+  installs may already have a server row while the switch shows off; the
+  in-app delete path is enable, then disable, or email
+  coffee.devloper@gmail.com.
 - Opt-in **web recipient profile** (#55/#80): publish stores display name,
   public contact fields, avatar PNG, and optional cosmetic summary in
   `web_share_profiles`; HTML is served from `workers/web-profile/` on

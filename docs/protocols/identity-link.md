@@ -1,7 +1,11 @@
 # Identity Link Protocol
 
-**Status:** implemented on-device (custom scheme). The PRD's shorter
-`https://id.amiro.app/u/<id>` App Link / web fallback is **not** built yet.
+**Status:** implemented on-device (custom scheme). An optional published
+HTTPS profile is a separate path: `https://id.amiro.app/u/<token>` served by
+`workers/web-profile/` (see `docs/protocols/web-profile.md`). Store builds
+keep publish off until `AMIRO_WEB_SHARE_PUBLISH_ENABLED` is set. That URL is
+a random token, not the identity id, and it is not an automatic App Link
+fallback for every share.
 
 ## Primary: encounter links (current Share tab)
 
