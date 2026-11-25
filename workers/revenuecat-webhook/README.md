@@ -66,6 +66,39 @@ analytics off.
 schedules a `pg_cron` job to delete rows older than 90 days (requires
 `pg_cron` as for crash ingest).
 
+## Webhook authentication (purchase events)
+
+Purchase webhooks are separate from profile backup and from crash/analytics
+ingest. The Flutter app does not hold the service-role key or these webhook
+secrets. `src/security.ts` and `verifyWebhookRequest` in `src/index.ts`:
+
+- `WEBHOOK_PATH_TOKEN` — required. Missing token returns **500** (fail closed),
+  not an open endpoint. A wrong path token returns **404**.
+- `WEBHOOK_AUTHORIZATION` — optional shared `Authorization` header value,
+  compared in constant time. Set it to the same value as the RevenueCat
+  dashboard authorization header.
+- `WEBHOOK_SIGNING_SECRET` — optional HMAC secret. The Worker signs
+  `` `${timestamp}.` || raw body bytes `` with HMAC-SHA256 and compares the
+  hex digest to the `v1` field of `X-RevenueCat-Webhook-Signature`. Timestamps
+  more than **5 minutes** from the Worker clock are rejected. The body is the
+  raw request bytes, including non-UTF-8 payloads.
+- At least one of `WEBHOOK_AUTHORIZATION` or `WEBHOOK_SIGNING_SECRET` must be
+  set. If neither is configured, the Worker returns **500**.
+- Accepted events are upserted with `on_conflict=event_id`, so a replay of the
+  same RevenueCat `event.id` updates the existing `revenuecat_events` row
+  instead of inserting a second one.
+
+### Deployment checklist (no secret values in git)
+
+1. RevenueCat dashboard webhook URL path matches `WEBHOOK_PATH_TOKEN`.
+2. Dashboard authorization header matches `WEBHOOK_AUTHORIZATION`, and/or the
+   signing secret matches `WEBHOOK_SIGNING_SECRET`.
+3. `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are Worker secrets only.
+4. `CRASH_PATH_TOKEN` and `ANALYTICS_PATH_TOKEN` are public URL gates for the
+   app dart-defines, not the webhook secret.
+5. `wrangler secret put` each name. Do not commit the values.
+6. `npm test` and `npx tsc --noEmit` before `npx wrangler deploy`.
+
 ## Secrets
 
 Set with `wrangler secret put <NAME>` (never commit these):

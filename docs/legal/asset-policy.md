@@ -1,22 +1,16 @@
 # Asset Policy
 
-**Status: stub — full policy not yet written.** Owned by the Legal/IP/
-App Store agent.
-
-Binding rules already established:
+Binding rules for anything shipped in the app:
 
 - No Bitmoji/Snapchat assets, characters, animations, textures, or UI
   patterns — inspiration only, never copying.
 - No unlicensed luxury brands, logos, or celebrity likenesses.
-- All shipped cosmetic/avatar assets must be original, properly
-  licensed, and commercially usable, tracked in
-  `assets/LICENSES.md` and `assets/ATTRIBUTIONS.md` (not yet created —
-  create alongside the first real asset drop).
+- Every non-original mesh, texture, and font is recorded in
+  `assets/LICENSES.md` with source and license (CC0 packs and SIL Open Font
+  License entries live there). `assets/ATTRIBUTIONS.md` is not a separate
+  file; attributions are in `assets/LICENSES.md`.
 
-**Current exception, tracked here on purpose:** the 3 placeholder
-meshes shipped in this foundation pass
-(`packages/avatar_renderer/assets/avatars/body_placeholder.glb`,
-`.../cosmetics/top_placeholder.glb`, `.../cosmetics/glasses_placeholder.glb`)
-are procedurally generated primitive boxes with no third-party origin —
-compliant by construction, but explicitly temporary and not
-representative of final art style.
+Placeholder boxes from the foundation pass
+(`body_placeholder.glb`, `top_placeholder.glb`, `glasses_placeholder.glb`)
+are not the shipping bodies. Shipping bodies and cosmetics are the licensed
+files named in `assets/LICENSES.md`.

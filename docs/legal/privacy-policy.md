@@ -1,6 +1,6 @@
 # Amiro Privacy Policy
 
-**Last updated:** 2026-11-18
+**Last updated:** 2026-11-25
 
 This policy describes what Amiro ("the App") does with your information.
 Amiro is local-first: your identity, avatar, and passport (people you've
@@ -37,17 +37,35 @@ To help you recover your identity after reinstalling or moving to a new
 phone, the App can back up your profile to a [Supabase](https://supabase.com/privacy)
 database we operate:
 
-- On first launch (and when your identity changes), the App may create an
-  anonymous Supabase session and upload a copy of your identity fields and
-  avatar definition JSON. Row access is protected by Supabase row-level
-  security; the App uses Supabase's public ("anon") key, not a root
-  password.
+- **Off until you turn it on.** Identity settings show a cloud-backup
+  switch. Turning it on asks you to confirm (`cloud_backup_consent_dialog.dart`).
+  The App does not upload a profile on first launch just because you opened
+  it. After you accept, it creates an anonymous Supabase session and uploads
+  your id, display name, username, avatar gender, avatar definition JSON, and
+  privacy flags. Contact fields (bio, email, phone, socials, website) are
+  included only when you marked them public. Row access is protected by
+  Supabase row-level security; the App uses Supabase's public ("anon") key,
+  not a service-role key.
 - The App gives you a **recovery code** (stored on your device) you can use
-  on another install to pull that profile back.
+  on another install to pull that profile back. The code is not a password
+  for a Developer's Coffee account.
 - The backup may also store RevenueCat's anonymous purchase user id next to
   your profile so purchases and identity can be reconciled after restore —
   not your name, email, or phone from the profile form.
 - Your passport / encounter history stays **local only** (not uploaded).
+- **Turning backup off** sends a delete for that profile row when this
+  device's anonymous session is the owner that created it, then clears the
+  recovery code and session stored on the device. It also deletes web-profile
+  rows for that same Supabase user. If this device is not the owner session
+  (another phone that only joined with the recovery code, a session that no
+  longer matches, or a backup that was already removed), the App does **not**
+  pretend the server copy is gone. It shows an error and points you at email
+  deletion. There is no code-based server delete RPC; that option is
+  documented in `docs/decisions/backup-delete-o1-o2.md` and is not shipped.
+- Some installs from before the opt-in switch may already have a server row
+  while the switch shows off. Turning backup on and then off again is the
+  in-app path that issues the owner delete. Otherwise email
+  coffee.devloper@gmail.com.
 
 If backup fails (no network), the App keeps working from local storage only.
 
@@ -162,10 +180,21 @@ You can help us understand whether setup, sharing, and the Store are working:
   immediately; the next successful backup sync updates the cloud copy.
 - Uninstalling the App removes local Amiro data, subject to your device's
   own OS behavior (for example, an OS-level backup you created yourself).
-- There is no password-based Amiro account to delete. To remove a cloud
-  profile backup or purchase audit row, email
-  coffee.devloper@gmail.com — these are not always removed automatically
+- There is no password-based Amiro account to delete.
+- **Deleted when an owner device turns backup off successfully:** the
+  `profiles` row for that identity, and that user's `web_share_profiles`
+  rows. The recovery code and anonymous session are cleared on the device.
+- **Kept:** the anonymous Supabase Auth user is not deleted by that toggle.
+  Purchase audit rows (`revenuecat_events`, `entitlement_grants`) are not
+  deleted by turning backup off. Crash and analytics rows, when you opted
+  in, follow their own retention (90 days) and are not your profile.
+- To remove a leftover cloud profile, an anonymous auth user, or a purchase
+  audit row, email coffee.devloper@gmail.com. These are not always removed
   on uninstall because they exist to support restore.
+- What you share by QR or NFC is described in
+  `docs/protocols/encounter-share-data.md` (`amiro://encounter`, optional
+  `c=` contact card). Bundled fonts and meshes are listed in
+  `assets/LICENSES.md` (SIL Open Font License where noted).
 
 ## Children's privacy
 

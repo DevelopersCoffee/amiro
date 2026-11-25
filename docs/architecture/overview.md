@@ -16,7 +16,12 @@ only. On today's default branch the product also includes:
   (`packages/sharing`, `packages/nfc`, `packages/qr`, `app/lib/sharing/`).
 - **Discovery:** encounter ledger and Passport tab (`packages/discovery`,
   `app/lib/discovery/`, fifth tab in `app/lib/app.dart`).
-- **Identity cloud backup:** Supabase profile sync (merged in #43).
+- **Identity cloud backup:** opt-in Supabase profile sync (#43), consent and
+  owner delete (#47), RLS and owner-id backfill (#48).
+- **Web profile:** optional `https://id.amiro.app/u/<token>` Worker (#80),
+  publish UI behind `AMIRO_WEB_SHARE_PUBLISH_ENABLED` (default off).
+- **Diagnostics:** consent-gated crash reports and product analytics (#85),
+  separate from profile backup.
 
 For up-to-date package ownership, see the repository map in `/README.md` and
 the package `README.md` files under `packages/sharing`, `packages/nfc`,

@@ -34,8 +34,12 @@ Every field in your profile — email, phone, social handles, website — has
 its own privacy toggle. Nothing you mark private ever leaves your device.
 
 **No account needed**
-There's no sign-up, no password, and no Amiro server. Your identity and
-avatar are stored locally. Uninstalling the app removes them.
+There's no sign-up and no password. Your identity and avatar are stored on
+the device. Optional cloud backup (off until you turn it on) and an optional
+published web profile can copy the fields described in the privacy policy.
+Uninstalling the app removes the local copy. It does not by itself delete a
+cloud backup or purchase audit row — use the backup switch or email
+coffee.devloper@gmail.com.
 
 **A growing wardrobe**
 Visit the Store to unlock new hairstyles, outfits, and accessories for
